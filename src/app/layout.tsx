@@ -30,29 +30,30 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ja" className="h-full scroll-smooth antialiased">
       <body className="flex min-h-full flex-col bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
         <header className="border-b border-stone-400 bg-white dark:border-stone-800 dark:bg-stone-900">
-          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-            <Link href="/" className="text-lg font-bold tracking-tight">
+          <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 px-3 py-3 sm:px-4">
+            <Link href="/" className="whitespace-nowrap text-base font-bold tracking-tight sm:text-lg">
               TRPG学級会
               <span className="ml-2 hidden text-xs font-normal text-stone-600 sm:inline dark:text-stone-500">
                 レスバより、セッションを。
               </span>
             </Link>
-            <nav className="flex items-center gap-3 text-sm sm:gap-4">
+            <nav className="flex shrink-0 items-center gap-3 text-xs sm:gap-4 sm:text-sm">
               <Link
                 href="/about"
-                className="text-stone-700 hover:text-stone-900"
+                className="whitespace-nowrap text-stone-700 hover:text-stone-900"
               >
-                ルールと仕組み
+                <span className="sm:hidden">ルール</span>
+                <span className="hidden sm:inline">ルールと仕組み</span>
               </Link>
               <Link
                 href="/themes"
-                className="hidden text-stone-700 hover:text-stone-900 sm:inline"
+                className="whitespace-nowrap text-stone-700 hover:text-stone-900"
               >
                 テーマ一覧
               </Link>
               <Link
                 href="/new"
-                className="rounded-md bg-stone-900 px-3 py-1.5 font-medium text-white hover:bg-stone-700"
+                className="whitespace-nowrap rounded-md bg-stone-900 px-2.5 py-1.5 font-medium text-white hover:bg-stone-700 sm:px-3"
               >
                 テーマを提案
               </Link>
