@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, lt, and, isNotNull } from "drizzle-orm";
+import { eq, lt, isNotNull } from "drizzle-orm";
 import { db, themes, rateEvents, reports } from "@/db";
 import { maybeRecompute } from "@/lib/recompute";
 
@@ -22,13 +22,12 @@ export async function GET(request: Request) {
     if (await maybeRecompute(t.id)) recomputed++;
   }
 
-  // プライバシーポリシー記載の保持期間(30日)に合わせ、古いハッシュIPを消し込む
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  // レート制限の窓(24時間)を過ぎた記録は不要なので48時間で消し込む。
+  // ハッシュは日替わりソルトのため、残存中も日をまたげば突き合わせ不能
+  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
   await db.delete(rateEvents).where(lt(rateEvents.createdAt, cutoff));
-  await db
-    .update(reports)
-    .set({ ipHash: null })
-    .where(and(lt(reports.createdAt, cutoff), isNotNull(reports.ipHash)));
+  // 通報のIP記録は廃止済み。過去に保存された分を消し込む
+  await db.update(reports).set({ ipHash: null }).where(isNotNull(reports.ipHash));
 
   return NextResponse.json({ themes: active.length, recomputed });
 }

@@ -39,9 +39,8 @@ export default function TermsPage() {
         <ul className={UL}>
           <li>投稿された意見・テーマの著作権は投稿者に帰属します</li>
           <li>
-            投稿者は運営に対し、本サービス上での表示・集計・意見マップの計算、および
-            <strong>匿名化された投票データ・意見テキストの公開</strong>
-            (第三者による検証を目的としたエクスポート)に必要な範囲での利用を許諾するものとします
+            投稿者は運営に対し、本サービス上での表示・集計・意見マップの計算に
+            必要な範囲での利用を許諾するものとします
           </li>
           <li>匿名投稿という性質上、投稿後に「自分の投稿である」ことを証明して撤回する手段は原則ありません。投稿は慎重に行ってください</li>
         </ul>
@@ -80,7 +79,7 @@ export default function TermsPage() {
       <section>
         <h2 className={H}>6. 規約の変更</h2>
         <p className={P}>
-          本規約を変更する場合は、本ページで告知します。重要な変更はトップページでも案内します。
+          本規約を変更する場合は、本ページ末尾の改定履歴に記載します。
         </p>
       </section>
 
@@ -94,6 +93,13 @@ export default function TermsPage() {
         <p className={P}>
           削除依頼・お問い合わせは各投稿の「通報」ボタンから届きます。
         </p>
+      </section>
+
+      <section>
+        <h2 className={H}>改定履歴</h2>
+        <ul className={UL}>
+          <li>2026年8月27日 制定</li>
+        </ul>
       </section>
     </article>
   );

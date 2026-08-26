@@ -11,6 +11,7 @@ import {
   getOrCreateParticipantId,
   ensureParticipant,
   actorHash,
+  dailyActorHash,
 } from "@/lib/participant";
 import { checkAndRecordRate } from "@/lib/rate-limit";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -71,7 +72,7 @@ export async function createThemeAction(
   const participantId = await getOrCreateParticipantId();
   const ip = await clientIp();
   // cookieを消しても IP 側の制限が残るよう、両方で数える
-  for (const actor of [actorHash(participantId), actorHash(`ip:${ip}`)]) {
+  for (const actor of [actorHash(participantId), dailyActorHash(`ip:${ip}`)]) {
     const rate = await checkAndRecordRate("theme_create", actor);
     if (!rate.ok) {
       return { error: "テーマ提案は1日3件までです。明日また提案してください" };
@@ -173,12 +174,10 @@ export async function submitReportAction(
     return { error: "通報理由は5〜500文字で入力してください" };
   }
 
-  const ip = await clientIp();
   await db.insert(reports).values({
     targetType,
     targetId,
     reason,
-    ipHash: actorHash(`ip:${ip}`),
   });
   return { done: true };
 }

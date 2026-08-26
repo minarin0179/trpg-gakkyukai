@@ -40,3 +40,12 @@ export function actorHash(value: string): string {
   const salt = process.env.HASH_SALT ?? "trpg-gakkyukai";
   return createHash("sha256").update(`${salt}:${value}`).digest("hex").slice(0, 32);
 }
+
+// IP用の日替わりハッシュ。ソルトに日付が入るため、日をまたぐと同一IPでも
+// 別の値になり、長期的な追跡・突き合わせができない(実質IPを記憶しない設計)。
+// レート制限の窓(24時間)の用途には十分
+export function dailyActorHash(value: string): string {
+  const day = new Date().toISOString().slice(0, 10);
+  const salt = process.env.HASH_SALT ?? "trpg-gakkyukai";
+  return createHash("sha256").update(`${salt}:${day}:${value}`).digest("hex").slice(0, 32);
+}

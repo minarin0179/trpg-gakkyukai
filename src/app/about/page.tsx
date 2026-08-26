@@ -59,7 +59,7 @@ export default function AboutPage() {
         <ul className="list-disc pl-5 text-sm text-stone-700">
           <li>アカウント登録はなく、氏名・メールアドレス等の個人情報は収集しません</li>
           <li>参加者の識別はブラウザに保存される匿名ID(cookie)のみで行います</li>
-          <li>スパム対策のためIPアドレスをハッシュ化した値を短期間保存します(生のIPは保存しません)</li>
+          <li>IPアドレスは保存しません(連投対策用に日替わりで計算される復元不能な値を最大48時間だけ保持)</li>
           <li>投票データは統計処理と意見マップの表示にのみ使用します</li>
         </ul>
         <p className="mt-2 text-sm text-stone-700">
