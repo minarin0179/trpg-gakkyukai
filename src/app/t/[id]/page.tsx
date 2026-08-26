@@ -46,9 +46,9 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
       <div>
         <h1 className="text-xl font-bold">{theme.title}</h1>
         {theme.description && (
-          <p className="mt-2 whitespace-pre-wrap text-sm text-stone-600">{theme.description}</p>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-stone-600 dark:text-stone-300">{theme.description}</p>
         )}
-        <div className="mt-2 flex items-center gap-3 text-xs text-stone-500">
+        <div className="mt-2 flex items-center gap-3 text-xs text-stone-500 dark:text-stone-400">
           <span>
             {counts.voterCount}人が投票 · 意見{allStatements.length}件
           </span>
@@ -57,29 +57,29 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
       </div>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-stone-700">投票する</h2>
+        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">投票する</h2>
         <VoteDeck themeId={theme.id} statements={unvoted} />
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-stone-700">意見マップ</h2>
+        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">意見マップ</h2>
         <OpinionMap result={publicResult} myIndex={myIndex} statementTexts={statementTexts} />
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-stone-700">意見を投稿する</h2>
+        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">意見を投稿する</h2>
         <StatementForm themeId={theme.id} />
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-stone-700">
+        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">
           すべての意見({allStatements.length})
         </h2>
         <ul className="flex flex-col gap-2">
           {allStatements.map((s) => (
             <li
               key={s.id}
-              className="flex items-start justify-between gap-3 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm"
+              className="flex items-start justify-between gap-3 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900"
             >
               <span>{s.text}</span>
               <ReportButton targetType="statement" targetId={String(s.id)} />

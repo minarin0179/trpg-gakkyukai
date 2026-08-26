@@ -28,7 +28,7 @@ export function OpinionMap({
 }) {
   if (!result || result.status !== "ok" || !result.participants?.length) {
     return (
-      <p className="rounded-lg border border-dashed border-stone-300 p-6 text-center text-sm text-stone-500">
+      <p className="rounded-lg border border-dashed border-stone-300 p-6 text-center text-sm text-stone-500 dark:border-stone-700 dark:text-stone-400">
         意見マップはまだありません。もう少し投票が集まると、意見グループの地図がここに描かれます。
       </p>
     );
@@ -61,7 +61,7 @@ export function OpinionMap({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-x-auto rounded-lg border border-stone-200 bg-white p-4">
+      <div className="overflow-x-auto rounded-lg border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
         <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto w-full max-w-lg" role="img" aria-label="意見マップ">
           {pts.map((p) => {
             const isMe = myIndex !== null && p.id === myIndex;
@@ -74,11 +74,17 @@ export function OpinionMap({
                   r={isMe ? 7 : 4.5}
                   fill={color}
                   fillOpacity={isMe ? 1 : 0.55}
-                  stroke={isMe ? "#1c1917" : "none"}
                   strokeWidth={isMe ? 2 : 0}
+                  className={isMe ? "stroke-stone-900 dark:stroke-stone-100" : undefined}
                 />
                 {isMe && (
-                  <text x={sx(p.x) + 10} y={sy(p.y) + 4} fontSize="11" fill="#1c1917" fontWeight="bold">
+                  <text
+                    x={sx(p.x) + 10}
+                    y={sy(p.y) + 4}
+                    fontSize="11"
+                    fontWeight="bold"
+                    className="fill-stone-900 dark:fill-stone-100"
+                  >
                     あなた
                   </text>
                 )}
@@ -86,7 +92,7 @@ export function OpinionMap({
             );
           })}
         </svg>
-        <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs text-stone-600">
+        <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs text-stone-600 dark:text-stone-300">
           {[...clusters.entries()]
             .sort((a, b) => a[0] - b[0])
             .map(([cid, n]) => (
@@ -98,21 +104,21 @@ export function OpinionMap({
                 グループ{GROUP_NAMES[cid] ?? cid}({n}人)
               </span>
             ))}
-          <span className="text-stone-400">近くにいる人ほど投票傾向が似ています</span>
+          <span className="text-stone-400 dark:text-stone-500">近くにいる人ほど投票傾向が似ています</span>
         </div>
       </div>
 
       {consensusAgree.length > 0 && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-          <h3 className="mb-2 text-sm font-semibold text-emerald-900">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950">
+          <h3 className="mb-2 text-sm font-semibold text-emerald-900 dark:text-emerald-200">
             🤝 グループを越えて合意された意見
           </h3>
-          <ul className="flex flex-col gap-1.5 text-sm text-emerald-900">
+          <ul className="flex flex-col gap-1.5 text-sm text-emerald-900 dark:text-emerald-200">
             {consensusAgree.map((c) => (
               <li key={c.statement_id}>
                 「{statementTexts[c.statement_id]}」
                 {c.agree_ratio !== null && (
-                  <span className="ml-1 text-xs text-emerald-700">
+                  <span className="ml-1 text-xs text-emerald-700 dark:text-emerald-400">
                     (賛成 {Math.round(c.agree_ratio * 100)}%)
                   </span>
                 )}
@@ -129,7 +135,7 @@ export function OpinionMap({
             if (visible.length === 0) return null;
             const g = Number(gid);
             return (
-              <div key={gid} className="rounded-lg border border-stone-200 bg-white p-4">
+              <div key={gid} className="rounded-lg border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
                 <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
                   <span
                     className="inline-block h-2.5 w-2.5 rounded-full"
@@ -137,11 +143,11 @@ export function OpinionMap({
                   />
                   グループ{GROUP_NAMES[g] ?? g}の特徴的な意見
                 </h4>
-                <ul className="flex flex-col gap-1.5 text-sm text-stone-700">
+                <ul className="flex flex-col gap-1.5 text-sm text-stone-700 dark:text-stone-300">
                   {visible.map((i) => (
                     <li key={i.statement_id}>
                       「{statementTexts[i.statement_id]}」
-                      <span className="ml-1 text-xs text-stone-500">
+                      <span className="ml-1 text-xs text-stone-500 dark:text-stone-400">
                         {i.repful_for === "agree" ? "に賛成しがち" : "に反対しがち"}
                       </span>
                     </li>

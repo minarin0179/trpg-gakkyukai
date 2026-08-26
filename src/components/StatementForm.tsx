@@ -24,13 +24,13 @@ export function StatementForm({ themeId }: { themeId: string }) {
         maxLength={280}
         rows={2}
         placeholder="あなたの意見(280文字まで)。賛成でも反対でもない新しい視点も歓迎"
-        className="w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm"
+        className="w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
       />
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       <button
         type="submit"
         disabled={pending}
-        className="self-end rounded-md bg-stone-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50"
+        className="self-end rounded-md bg-stone-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300"
       >
         {pending ? "投稿中..." : "意見を投稿"}
       </button>
