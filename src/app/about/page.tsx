@@ -36,6 +36,18 @@ export default function AboutPage() {
       </section>
 
       <section>
+        <h2 className="mb-2 text-base font-semibold">一覧の並び順</h2>
+        <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-300">
+          テーマは新着タブに即時掲載され、10人が投票するとメインの「議論中」一覧に昇格します。
+          議論中一覧は Hacker News と同じ方式の時間減衰ランキング
+          (投票者数 ÷ (経過日数 + 2)<sup>1.8</sup>)で並びます。
+          参加者が多くても時間が経ったテーマは自然に下がっていき、
+          一覧が新しい議論へ入れ替わるようにしています。
+          運営が手動で順位を操作することはありません。
+        </p>
+      </section>
+
+      <section>
         <h2 className="mb-2 text-base font-semibold">多重投票について</h2>
         <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-300">
           参加はアカウント不要(ブラウザごとの匿名ID)なので、技術的には同じ人が複数回参加できます。

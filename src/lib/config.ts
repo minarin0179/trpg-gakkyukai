@@ -8,5 +8,10 @@ export const RECOMPUTE_MIN_INTERVAL_SEC = 20;
 
 export const THEME_TITLE_MAX = 100;
 export const THEME_DESCRIPTION_MAX = 2000;
-export const STATEMENT_MAX = 280;
+export const STATEMENT_MAX = 140;
 export const SEED_STATEMENTS_MAX = 10;
+
+// メイン一覧の並び順(Hacker News方式の時間減衰ランキング)
+// score = 投票者数 / (経過日数 + 2)^GRAVITY
+// 新しいテーマほど有利になり、古いテーマは参加者が多くても自然に沈む
+export const RANKING_GRAVITY = 1.8;

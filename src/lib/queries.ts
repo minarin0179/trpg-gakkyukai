@@ -1,6 +1,6 @@
 import { and, countDistinct, desc, eq, count, notInArray, sql } from "drizzle-orm";
 import { db, themes, statements, votes, mathResults } from "@/db";
-import { PROMOTION_MIN_PARTICIPANTS } from "./config";
+import { PROMOTION_MIN_PARTICIPANTS, RANKING_GRAVITY } from "./config";
 
 export type ThemeWithCounts = {
   id: string;
@@ -35,9 +35,14 @@ export async function listThemes(): Promise<{
     .orderBy(desc(themes.createdAt))
     .limit(200);
 
+  // Hacker News方式: 参加者数を経過時間で減衰させ、古いテーマを自然に沈める
+  const score = (r: (typeof rows)[number]) => {
+    const ageDays = (Date.now() - r.createdAt.getTime()) / 86_400_000;
+    return r.voterCount / Math.pow(ageDays + 2, RANKING_GRAVITY);
+  };
   const main = rows
     .filter((r) => r.voterCount >= PROMOTION_MIN_PARTICIPANTS)
-    .sort((a, b) => b.voterCount - a.voterCount);
+    .sort((a, b) => score(b) - score(a));
   const fresh = rows.filter((r) => r.voterCount < PROMOTION_MIN_PARTICIPANTS);
   return { main, fresh };
 }

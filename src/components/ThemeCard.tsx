@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ThemeWithCounts } from "@/lib/queries";
+import { formatRelativeDate } from "@/lib/format";
 
 export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
   return (
@@ -14,7 +15,7 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
         </p>
       )}
       <p className="mt-2 text-xs text-stone-600 dark:text-stone-500">
-        {theme.voterCount}人が投票 · 意見{theme.statementCount}件
+        {theme.voterCount}人が投票 · 意見{theme.statementCount}件 · {formatRelativeDate(theme.createdAt)}
       </p>
     </Link>
   );

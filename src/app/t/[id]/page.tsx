@@ -12,6 +12,7 @@ import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
 import { OpinionMap, type PublicMathResult } from "@/components/OpinionMap";
 import { ReportButton } from "@/components/ReportButton";
+import { formatRelativeDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         )}
         <div className="mt-2 flex items-center gap-3 text-xs text-stone-600 dark:text-stone-500">
           <span>
-            {counts.voterCount}人が投票 · 意見{allStatements.length}件
+            {counts.voterCount}人が投票 · 意見{allStatements.length}件 · {formatRelativeDate(theme.createdAt)}
           </span>
           <ReportButton targetType="theme" targetId={theme.id} />
         </div>
