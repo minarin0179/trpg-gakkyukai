@@ -52,7 +52,7 @@ export function VoteDeck({
   if (statements.length === 0 || done) {
     return (
       <p className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
-        このテーマの意見にはすべて投票済みです 🎉
+        このテーマの意見にはすべて投票済みです。
         <br />
         言い足りないことがあれば新しい意見を投稿できます。結果は下の意見マップへ。
       </p>

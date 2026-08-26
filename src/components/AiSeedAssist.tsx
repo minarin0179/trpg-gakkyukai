@@ -126,7 +126,7 @@ export function AiSeedAssist({
   if (status === "hidden") {
     return (
       <span className="text-xs text-stone-500">
-        💡 対応スペックのPC版Chromeでは、意見の下書きを自動作成できます
+        対応スペックのPC版Chromeでは、AIで最初の意見を生成できます
       </span>
     );
   }
@@ -141,10 +141,10 @@ export function AiSeedAssist({
         className="rounded-md border border-amber-400 bg-amber-50 px-2.5 py-1 text-xs font-medium text-stone-800 hover:bg-amber-100 disabled:opacity-50"
       >
         {status === "generating"
-          ? "作成中..."
+          ? "生成中..."
           : status === "downloading"
             ? `準備中... ${progress}%`
-            : "✍️ 下書きを自動で作成"}
+            : "AIで最初の意見を生成"}
       </button>
       {errorMsg && <span className="text-xs text-red-600">{errorMsg}</span>}
     </span>

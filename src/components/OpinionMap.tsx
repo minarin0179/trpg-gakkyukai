@@ -251,7 +251,7 @@ export function OpinionMap({
       {consensusAgree.length > 0 && (
         <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4">
           <h3 className="mb-2 text-sm font-semibold text-emerald-900">
-            🤝 グループを越えて合意された意見
+            グループを越えて合意された意見
           </h3>
           <ul className="flex flex-col gap-1.5 text-sm text-emerald-900">
             {consensusAgree.map((c) => (

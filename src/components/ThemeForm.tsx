@@ -41,7 +41,7 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           required
           minLength={5}
           maxLength={100}
-          placeholder="例: セッション中のPC間対立はどこまで許容されるべき?"
+          placeholder="賛否が分かれそうな問いを書く"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
@@ -80,7 +80,7 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           name="seeds"
           required
           rows={5}
-          placeholder={"PvPは事前の同意があれば問題ない\nGMが介入して止めるべきだ"}
+          placeholder={"このテーマに賛成する人・反対する人、それぞれの言い分を想像して1行ずつ書く"}
           value={seeds}
           onChange={(e) => setSeeds(e.target.value)}
           className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"

@@ -7,7 +7,7 @@ export function TopicGuidelines() {
   return (
     <div className="flex flex-col gap-3">
       <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4">
-        <h3 className="mb-1 text-sm font-semibold text-emerald-900">⭕ テーマにできる</h3>
+        <h3 className="mb-1 text-sm font-semibold text-emerald-900">テーマにできる</h3>
         <p className="mb-1 text-sm leading-relaxed text-emerald-900">
           TRPGに関する、意見の分かれる話題。例えば:
         </p>
@@ -22,7 +22,7 @@ export function TopicGuidelines() {
         </ul>
       </div>
       <div className="rounded-lg border border-rose-300 bg-rose-50 p-4">
-        <h3 className="mb-1 text-sm font-semibold text-rose-900">❌ テーマにできない</h3>
+        <h3 className="mb-1 text-sm font-semibold text-rose-900">テーマにできない</h3>
         <ul className="list-disc pl-5 text-sm leading-relaxed text-rose-900">
           <li>実在の個人・特定の卓・進行中の揉め事の当事者を裁くもの(「〇〇さんのあの発言は許されるのか」)</li>
           <li>特定の作品・シナリオを名指しで断罪するもの(「シナリオ〇〇は地雷か」)。作り手への攻撃になりやすいため、論点に言い換えてください</li>
