@@ -18,20 +18,20 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
       <div className="mb-4 flex gap-1 border-b border-stone-200 dark:border-stone-800">
         <Link
           href="/themes"
-          className={`px-4 py-2 text-sm font-medium ${!showFresh ? "border-b-2 border-stone-900 dark:border-stone-100" : "text-stone-500 dark:text-stone-400"}`}
+          className={`px-4 py-2 text-sm font-medium ${!showFresh ? "border-b-2 border-stone-900 dark:border-stone-100" : "text-stone-600 dark:text-stone-500"}`}
         >
           議論中
         </Link>
         <Link
           href="/themes?tab=new"
-          className={`px-4 py-2 text-sm font-medium ${showFresh ? "border-b-2 border-stone-900 dark:border-stone-100" : "text-stone-500 dark:text-stone-400"}`}
+          className={`px-4 py-2 text-sm font-medium ${showFresh ? "border-b-2 border-stone-900 dark:border-stone-100" : "text-stone-600 dark:text-stone-500"}`}
         >
           新着
         </Link>
       </div>
 
       {list.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-stone-300 p-8 text-center text-sm text-stone-500 dark:border-stone-700 dark:text-stone-400">
+        <div className="rounded-lg border border-dashed border-stone-300 p-8 text-center text-sm text-stone-600 dark:border-stone-700 dark:text-stone-500">
           {showFresh ? (
             <>
               まだ新着テーマがありません。

@@ -52,7 +52,7 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           placeholder={"PvPは事前の同意があれば問題ない\nGMが介入して止めるべきだ"}
           className="w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
         />
-        <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+        <p className="mt-1 text-xs text-stone-600 dark:text-stone-500">
           賛成/反対が分かれそうな意見を並べておくと、参加者が投票しやすくなります
         </p>
       </div>
@@ -65,7 +65,7 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
       >
         {pending ? "作成中..." : "テーマを公開する"}
       </button>
-      <p className="text-xs text-stone-500 dark:text-stone-400">
+      <p className="text-xs text-stone-600 dark:text-stone-500">
         テーマは審査なしで即時公開されます。まず新着タブに載り、
         10人が投票するとメインの一覧に表示されます。
       </p>

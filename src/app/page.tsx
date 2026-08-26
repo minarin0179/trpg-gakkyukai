@@ -50,7 +50,7 @@ export default async function HomePage() {
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-28 py-8 sm:gap-36">
       {/* ヒーロー */}
       <section className="text-center">
-        <div className="mx-auto mb-6 flex w-fit items-end justify-center">
+        <div className="mx-auto mb-6 flex w-fit items-end justify-center rounded-2xl border border-stone-200 bg-white px-5 py-3">
           <Image src="/illustrations/535.png" alt="" width={170} height={170} priority />
           <Image src="/illustrations/536.png" alt="" width={170} height={170} priority />
         </div>
@@ -59,7 +59,7 @@ export default async function HomePage() {
           <br className="sm:hidden" />
           セッションを。
         </h1>
-        <p className="mt-4 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+        <p className="mt-4 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
           <strong>TRPG学級会</strong>は、TRPGにまつわる賛否の分かれる話題に
           「賛成 / 反対 / パス」で投票して、意見の全体像と
           <strong>グループを越えた合意点</strong>を見つける場所です。
@@ -79,10 +79,10 @@ export default async function HomePage() {
             テーマを提案する
           </Link>
         </div>
-        <p className="mt-3 text-xs text-stone-500 dark:text-stone-400">
+        <p className="mt-3 text-xs text-stone-600 dark:text-stone-500">
           アカウント登録なし・匿名のまま、いますぐ参加できます
         </p>
-        <nav className="mt-10 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-stone-500 dark:text-stone-400">
+        <nav className="mt-10 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-stone-600 dark:text-stone-500">
           <a href="#why" className="hover:text-stone-900 hover:underline dark:hover:text-stone-100">この名前について</a>
           <a href="#features" className="hover:text-stone-900 hover:underline dark:hover:text-stone-100">仕組み</a>
           <a href="#howto" className="hover:text-stone-900 hover:underline dark:hover:text-stone-100">使い方</a>
@@ -93,7 +93,7 @@ export default async function HomePage() {
 
       {/* 問題提起と理念 */}
       <section id="why" className="reveal scroll-mt-20">
-        <div className="mx-auto mb-4 w-fit">
+        <div className="mx-auto mb-4 w-fit rounded-2xl border border-stone-200 bg-white p-2">
           <Image src="/illustrations/1122.png" alt="スマホのクソリプに手をかざす人のイラスト" width={150} height={150} />
         </div>
         <h2 className="mb-4 text-center text-xl font-bold">
@@ -126,7 +126,7 @@ export default async function HomePage() {
 
       {/* 特徴 */}
       <section id="features" className="reveal scroll-mt-20">
-        <div className="mx-auto mb-4 w-fit">
+        <div className="mx-auto mb-4 w-fit rounded-2xl border border-stone-200 bg-white p-2">
           <Image src="/illustrations/1628.png" alt="散布図を分析するイラスト" width={150} height={150} />
         </div>
         <h2 className="mb-6 text-center text-xl font-bold">このサイトの仕組み</h2>
@@ -137,11 +137,11 @@ export default async function HomePage() {
               className="reveal rounded-lg border border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900"
             >
               <h3 className="mb-2 font-semibold">{f.title}</h3>
-              <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">{f.body}</p>
+              <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-500">{f.body}</p>
             </div>
           ))}
         </div>
-        <p className="mt-4 text-center text-xs text-stone-500 dark:text-stone-400">
+        <p className="mt-4 text-center text-xs text-stone-600 dark:text-stone-500">
           意見マップの計算には、台湾の国民的議論などで実績のある{" "}
           <a href="https://pol.is" className="underline" rel="noopener">
             Polis
@@ -169,7 +169,7 @@ export default async function HomePage() {
               </span>
               <div className="flex-1">
                 <h3 className="mb-1 font-semibold">{s.title}</h3>
-                <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">{s.body}</p>
+                <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-500">{s.body}</p>
               </div>
               <div className="hidden h-20 w-20 shrink-0 items-center justify-center self-center sm:flex">
                 <Image src={s.image} alt="" width={72} height={72} />
@@ -177,7 +177,7 @@ export default async function HomePage() {
             </li>
           ))}
         </ol>
-        <div className="mt-4 rounded-lg border border-dashed border-stone-300 p-4 text-sm leading-relaxed text-stone-600 dark:border-stone-700 dark:text-stone-400">
+        <div className="mt-4 rounded-lg border border-dashed border-stone-300 p-4 text-sm leading-relaxed text-stone-700 dark:border-stone-700 dark:text-stone-500">
           <strong className="text-stone-800 dark:text-stone-200">議題を立てたい人へ:</strong>{" "}
           テーマの提案も登録不要です。審査はなく即時公開され、まず
           <Link href="/themes?tab=new" className="underline">
@@ -191,7 +191,7 @@ export default async function HomePage() {
       {/* いま議論されているテーマ */}
       {featured.length > 0 && (
         <section id="themes" className="reveal scroll-mt-20">
-          <div className="mx-auto mb-2 w-fit">
+          <div className="mx-auto mb-2 w-fit rounded-2xl border border-stone-200 bg-white p-1">
             <Image src="/illustrations/1822.png" alt="" width={90} height={90} />
           </div>
           <h2 className="mb-4 text-center text-xl font-bold">いま議論されているテーマ</h2>
@@ -215,11 +215,11 @@ export default async function HomePage() {
 
       {/* 運営方針 */}
       <section id="policy" className="reveal scroll-mt-20 rounded-lg border border-stone-200 bg-white p-6 text-center dark:border-stone-800 dark:bg-stone-900">
-        <div className="mx-auto mb-3 w-fit">
+        <div className="mx-auto mb-3 w-fit rounded-2xl border border-stone-200 bg-white p-2">
           <Image src="/illustrations/1498.png" alt="握手のイラスト" width={130} height={130} />
         </div>
         <h2 className="mb-2 text-base font-bold">運営の約束</h2>
-        <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">
+        <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-500">
           「不快・論争的だから」という理由で投稿を消しません。削除するのは実在個人への攻撃・
           個人情報・違法・スパムだけです。個人情報は集めず、マップの計算方法は公開されていて、
           運営が結果を操作していないことを誰でも検証できるようにしていきます。

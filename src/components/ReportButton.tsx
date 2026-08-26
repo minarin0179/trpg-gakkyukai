@@ -20,7 +20,7 @@ export function ReportButton({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-xs text-stone-400 underline hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+        className="text-xs text-stone-500 underline hover:text-stone-700 dark:text-stone-600 dark:hover:text-stone-300"
       >
         通報
       </button>
@@ -28,14 +28,14 @@ export function ReportButton({
   }
 
   if (state.done) {
-    return <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">通報を受け付けました。基準に照らして対応します。</p>;
+    return <p className="mt-2 text-xs text-stone-600 dark:text-stone-500">通報を受け付けました。基準に照らして対応します。</p>;
   }
 
   return (
     <form action={formAction} className="mt-2 flex flex-col gap-2 rounded-md border border-stone-200 bg-stone-50 p-3 dark:border-stone-700 dark:bg-stone-800">
       <input type="hidden" name="targetType" value={targetType} />
       <input type="hidden" name="targetId" value={targetId} />
-      <p className="text-xs text-stone-600 dark:text-stone-300">
+      <p className="text-xs text-stone-700 dark:text-stone-300">
         削除対象は「実名個人への攻撃 / 個人情報 / 法令違反 / 機械的スパム」のみです。
         不快・論争的であることは削除理由になりません(
         <a href="/about" className="underline">基準の全文</a>)。
@@ -61,7 +61,7 @@ export function ReportButton({
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="text-xs text-stone-500 underline dark:text-stone-400"
+          className="text-xs text-stone-600 underline dark:text-stone-500"
         >
           閉じる
         </button>

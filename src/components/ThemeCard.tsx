@@ -9,11 +9,11 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
     >
       <h3 className="font-semibold">{theme.title}</h3>
       {theme.description && (
-        <p className="mt-1 line-clamp-2 text-sm text-stone-600 dark:text-stone-400">
+        <p className="mt-1 line-clamp-2 text-sm text-stone-700 dark:text-stone-500">
           {theme.description}
         </p>
       )}
-      <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+      <p className="mt-2 text-xs text-stone-600 dark:text-stone-500">
         {theme.voterCount}人が投票 · 意見{theme.statementCount}件
       </p>
     </Link>

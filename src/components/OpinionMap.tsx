@@ -28,7 +28,7 @@ export function OpinionMap({
 }) {
   if (!result || result.status !== "ok" || !result.participants?.length) {
     return (
-      <p className="rounded-lg border border-dashed border-stone-300 p-6 text-center text-sm text-stone-500 dark:border-stone-700 dark:text-stone-400">
+      <p className="rounded-lg border border-dashed border-stone-300 p-6 text-center text-sm text-stone-600 dark:border-stone-700 dark:text-stone-500">
         意見マップはまだありません。もう少し投票が集まると、意見グループの地図がここに描かれます。
       </p>
     );
@@ -92,7 +92,7 @@ export function OpinionMap({
             );
           })}
         </svg>
-        <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs text-stone-600 dark:text-stone-300">
+        <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs text-stone-700 dark:text-stone-300">
           {[...clusters.entries()]
             .sort((a, b) => a[0] - b[0])
             .map(([cid, n]) => (
@@ -104,7 +104,7 @@ export function OpinionMap({
                 グループ{GROUP_NAMES[cid] ?? cid}({n}人)
               </span>
             ))}
-          <span className="text-stone-400 dark:text-stone-500">近くにいる人ほど投票傾向が似ています</span>
+          <span className="text-stone-500 dark:text-stone-600">近くにいる人ほど投票傾向が似ています</span>
         </div>
       </div>
 
@@ -147,7 +147,7 @@ export function OpinionMap({
                   {visible.map((i) => (
                     <li key={i.statement_id}>
                       「{statementTexts[i.statement_id]}」
-                      <span className="ml-1 text-xs text-stone-500 dark:text-stone-400">
+                      <span className="ml-1 text-xs text-stone-600 dark:text-stone-500">
                         {i.repful_for === "agree" ? "に賛成しがち" : "に反対しがち"}
                       </span>
                     </li>
