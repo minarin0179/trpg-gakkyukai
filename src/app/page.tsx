@@ -214,8 +214,9 @@ export default async function HomePage() {
         <h2 className="mb-2 text-base font-bold">運営の約束</h2>
         <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-500">
           「不快・論争的だから」という理由で投稿を消しません。削除するのは実在個人への攻撃・
-          個人情報・違法・スパムだけです。個人情報は集めず、マップの計算方法は公開されていて、
-          運営が結果を操作していないことを誰でも検証できるようにしていきます。
+          個人情報・違法・スパムなど、明文化された基準に該当するものだけです。個人情報は集めません。
+          マップの計算も一覧の並び順も公開されている標準の手法をそのまま使い、
+          運営の裁量で結果を操作しない設計にしています。
         </p>
         <Link href="/about" className="mt-3 inline-block text-sm font-medium underline">
           ルールと仕組みの全文を読む

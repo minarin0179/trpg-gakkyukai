@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
-import { db, themes } from "@/db";
+import { eq, lt, and, isNotNull } from "drizzle-orm";
+import { db, themes, rateEvents, reports } from "@/db";
 import { maybeRecompute } from "@/lib/recompute";
 
 // 日次のバックストップ再計算。通常は投票時に都度再計算されるため、
@@ -21,5 +21,14 @@ export async function GET(request: Request) {
   for (const t of active) {
     if (await maybeRecompute(t.id)) recomputed++;
   }
+
+  // プライバシーポリシー記載の保持期間(30日)に合わせ、古いハッシュIPを消し込む
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  await db.delete(rateEvents).where(lt(rateEvents.createdAt, cutoff));
+  await db
+    .update(reports)
+    .set({ ipHash: null })
+    .where(and(lt(reports.createdAt, cutoff), isNotNull(reports.ipHash)));
+
   return NextResponse.json({ themes: active.length, recomputed });
 }

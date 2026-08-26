@@ -71,7 +71,7 @@ export default function AboutPage() {
       <section>
         <h2 className="mb-2 text-base font-semibold">透明性 — アルゴリズムの詳細</h2>
         <p className="text-sm leading-relaxed text-stone-700">
-          運営が結果や見え方を操作していないことを、誰でも確認できるようにしています。
+          運営の裁量が結果に入り込む余地を減らす設計にしています。
           細かい話なので、興味のある方向けです。
         </p>
         <ul className="mt-2 list-disc pl-5 text-sm leading-relaxed text-stone-700">
@@ -94,11 +94,7 @@ export default function AboutPage() {
             ここは多数決ではなく意見の「地形」を描く場です。同じ投票パターンを水増ししても
             地形はほぼ変わらず、「グループを越えた合意」は1つのグループの水増しでは作れません
           </li>
-          <li>パラメータや基準を変更する場合は、このページに履歴を残します</li>
-          <li>
-            ソースコードは公開予定です。テーマごとの匿名投票データのエクスポート機能も準備中で、
-            エクスポートとred-dwarfを使えば、誰でも手元で同じマップを再計算・検証できます
-          </li>
+          <li>パラメータや基準を変更した場合は、このページの記載を更新します</li>
         </ul>
       </section>
     </article>
