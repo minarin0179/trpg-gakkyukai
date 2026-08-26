@@ -1,8 +1,14 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Script from "next/script";
 import { createThemeAction, type FormState } from "@/app/actions";
+
+declare global {
+  interface Window {
+    turnstile?: { reset: () => void };
+  }
+}
 
 export function ThemeForm({ siteKey }: { siteKey: string }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
@@ -14,6 +20,12 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [seeds, setSeeds] = useState("");
+
+  // Turnstileのトークンは使い捨て+5分で失効するため、
+  // エラーで差し戻されたらウィジェットをリセットして新しいトークンを取り直す
+  useEffect(() => {
+    if (state.error) window.turnstile?.reset();
+  }, [state]);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -67,7 +79,7 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           賛成/反対が分かれそうな意見を並べておくと、参加者が投票しやすくなります
         </p>
       </div>
-      <div className="cf-turnstile" data-sitekey={siteKey} />
+      <div className="cf-turnstile" data-sitekey={siteKey} data-refresh-expired="auto" />
       {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       <button
         type="submit"
