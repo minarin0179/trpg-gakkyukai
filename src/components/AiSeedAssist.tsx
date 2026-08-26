@@ -138,7 +138,7 @@ export function AiSeedAssist({
         onClick={generate}
         disabled={status === "generating" || status === "downloading"}
         title="お使いのブラウザに内蔵されたAIがその場で動作します。入力内容が外部に送信されることはありません"
-        className="rounded-md border border-amber-400 bg-amber-50 px-2.5 py-1 text-xs font-medium text-stone-800 hover:bg-amber-100 disabled:opacity-50"
+        className="rounded-md bg-stone-900 px-3.5 py-2 text-xs font-medium text-white hover:bg-stone-700 disabled:opacity-50"
       >
         {status === "generating"
           ? "生成中..."
