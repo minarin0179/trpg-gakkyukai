@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 
 type LanguageModelSession = {
-  prompt: (input: string) => Promise<string>;
+  prompt: (input: string, opts?: { responseConstraint?: object }) => Promise<string>;
   destroy: () => void;
 };
 
@@ -103,12 +103,47 @@ export function AiSeedAssist({
       const input = description.trim()
         ? `テーマ: ${title}\n補足説明: ${description}`
         : `テーマ: ${title}`;
-      const raw = await session.prompt(input);
-      const lines = raw
-        .split("\n")
-        .map((l) => l.replace(/^[\s\d\.\-・*●○]+/, "").trim())
-        .filter((l) => l.length >= 5 && l.length <= 140)
-        .slice(0, 8);
+
+      // 小型モデルは「改行区切りで8個」の指示を守れないことがある
+      // (全部を1行に繋げる等)ため、JSONスキーマで出力形式を強制する。
+      // 非対応・失敗時は素のプロンプト+行分割にフォールバック
+      let lines: string[] = [];
+      try {
+        const raw = await session.prompt(input, {
+          responseConstraint: {
+            type: "object",
+            properties: {
+              opinions: {
+                type: "array",
+                items: { type: "string", maxLength: 140 },
+                minItems: 6,
+                maxItems: 8,
+              },
+            },
+            required: ["opinions"],
+          },
+        });
+        const parsed = JSON.parse(raw) as { opinions?: unknown };
+        if (Array.isArray(parsed.opinions)) {
+          lines = parsed.opinions.filter(
+            (o): o is string => typeof o === "string" && o.trim().length >= 5,
+          );
+        }
+      } catch {
+        // フォールバック: 自由出力を行で分割し、行にならなければ文で分割
+        const raw = await session.prompt(input);
+        lines = raw
+          .split("\n")
+          .map((l) => l.replace(/^[\s\d\.\-・*●○]+/, "").trim())
+          .filter((l) => l.length >= 5 && l.length <= 140);
+        if (lines.length <= 2) {
+          lines = raw
+            .split(/(?<=。)/)
+            .map((l) => l.replace(/^[\s\d\.\-・*●○]+/, "").trim())
+            .filter((l) => l.length >= 5 && l.length <= 140);
+        }
+      }
+      lines = lines.map((l) => l.trim()).slice(0, 8);
       if (lines.length === 0) {
         setErrorMsg("うまく生成できませんでした。もう一度試すか、手で書いてみてください");
       } else {
