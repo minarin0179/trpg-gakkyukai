@@ -46,9 +46,6 @@ export default async function HomePage() {
     <div className="flex flex-col gap-16 py-4">
       {/* ヒーロー */}
       <section className="text-center">
-        <p className="mb-3 text-sm font-medium text-stone-500 dark:text-stone-400">
-          TRPGの論点を、投票で見晴らす
-        </p>
         <h1 className="text-3xl font-bold leading-snug sm:text-4xl">
           レスバより、
           <br className="sm:hidden" />
