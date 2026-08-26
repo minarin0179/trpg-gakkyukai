@@ -35,7 +35,6 @@ export default function AboutPage() {
         <p className="mt-2 text-sm leading-relaxed text-stone-700">
           <strong>「不快である」「論争的である」は削除理由になりません。</strong>
           対立のある話題を扱うことが、この場所の目的だからです。
-          削除の実施履歴は今後このページで公開します。
         </p>
         <p className="mt-2 text-sm leading-relaxed text-stone-700">
           このほか、内容の善悪に関わらず構造で判定できるもの
