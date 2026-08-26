@@ -15,5 +15,7 @@ export async function verifyTurnstile(token: string | null): Promise<boolean> {
   return data.success;
 }
 
+// 本番のサイトキー(公開情報)。ローカル開発では .env.local の
+// NEXT_PUBLIC_TURNSTILE_SITE_KEY(公式テストキー、常に成功)で上書きされる
 export const TURNSTILE_SITE_KEY =
-  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA"; // テスト用sitekey(常に成功)
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "0x4AAAAAAEdAVLaA8Kgdczhe";

@@ -43,3 +43,6 @@ next-env.d.ts
 # python
 .venv
 __pycache__/
+
+# WSLでのlighthouse実行時の残骸
+C:*
