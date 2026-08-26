@@ -13,8 +13,10 @@ const page = await browser.newPage({ viewport: { width: +w, height: +h } });
 // スクロール連動アニメーション(view())はフルページ撮影と相性が悪いので、
 // reduced-motionをエミュレートして演出なしの最終状態を撮る
 await page.emulateMedia({ reducedMotion: "reduce" });
-await page.goto(url, { waitUntil: "networkidle" });
-await page.waitForTimeout(500);
+await page.goto(url, { waitUntil: "load" });
+// networkidleはTurnstileやAI可用性チェック等の常駐通信で永遠に来ないことがあるため、
+// loadの後に短い猶予を置く方式にする
+await page.waitForTimeout(1500);
 await page.screenshot({ path: out, fullPage: full === "--full" });
 await browser.close();
 console.log(`saved: ${out}`);

@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import Script from "next/script";
 import { createThemeAction, type FormState } from "@/app/actions";
+import { AiSeedAssist } from "@/components/AiSeedAssist";
 
 declare global {
   interface Window {
@@ -62,9 +63,18 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
         />
       </div>
       <div>
-        <label htmlFor="seeds" className="mb-1 block text-sm font-medium">
-          最初の意見(1行に1つ、2〜10個)
-        </label>
+        <div className="mb-1 flex flex-wrap items-end justify-between gap-2">
+          <label htmlFor="seeds" className="block text-sm font-medium">
+            最初の意見(1行に1つ、2〜10個)
+          </label>
+          <AiSeedAssist
+            title={title}
+            description={description}
+            onGenerated={(lines) =>
+              setSeeds((prev) => (prev.trim() ? prev.trimEnd() + "\n" : "") + lines.join("\n"))
+            }
+          />
+        </div>
         <textarea
           id="seeds"
           name="seeds"
