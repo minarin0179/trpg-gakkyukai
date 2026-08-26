@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ja" className="h-full antialiased">
+    <html lang="ja" className="h-full scroll-smooth antialiased">
       <body className="flex min-h-full flex-col bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
         <header className="border-b border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
           <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
