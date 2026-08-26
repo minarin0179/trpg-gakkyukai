@@ -50,7 +50,7 @@ export default async function HomePage() {
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-28 py-8 sm:gap-36">
       {/* ヒーロー */}
       <section className="text-center">
-        <div className="mx-auto mb-6 flex w-fit items-end justify-center rounded-2xl bg-white px-5 py-3">
+        <div className="mx-auto mb-6 flex w-fit items-end justify-center">
           <Image src="/illustrations/535.png" alt="" width={170} height={170} priority />
           <Image src="/illustrations/536.png" alt="" width={170} height={170} priority />
         </div>
@@ -86,7 +86,7 @@ export default async function HomePage() {
 
       {/* 問題提起と理念 */}
       <section id="why" className="reveal scroll-mt-20">
-        <div className="mx-auto mb-4 w-fit rounded-2xl bg-white p-2">
+        <div className="mx-auto mb-4 w-fit">
           <Image src="/illustrations/1122.png" alt="スマホのクソリプに手をかざす人のイラスト" width={150} height={150} />
         </div>
         <h2 className="mb-4 text-center text-xl font-bold">
@@ -119,7 +119,7 @@ export default async function HomePage() {
 
       {/* 特徴 */}
       <section id="features" className="reveal scroll-mt-20">
-        <div className="mx-auto mb-4 w-fit rounded-2xl bg-white p-2">
+        <div className="mx-auto mb-4 w-fit">
           <Image src="/illustrations/1628.png" alt="散布図を分析するイラスト" width={150} height={150} />
         </div>
         <h2 className="mb-6 text-center text-xl font-bold">このサイトの仕組み</h2>
@@ -184,7 +184,7 @@ export default async function HomePage() {
       {/* いま議論されているテーマ */}
       {featured.length > 0 && (
         <section id="themes" className="reveal scroll-mt-20">
-          <div className="mx-auto mb-2 w-fit rounded-2xl bg-white p-1">
+          <div className="mx-auto mb-2 w-fit">
             <Image src="/illustrations/1822.png" alt="" width={90} height={90} />
           </div>
           <h2 className="mb-4 text-center text-xl font-bold">いま議論されているテーマ</h2>
@@ -208,7 +208,7 @@ export default async function HomePage() {
 
       {/* 運営方針 */}
       <section id="policy" className="reveal scroll-mt-20 rounded-lg border border-stone-400 bg-white p-6 text-center dark:border-stone-800 dark:bg-stone-900">
-        <div className="mx-auto mb-3 w-fit rounded-2xl bg-white p-2">
+        <div className="mx-auto mb-3 w-fit">
           <Image src="/illustrations/1498.png" alt="握手のイラスト" width={130} height={130} />
         </div>
         <h2 className="mb-2 text-base font-bold">運営の約束</h2>
