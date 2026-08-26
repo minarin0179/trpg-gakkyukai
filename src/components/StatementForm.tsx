@@ -24,7 +24,7 @@ export function StatementForm({ themeId }: { themeId: string }) {
         maxLength={280}
         rows={2}
         placeholder="あなたの意見(280文字まで)。賛成でも反対でもない新しい視点も歓迎"
-        className="w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+        className="w-full rounded-md border border-stone-400 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
       />
       {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       <button

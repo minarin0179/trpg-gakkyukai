@@ -5,7 +5,7 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
   return (
     <Link
       href={`/t/${theme.id}`}
-      className="block rounded-lg border border-stone-200 bg-white p-4 transition hover:border-stone-400 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-600"
+      className="block rounded-lg border border-stone-300 bg-white p-4 transition hover:border-stone-500 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-600"
     >
       <h3 className="font-semibold">{theme.title}</h3>
       {theme.description && (

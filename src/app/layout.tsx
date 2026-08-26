@@ -15,7 +15,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ja" className="h-full scroll-smooth antialiased">
       <body className="flex min-h-full flex-col bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
-        <header className="border-b border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
+        <header className="border-b border-stone-300 bg-white dark:border-stone-800 dark:bg-stone-900">
           <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
             <Link href="/" className="text-lg font-bold tracking-tight">
               TRPG学級会
@@ -25,28 +25,28 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </Link>
             <nav className="flex items-center gap-3 text-sm sm:gap-4">
               <Link
+                href="/about"
+                className="text-stone-700 hover:text-stone-900"
+              >
+                仕組みとルール
+              </Link>
+              <Link
                 href="/themes"
-                className="text-stone-700 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100"
+                className="hidden text-stone-700 hover:text-stone-900 sm:inline"
               >
                 テーマ一覧
               </Link>
               <Link
                 href="/new"
-                className="rounded-md bg-stone-900 px-3 py-1.5 font-medium text-white hover:bg-stone-700 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300"
+                className="rounded-md bg-stone-900 px-3 py-1.5 font-medium text-white hover:bg-stone-700"
               >
                 テーマを提案
-              </Link>
-              <Link
-                href="/about"
-                className="hidden text-stone-700 hover:text-stone-900 sm:inline dark:text-stone-300 dark:hover:text-stone-100"
-              >
-                仕組みとルール
               </Link>
             </nav>
           </div>
         </header>
         <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">{children}</main>
-        <footer className="border-t border-stone-200 bg-white py-6 text-center text-xs text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500">
+        <footer className="border-t border-stone-300 bg-white py-6 text-center text-xs text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500">
           <p>
             Inspired by{" "}
             <a href="https://pol.is" className="underline" rel="noopener">

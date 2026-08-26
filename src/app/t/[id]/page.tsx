@@ -61,14 +61,14 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         <VoteDeck themeId={theme.id} statements={unvoted} />
       </section>
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">意見マップ</h2>
-        <OpinionMap result={publicResult} myIndex={myIndex} statementTexts={statementTexts} />
+      <section id="post" className="scroll-mt-20">
+        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">意見を投稿する</h2>
+        <StatementForm themeId={theme.id} />
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">意見を投稿する</h2>
-        <StatementForm themeId={theme.id} />
+        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">意見マップ</h2>
+        <OpinionMap result={publicResult} myIndex={myIndex} statementTexts={statementTexts} />
       </section>
 
       <section>
@@ -79,7 +79,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
           {allStatements.map((s) => (
             <li
               key={s.id}
-              className="flex items-start justify-between gap-3 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900"
+              className="flex items-start justify-between gap-3 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900"
             >
               <span>{s.text}</span>
               <ReportButton targetType="statement" targetId={String(s.id)} />
