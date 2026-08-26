@@ -61,7 +61,10 @@ export default function PrivacyPage() {
           <li>Neon(データベース)</li>
           <li>Cloudflare Turnstile(bot対策。テーマ提案時のみ)</li>
         </ul>
-        <p className={P}>アクセス解析ツールや広告配信は使用していません。</p>
+        <p className={P}>
+          アクセス状況の把握には、Cookieを使わず個人を追跡しないプライバシー配慮型の計測
+          (Vercel Web Analytics)を利用しています。広告配信は使用していません。
+        </p>
       </section>
 
       <section>
@@ -88,6 +91,7 @@ export default function PrivacyPage() {
         <ul className={UL}>
           <li>2026年8月27日 制定。同日、IP関連の保持方法を「30日保存」から「日替わり計算値を最大48時間保持」に変更</li>
           <li>2026年8月27日 お問い合わせフォームの設置に伴い、収集する情報に送信内容を追記</li>
+          <li>2026年8月27日 アクセス計測(Vercel Web Analytics、Cookie不使用)の利用を開始</li>
         </ul>
       </section>
     </article>
