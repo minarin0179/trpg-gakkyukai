@@ -33,7 +33,7 @@ export function TopicGuidelines() {
       </div>
       <p className="text-sm leading-relaxed text-stone-700">
         個別の揉め事や特定の作品への不満も、<strong>一般化すればテーマにできます</strong>。
-        「〇〇さんの発言はどうなのか」→「配信中のGMの発言は、どこまで卓の外に持ち出してよいか」。
+        「〇〇さんがまた遅刻した。ひどくない?」→「セッションの遅刻はどこまで許容されるべきか」。
         人ではなく、論点を扱ってください。
       </p>
     </div>
