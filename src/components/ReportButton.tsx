@@ -12,6 +12,7 @@ export function ReportButton({
   targetId: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     submitReportAction,
     {},
@@ -48,6 +49,8 @@ export function ReportButton({
         maxLength={500}
         rows={2}
         placeholder="どの基準に該当するか教えてください"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
         className="w-full rounded-md border border-stone-500 bg-white px-2 py-1.5 text-xs dark:border-stone-700 dark:bg-stone-900"
       />
       {state.error && <p className="text-xs text-red-600 dark:text-red-400">{state.error}</p>}

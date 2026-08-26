@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { createStatementAction, type FormState } from "@/app/actions";
 
 export function StatementForm({ themeId }: { themeId: string }) {
@@ -8,14 +8,15 @@ export function StatementForm({ themeId }: { themeId: string }) {
     createStatementAction,
     {},
   );
-  const formRef = useRef<HTMLFormElement>(null);
+  const [text, setText] = useState("");
 
+  // 投稿成功時のみ入力をクリア(エラー時は保持)
   useEffect(() => {
-    if (!pending && !state.error) formRef.current?.reset();
-  }, [pending, state]);
+    if (state.done) setText("");
+  }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-2">
+    <form action={formAction} className="flex flex-col gap-2">
       <input type="hidden" name="themeId" value={themeId} />
       <textarea
         name="text"
@@ -24,6 +25,8 @@ export function StatementForm({ themeId }: { themeId: string }) {
         maxLength={140}
         rows={2}
         placeholder="あなたの意見(140文字まで)。賛成でも反対でもない新しい視点も歓迎"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
         className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
       />
       {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}

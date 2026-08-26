@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Script from "next/script";
 import { createThemeAction, type FormState } from "@/app/actions";
 
@@ -9,6 +9,11 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
     createThemeAction,
     {},
   );
+  // Server Action完了後にReactがフォームを自動リセットするため、
+  // エラー時に入力が消えないよう値をstateで保持する
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [seeds, setSeeds] = useState("");
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -24,6 +29,8 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           minLength={5}
           maxLength={100}
           placeholder="例: セッション中のPC間対立はどこまで許容されるべき?"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
           className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
         />
       </div>
@@ -37,6 +44,8 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           rows={3}
           maxLength={2000}
           placeholder="背景や論点の補足があれば"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
           className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
         />
       </div>
@@ -50,6 +59,8 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           required
           rows={5}
           placeholder={"PvPは事前の同意があれば問題ない\nGMが介入して止めるべきだ"}
+          value={seeds}
+          onChange={(e) => setSeeds(e.target.value)}
           className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
         />
         <p className="mt-1 text-xs text-stone-600 dark:text-stone-500">
