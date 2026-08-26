@@ -65,6 +65,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               Loose Drawing
             </a>
           </p>
+          <p className="mt-2">
+            <Link href="/about" className="underline">
+              仕組みとルール
+            </Link>
+            {" · "}
+            <Link href="/terms" className="underline">
+              利用規約
+            </Link>
+            {" · "}
+            <Link href="/privacy" className="underline">
+              プライバシーポリシー
+            </Link>
+          </p>
         </footer>
       </body>
     </html>

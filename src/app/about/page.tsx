@@ -65,6 +65,36 @@ export default function AboutPage() {
       </section>
 
       <section>
+        <h2 className="mb-2 text-base font-semibold">テーマにできること・できないこと</h2>
+        <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-300">
+          迷ったときの原則はひとつ——<strong>「人ではなく、論点を扱う」</strong>。
+        </p>
+        <div className="mt-3 flex flex-col gap-3">
+          <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4">
+            <h3 className="mb-1 text-sm font-semibold text-emerald-900">⭕ テーマにできる</h3>
+            <p className="text-sm leading-relaxed text-emerald-900">
+              TRPGに関する、意見の分かれる話題すべて。プレイスタイル、ルールの解釈と運用、
+              卓のマナー、セーフティツール、キャラロスト、配信・リプレイ文化、
+              商業/同人シナリオの事情——賛否が割れるほど、このサイトの出番です。
+            </p>
+          </div>
+          <div className="rounded-lg border border-rose-300 bg-rose-50 p-4">
+            <h3 className="mb-1 text-sm font-semibold text-rose-900">❌ テーマにできない</h3>
+            <ul className="list-disc pl-5 text-sm leading-relaxed text-rose-900">
+              <li>実在の個人・特定の卓・進行中の揉め事の当事者を裁くもの(「〇〇さんのあの発言は許されるのか」)</li>
+              <li>個人が特定できる情報(実名・ハンドル名・アカウント名など)を含むもの</li>
+              <li>TRPGと関係のない話題(政治・宗教の主張や勧誘など)</li>
+            </ul>
+          </div>
+          <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-300">
+            個別の揉め事も、<strong>一般化すればテーマにできます</strong>。
+            「〇〇さんの発言はどうなのか」ではなく「配信中のGMの発言は、どこまで卓の外に持ち出してよいか」——
+            この言い換えこそが、学級会をセッションに変える第一歩です。
+          </p>
+        </div>
+      </section>
+
+      <section>
         <h2 className="mb-2 text-base font-semibold">プライバシー</h2>
         <ul className="list-disc pl-5 text-sm text-stone-700 dark:text-stone-300">
           <li>アカウント登録はなく、氏名・メールアドレス等の個人情報は収集しません</li>
@@ -72,6 +102,10 @@ export default function AboutPage() {
           <li>スパム対策のためIPアドレスをハッシュ化した値を短期間保存します(生のIPは保存しません)</li>
           <li>投票データは統計処理と意見マップの表示にのみ使用します</li>
         </ul>
+        <p className="mt-2 text-sm text-stone-700 dark:text-stone-300">
+          詳細は<a href="/privacy" className="underline">プライバシーポリシー</a>と
+          <a href="/terms" className="underline">利用規約</a>を参照してください。
+        </p>
       </section>
 
       <section>
