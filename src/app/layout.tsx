@@ -59,6 +59,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               rel="noopener"
             >
               red-dwarf
+            </a>{" "}
+            · Illustrations by{" "}
+            <a href="https://loosedrawing.com/" className="underline" rel="noopener">
+              Loose Drawing
             </a>
           </p>
         </footer>
