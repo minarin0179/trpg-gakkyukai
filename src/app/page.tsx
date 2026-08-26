@@ -51,8 +51,8 @@ export default async function HomePage() {
       {/* ヒーロー */}
       <section className="text-center">
         <div className="mx-auto mb-6 flex w-fit items-end justify-center">
-          <Image src="/illustrations/535.png" alt="" width={170} height={170} priority />
-          <Image src="/illustrations/536.png" alt="" width={170} height={170} priority />
+          <Image className="dark:invert dark:hue-rotate-180 dark:brightness-110" src="/illustrations/535.png" alt="" width={170} height={170} priority />
+          <Image className="dark:invert dark:hue-rotate-180 dark:brightness-110" src="/illustrations/536.png" alt="" width={170} height={170} priority />
         </div>
         <h1 className="text-3xl font-bold leading-snug sm:text-4xl">
           レスバより、
@@ -94,7 +94,7 @@ export default async function HomePage() {
       {/* 問題提起と理念 */}
       <section id="why" className="reveal scroll-mt-20">
         <div className="mx-auto mb-4 w-fit">
-          <Image src="/illustrations/1122.png" alt="スマホのクソリプに手をかざす人のイラスト" width={150} height={150} />
+          <Image className="dark:invert dark:hue-rotate-180 dark:brightness-110" src="/illustrations/1122.png" alt="スマホのクソリプに手をかざす人のイラスト" width={150} height={150} />
         </div>
         <h2 className="mb-4 text-center text-xl font-bold">
           なぜTRPGの話題は、いつも同じ荒れ方をするのか
@@ -127,7 +127,7 @@ export default async function HomePage() {
       {/* 特徴 */}
       <section id="features" className="reveal scroll-mt-20">
         <div className="mx-auto mb-4 w-fit">
-          <Image src="/illustrations/1628.png" alt="散布図を分析するイラスト" width={150} height={150} />
+          <Image className="dark:invert dark:hue-rotate-180 dark:brightness-110" src="/illustrations/1628.png" alt="散布図を分析するイラスト" width={150} height={150} />
         </div>
         <h2 className="mb-6 text-center text-xl font-bold">このサイトの仕組み</h2>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -172,7 +172,7 @@ export default async function HomePage() {
                 <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">{s.body}</p>
               </div>
               <div className="hidden h-20 w-20 shrink-0 items-center justify-center self-center sm:flex">
-                <Image src={s.image} alt="" width={72} height={72} />
+                <Image className="dark:invert dark:hue-rotate-180 dark:brightness-110" src={s.image} alt="" width={72} height={72} />
               </div>
             </li>
           ))}
@@ -192,7 +192,7 @@ export default async function HomePage() {
       {featured.length > 0 && (
         <section id="themes" className="reveal scroll-mt-20">
           <div className="mx-auto mb-2 w-fit">
-            <Image src="/illustrations/1822.png" alt="" width={90} height={90} />
+            <Image className="dark:invert dark:hue-rotate-180 dark:brightness-110" src="/illustrations/1822.png" alt="" width={90} height={90} />
           </div>
           <h2 className="mb-4 text-center text-xl font-bold">いま議論されているテーマ</h2>
           <div className="flex flex-col gap-3">
@@ -216,7 +216,7 @@ export default async function HomePage() {
       {/* 運営方針 */}
       <section id="policy" className="reveal scroll-mt-20 rounded-lg border border-stone-200 bg-white p-6 text-center dark:border-stone-800 dark:bg-stone-900">
         <div className="mx-auto mb-3 w-fit">
-          <Image src="/illustrations/1498.png" alt="握手のイラスト" width={130} height={130} />
+          <Image className="dark:invert dark:hue-rotate-180 dark:brightness-110" src="/illustrations/1498.png" alt="握手のイラスト" width={130} height={130} />
         </div>
         <h2 className="mb-2 text-base font-bold">運営の約束</h2>
         <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">
