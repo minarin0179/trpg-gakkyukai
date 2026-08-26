@@ -16,3 +16,27 @@ body {
     Meiryo,
     sans-serif;
 }
+
+/* スクロール連動のセクション出現演出。
+   - 動きを減らす設定(prefers-reduced-motion)では無効
+   - animation-timeline非対応ブラウザでは演出なしで最初から表示 */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal-up both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 45%;
+    }
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

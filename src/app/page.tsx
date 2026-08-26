@@ -84,7 +84,7 @@ export default async function HomePage() {
       </section>
 
       {/* 問題提起と理念 */}
-      <section id="why" className="scroll-mt-20">
+      <section id="why" className="reveal scroll-mt-20">
         <h2 className="mb-4 text-center text-xl font-bold">
           なぜTRPGの話題は、いつも同じ荒れ方をするのか
         </h2>
@@ -114,7 +114,7 @@ export default async function HomePage() {
       </section>
 
       {/* 特徴 */}
-      <section id="features" className="scroll-mt-20">
+      <section id="features" className="reveal scroll-mt-20">
         <h2 className="mb-6 text-center text-xl font-bold">このサイトの仕組み</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {FEATURES.map((f) => (
@@ -142,7 +142,7 @@ export default async function HomePage() {
       </section>
 
       {/* 使い方 */}
-      <section id="howto" className="scroll-mt-20">
+      <section id="howto" className="reveal scroll-mt-20">
         <h2 className="mb-6 text-center text-xl font-bold">使い方は3ステップ</h2>
         <ol className="flex flex-col gap-4">
           {STEPS.map((s, i) => (
@@ -173,7 +173,7 @@ export default async function HomePage() {
 
       {/* いま議論されているテーマ */}
       {featured.length > 0 && (
-        <section id="themes" className="scroll-mt-20">
+        <section id="themes" className="reveal scroll-mt-20">
           <h2 className="mb-4 text-center text-xl font-bold">いま議論されているテーマ</h2>
           <div className="flex flex-col gap-3">
             {featured.map((t) => (
@@ -192,7 +192,7 @@ export default async function HomePage() {
       )}
 
       {/* 運営方針 */}
-      <section id="policy" className="scroll-mt-20 rounded-lg border border-stone-200 bg-white p-6 text-center dark:border-stone-800 dark:bg-stone-900">
+      <section id="policy" className="reveal scroll-mt-20 rounded-lg border border-stone-200 bg-white p-6 text-center dark:border-stone-800 dark:bg-stone-900">
         <h2 className="mb-2 text-base font-bold">運営の約束</h2>
         <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">
           「不快・論争的だから」という理由で投稿を消しません。削除するのは実在個人への攻撃・
