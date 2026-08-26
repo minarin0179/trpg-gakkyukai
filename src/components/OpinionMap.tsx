@@ -271,7 +271,7 @@ export function OpinionMap({
       {result.repness && Object.keys(result.repness).length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2">
           {Object.entries(result.repness).map(([gid, items]) => {
-            const visible = items.filter((i) => statementTexts[i.statement_id]).slice(0, 3);
+            const visible = items.filter((i) => statementTexts[i.statement_id]).slice(0, 4);
             if (visible.length === 0) return null;
             const g = Number(gid);
             return (
