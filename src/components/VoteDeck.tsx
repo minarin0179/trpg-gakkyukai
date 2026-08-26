@@ -9,9 +9,11 @@ type Statement = { id: number; text: string };
 export function VoteDeck({
   themeId,
   statements,
+  total,
 }: {
   themeId: string;
   statements: Statement[];
+  total: number; // このテーマの可視の意見の総数(未投票が0でも「意見なし」と「全投票済み」を区別する)
 }) {
   const [index, setIndex] = useState(0);
   const [passStreak, setPassStreak] = useState(0);
@@ -39,7 +41,7 @@ export function VoteDeck({
     document.getElementById("post")?.scrollIntoView({ behavior: "smooth" });
   }
 
-  if (statements.length === 0) {
+  if (total === 0) {
     return (
       <p className="rounded-lg border border-dashed border-stone-500 p-6 text-center text-sm text-stone-600 dark:border-stone-700 dark:text-stone-500">
         まだ意見がありません。最初の意見を投稿してみてください。
@@ -47,12 +49,12 @@ export function VoteDeck({
     );
   }
 
-  if (done) {
+  if (statements.length === 0 || done) {
     return (
       <p className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
-        すべての意見に投票しました 🎉
+        このテーマの意見にはすべて投票済みです 🎉
         <br />
-        言い足りないことがあれば、下から新しい意見を投稿できます。
+        言い足りないことがあれば新しい意見を投稿できます。結果は下の意見マップへ。
       </p>
     );
   }
@@ -86,6 +88,15 @@ export function VoteDeck({
           反対
         </button>
       </div>
+      <p className="mt-3 text-center text-xs text-stone-500">
+        全部に答えなくても大丈夫。
+        <button
+          onClick={() => document.getElementById("map")?.scrollIntoView({ behavior: "smooth" })}
+          className="underline"
+        >
+          ここまでの結果を見る
+        </button>
+      </p>
       {passStreak >= 3 && (
         <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-stone-700">
           パスが続いていますね。どの意見もしっくり来ないなら、

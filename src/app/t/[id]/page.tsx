@@ -59,7 +59,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">投票する</h2>
-        <VoteDeck themeId={theme.id} statements={unvoted} />
+        <VoteDeck themeId={theme.id} statements={unvoted} total={allStatements.length} />
       </section>
 
       <section id="post" className="scroll-mt-20">
@@ -67,7 +67,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         <StatementForm themeId={theme.id} />
       </section>
 
-      <section>
+      <section id="map" className="scroll-mt-20">
         <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">意見マップ</h2>
         <OpinionMap result={publicResult} myIndex={myIndex} statementTexts={statementTexts} />
       </section>
