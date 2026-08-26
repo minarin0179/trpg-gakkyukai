@@ -4,7 +4,7 @@ TRPGにまつわる論点に「賛成 / 反対 / パス」で投票し、意見�
 グループを越えた合意点を可視化する、Polis型の合意形成プラットフォーム。
 
 - 設計方針・意思決定の記録: [DESIGN.md](./DESIGN.md)
-- 本番: https://trpg-gakkyukai.vercel.app (仮URL、ドメイン取得前)
+- 本番: https://trpg-gakkyukai.com
 
 ## 技術スタック
 
