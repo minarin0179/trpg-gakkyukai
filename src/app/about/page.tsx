@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { TopicGuidelines } from "@/components/TopicGuidelines";
 import { REMOVAL_CRITERIA } from "@/lib/rules";
 
-export const metadata: Metadata = { title: "仕組みとルール" };
+export const metadata: Metadata = { title: "ルールと仕組み" };
 
 export default function AboutPage() {
   return (
     <article className="prose-sm mx-auto flex max-w-2xl flex-col gap-8">
       <section>
-        <h1 className="mb-3 text-xl font-bold">仕組みとルール</h1>
+        <h1 className="mb-3 text-xl font-bold">ルールと仕組み</h1>
         <p className="text-sm leading-relaxed text-stone-700">
           <strong>TRPG学級会</strong>は、TRPGにまつわる論点への「賛成 / 反対 / パス」の投票から、
           意見グループの地図と、グループを越えて合意されている意見を見つけ出す場所です。

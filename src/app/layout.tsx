@@ -28,7 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 href="/about"
                 className="text-stone-700 hover:text-stone-900"
               >
-                仕組みとルール
+                ルールと仕組み
               </Link>
               <Link
                 href="/themes"
@@ -67,7 +67,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </p>
           <p className="mt-2">
             <Link href="/about" className="underline">
-              仕組みとルール
+              ルールと仕組み
             </Link>
             {" · "}
             <Link href="/terms" className="underline">

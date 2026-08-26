@@ -53,7 +53,7 @@ export default function TermsPage() {
           次に該当する投稿は、通報を受けて確認のうえ削除します(事前審査は行いません)。
           詳しい線引きは
           <Link href="/about" className="underline">
-            仕組みとルール
+            ルールと仕組み
           </Link>
           を参照してください。
         </p>

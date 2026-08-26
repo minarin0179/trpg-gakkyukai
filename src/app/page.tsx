@@ -142,7 +142,7 @@ export default async function HomePage() {
           と同じ公開アルゴリズムを使っています。
           詳しくは
           <Link href="/about" className="underline">
-            仕組みとルール
+            ルールと仕組み
           </Link>
           へ。
         </p>
@@ -218,7 +218,7 @@ export default async function HomePage() {
           運営が結果を操作していないことを誰でも検証できるようにしていきます。
         </p>
         <Link href="/about" className="mt-3 inline-block text-sm font-medium underline">
-          仕組みとルールの全文を読む
+          ルールと仕組みの全文を読む
         </Link>
       </section>
     </div>
