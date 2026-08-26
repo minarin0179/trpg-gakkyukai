@@ -17,6 +17,7 @@ import { checkAndRecordRate } from "@/lib/rate-limit";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { maybeRecompute } from "@/lib/recompute";
 import { findContentViolation } from "@/lib/content-filter";
+import { CONTACT_CATEGORIES } from "@/lib/contact";
 import {
   THEME_TITLE_MAX,
   THEME_DESCRIPTION_MAX,
@@ -203,9 +204,13 @@ export async function submitContactAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const category = String(formData.get("category") ?? "");
   const body = String(formData.get("body") ?? "").trim();
   const replyTo = String(formData.get("replyTo") ?? "").trim();
 
+  if (!(CONTACT_CATEGORIES as readonly string[]).includes(category)) {
+    return { error: "カテゴリを選択してください" };
+  }
   if (body.length < 5 || body.length > 2000) {
     return { error: "本文は5〜2000文字で入力してください" };
   }
@@ -221,10 +226,11 @@ export async function submitContactAction(
     return { error: "送信が多すぎます。時間を置いてください" };
   }
 
+  const text = `【${category}】${body}`;
   await db.insert(reports).values({
     targetType: "contact",
     targetId: "-",
-    reason: replyTo ? `${body}\n\n[連絡先] ${replyTo}` : body,
+    reason: replyTo ? `${text}\n\n[連絡先] ${replyTo}` : text,
   });
   return { done: true };
 }

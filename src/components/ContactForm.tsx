@@ -2,12 +2,14 @@
 
 import { useActionState, useState } from "react";
 import { submitContactAction, type FormState } from "@/app/actions";
+import { CONTACT_CATEGORIES } from "@/lib/contact";
 
 export function ContactForm() {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     submitContactAction,
     {},
   );
+  const [category, setCategory] = useState("");
   const [body, setBody] = useState("");
   const [replyTo, setReplyTo] = useState("");
 
@@ -21,6 +23,34 @@ export function ContactForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      <div>
+        <label htmlFor="category" className="mb-1 block text-sm font-medium">
+          カテゴリ
+        </label>
+        <select
+          id="category"
+          name="category"
+          required
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="w-full rounded-md border border-stone-400 bg-white px-3 py-2 text-sm"
+        >
+          <option value="" disabled>
+            選択してください
+          </option>
+          {CONTACT_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        {category === "投稿の削除依頼" && (
+          <p className="mt-1 text-xs text-stone-600">
+            対象の投稿が特定できるよう、テーマ名や意見の文面を本文に含めてください。
+            各投稿の「通報」ボタンからも送れます
+          </p>
+        )}
+      </div>
       <div>
         <label htmlFor="body" className="mb-1 block text-sm font-medium">
           内容
