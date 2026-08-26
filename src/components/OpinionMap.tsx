@@ -28,7 +28,7 @@ export function OpinionMap({
 }) {
   if (!result || result.status !== "ok" || !result.participants?.length) {
     return (
-      <p className="rounded-lg border border-dashed border-stone-400 p-6 text-center text-sm text-stone-600 dark:border-stone-700 dark:text-stone-500">
+      <p className="rounded-lg border border-dashed border-stone-500 p-6 text-center text-sm text-stone-600 dark:border-stone-700 dark:text-stone-500">
         意見マップはまだありません。もう少し投票が集まると、意見グループの地図がここに描かれます。
       </p>
     );
@@ -61,7 +61,7 @@ export function OpinionMap({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-x-auto rounded-lg border border-stone-300 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
+      <div className="overflow-x-auto rounded-lg border border-stone-400 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
         <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto w-full max-w-lg" role="img" aria-label="意見マップ">
           {pts.map((p) => {
             const isMe = myIndex !== null && p.id === myIndex;
@@ -135,7 +135,7 @@ export function OpinionMap({
             if (visible.length === 0) return null;
             const g = Number(gid);
             return (
-              <div key={gid} className="rounded-lg border border-stone-300 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
+              <div key={gid} className="rounded-lg border border-stone-400 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
                 <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
                   <span
                     className="inline-block h-2.5 w-2.5 rounded-full"

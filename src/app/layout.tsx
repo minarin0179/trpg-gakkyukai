@@ -15,7 +15,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ja" className="h-full scroll-smooth antialiased">
       <body className="flex min-h-full flex-col bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
-        <header className="border-b border-stone-300 bg-white dark:border-stone-800 dark:bg-stone-900">
+        <header className="border-b border-stone-400 bg-white dark:border-stone-800 dark:bg-stone-900">
           <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
             <Link href="/" className="text-lg font-bold tracking-tight">
               TRPG学級会
@@ -46,7 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">{children}</main>
-        <footer className="border-t border-stone-300 bg-white py-6 text-center text-xs text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500">
+        <footer className="border-t border-stone-400 bg-white py-6 text-center text-xs text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500">
           <p>
             Inspired by{" "}
             <a href="https://pol.is" className="underline" rel="noopener">

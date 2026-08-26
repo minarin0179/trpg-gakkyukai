@@ -24,7 +24,7 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           minLength={5}
           maxLength={100}
           placeholder="例: セッション中のPC間対立はどこまで許容されるべき?"
-          className="w-full rounded-md border border-stone-400 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+          className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
         />
       </div>
       <div>
@@ -37,7 +37,7 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           rows={3}
           maxLength={2000}
           placeholder="背景や論点の補足があれば"
-          className="w-full rounded-md border border-stone-400 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+          className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
         />
       </div>
       <div>
@@ -50,7 +50,7 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           required
           rows={5}
           placeholder={"PvPは事前の同意があれば問題ない\nGMが介入して止めるべきだ"}
-          className="w-full rounded-md border border-stone-400 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+          className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
         />
         <p className="mt-1 text-xs text-stone-600 dark:text-stone-500">
           賛成/反対が分かれそうな意見を並べておくと、参加者が投票しやすくなります

@@ -41,7 +41,7 @@ export function VoteDeck({
 
   if (statements.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-stone-400 p-6 text-center text-sm text-stone-600 dark:border-stone-700 dark:text-stone-500">
+      <p className="rounded-lg border border-dashed border-stone-500 p-6 text-center text-sm text-stone-600 dark:border-stone-700 dark:text-stone-500">
         まだ意見がありません。最初の意見を投稿してみてください。
       </p>
     );
@@ -49,7 +49,7 @@ export function VoteDeck({
 
   if (done) {
     return (
-      <p className="rounded-lg border border-stone-300 bg-white p-6 text-center text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+      <p className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
         すべての意見に投票しました 🎉
         <br />
         言い足りないことがあれば、下から新しい意見を投稿できます。
@@ -58,7 +58,7 @@ export function VoteDeck({
   }
 
   return (
-    <div className="rounded-lg border border-stone-300 bg-white p-6 dark:border-stone-800 dark:bg-stone-900">
+    <div className="rounded-lg border border-stone-400 bg-white p-6 dark:border-stone-800 dark:bg-stone-900">
       <p className="mb-1 text-xs text-stone-600 dark:text-stone-500">
         意見 {index + 1} / {statements.length}
       </p>

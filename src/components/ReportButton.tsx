@@ -32,7 +32,7 @@ export function ReportButton({
   }
 
   return (
-    <form action={formAction} className="mt-2 flex flex-col gap-2 rounded-md border border-stone-300 bg-stone-50 p-3 dark:border-stone-700 dark:bg-stone-800">
+    <form action={formAction} className="mt-2 flex flex-col gap-2 rounded-md border border-stone-400 bg-stone-50 p-3 dark:border-stone-700 dark:bg-stone-800">
       <input type="hidden" name="targetType" value={targetType} />
       <input type="hidden" name="targetId" value={targetId} />
       <p className="text-xs text-stone-700 dark:text-stone-300">
@@ -47,7 +47,7 @@ export function ReportButton({
         maxLength={500}
         rows={2}
         placeholder="どの基準に該当するか教えてください"
-        className="w-full rounded-md border border-stone-400 bg-white px-2 py-1.5 text-xs dark:border-stone-700 dark:bg-stone-900"
+        className="w-full rounded-md border border-stone-500 bg-white px-2 py-1.5 text-xs dark:border-stone-700 dark:bg-stone-900"
       />
       {state.error && <p className="text-xs text-red-600 dark:text-red-400">{state.error}</p>}
       <div className="flex gap-2">
