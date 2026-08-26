@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
-/* フォーム部品などのネイティブUIにもテーマを伝える */
+/* ライトテーマ固定: dark:バリアントは .dark クラス配下でのみ有効
+   (.dark は付けないため常にライト。将来トグルを付ける余地だけ残す) */
+@custom-variant dark (&:is(.dark *));
+
+/* ライトテーマ固定 */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
 body {
