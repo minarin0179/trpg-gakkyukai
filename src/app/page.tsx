@@ -6,20 +6,20 @@ export const dynamic = "force-dynamic";
 
 const FEATURES = [
   {
-    title: "反論ではなく、投票する",
-    body: "リプライ機能はありません。他人の意見には「賛成 / 反対 / パス」で答えるだけ。言い負かす手段が存在しないので、レスバトルは構造的に起きません。",
+    title: "リプライ欄のない議論",
+    body: "ここには返信機能がありません。他人の意見にできるのは「賛成 / 反対 / パス」の投票だけ。言い負かすための道具が最初から存在しないので、口論になりようがありません。",
   },
   {
-    title: "自分の立ち位置が地図になる",
-    body: "投票のパターンから、考えの近い人同士が自動でグループにまとまり、2Dの「意見マップ」に描かれます。自分がどのあたりにいるのか、界隈にどんな立場があるのかが一目で分かります。",
+    title: "考えの近い人が、自然と集まって見える",
+    body: "投票のパターンが似た参加者は、2Dの「意見マップ」上で近くに置かれ、自動でグループにまとまります。界隈にどんな立場がいくつあるのか、自分はどこにいるのかが俯瞰できます。",
   },
   {
-    title: "極論ではなく、合意にフォーカス",
-    body: "SNSでは一番過激な意見が一番拡散されます。ここでは逆に、立場の違うグループ全部が賛成した意見(=界隈の共通認識)をシステムが見つけて表示します。",
+    title: "全グループが頷いた意見を探し出す",
+    body: "タイムラインで拡散されるのは、いちばん過激な意見です。このサイトが探すのはその逆——立場の違うグループのどれもが賛成した意見、つまり界隈が実は共有している認識です。",
   },
   {
-    title: "登録不要・完全匿名",
-    body: "アカウント作成はありません。名前もメールアドレスも聞きません。リンクを開いてタップするだけで、いつでも議論に参加できます。",
+    title: "アカウントという概念がない",
+    body: "登録フォームすらありません。名前もメールアドレスも聞かず、リンクを開いてタップすればそれが参加です。身元ではなく、意見だけがここに残ります。",
   },
 ];
 
@@ -47,7 +47,7 @@ export default async function HomePage() {
       {/* ヒーロー */}
       <section className="text-center">
         <p className="mb-3 text-sm font-medium text-stone-500 dark:text-stone-400">
-          #TRPGの論点を、レスバなしで
+          TRPGの論点を、投票で見晴らす
         </p>
         <h1 className="text-3xl font-bold leading-snug sm:text-4xl">
           対立の地図を、
@@ -74,14 +74,14 @@ export default async function HomePage() {
           </Link>
         </div>
         <p className="mt-3 text-xs text-stone-500 dark:text-stone-400">
-          ＼ 登録不要・匿名・無料 ／
+          アカウント登録なし・匿名のまま、いますぐ参加できます
         </p>
       </section>
 
       {/* 問題提起と理念 */}
       <section className="mx-auto max-w-2xl">
         <h2 className="mb-4 text-center text-xl font-bold">
-          SNSの「学級会」に、疲れていませんか?
+          なぜTRPGの話題は、いつも同じ荒れ方をするのか
         </h2>
         <div className="flex flex-col gap-4 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
           <p>
