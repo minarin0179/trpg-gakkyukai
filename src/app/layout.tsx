@@ -1,14 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "TRPG学級会",
     template: "%s | TRPG学級会",
   },
   description:
-    "レスバより、セッションを。TRPGの論点に賛成・反対・パスで投票して、意見の全体像とグループを越えた合意点を見つける場所。",
+    "レスバより、セッションを。TRPGの論点に賛成・反対・パスで投票して、意見の全体像とグループを越えた合意点を見つける場所。登録不要・匿名。",
+  openGraph: {
+    type: "website",
+    siteName: "TRPG学級会",
+    locale: "ja_JP",
+    title: "TRPG学級会",
+    description:
+      "レスバより、セッションを。TRPGの論点に投票して、意見の全体像と合意点を見つける場所。登録不要・匿名。",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
