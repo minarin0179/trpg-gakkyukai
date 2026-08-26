@@ -1,5 +1,6 @@
 "use server";
 
+import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
@@ -14,6 +15,7 @@ import {
 import { checkAndRecordRate } from "@/lib/rate-limit";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { maybeRecompute } from "@/lib/recompute";
+import { findContentViolation } from "@/lib/content-filter";
 import {
   THEME_TITLE_MAX,
   THEME_DESCRIPTION_MAX,
@@ -57,6 +59,11 @@ export async function createThemeAction(
     return { error: `意見は1つ${STATEMENT_MAX}文字以内で入力してください` };
   }
 
+  for (const text of [title, description, ...seeds]) {
+    const violation = findContentViolation(text);
+    if (violation) return { error: violation };
+  }
+
   if (!(await verifyTurnstile(typeof turnstileToken === "string" ? turnstileToken : null))) {
     return { error: "bot対策の確認に失敗しました。再読み込みして試してください" };
   }
@@ -97,10 +104,28 @@ export async function createStatementAction(
     return { error: `意見は2〜${STATEMENT_MAX}文字で入力してください` };
   }
 
+  const violation = findContentViolation(text);
+  if (violation) return { error: violation };
+
   const participantId = await getOrCreateParticipantId();
   const rate = await checkAndRecordRate("statement_create", actorHash(participantId));
   if (!rate.ok) {
     return { error: "意見の投稿は1日30件までです" };
+  }
+
+  const dup = await db
+    .select({ id: statements.id })
+    .from(statements)
+    .where(
+      and(
+        eq(statements.themeId, themeId),
+        eq(statements.status, "visible"),
+        eq(statements.text, text),
+      ),
+    )
+    .limit(1);
+  if (dup.length > 0) {
+    return { error: "同じ内容の意見がすでに投稿されています" };
   }
 
   await db.insert(statements).values({ themeId, text, participantId });

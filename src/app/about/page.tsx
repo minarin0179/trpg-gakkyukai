@@ -71,6 +71,12 @@ export default function AboutPage() {
           ))}
         </ol>
         <p className="mt-2 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
+          このほか、内容の善悪に関わらず<strong>構造で判定できるもの</strong>
+          (URL・メールアドレス・電話番号・SNSアカウント名・同一文字の連打・同一テーマ内の重複投稿)は、
+          スパムと個人特定の入口を塞ぐため投稿時に自動で弾かれます。
+          単語ベースの自動検閲は行いません(「殺す」「ロスト」等はTRPGの正当な語彙のため)。
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
           <strong>「不快である」「論争的である」は削除理由になりません。</strong>
           対立のある話題を扱うことが、この場所の目的だからです。
           削除の実施履歴は今後このページで公開します。
