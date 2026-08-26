@@ -173,7 +173,7 @@ export default async function HomePage() {
         <div className="mt-4 rounded-lg border border-dashed border-stone-500 p-4 text-sm leading-relaxed text-stone-700 dark:border-stone-700 dark:text-stone-500">
           <strong className="text-stone-800 dark:text-stone-200">議題を立てたい人へ:</strong>{" "}
           テーマの提案も登録不要です。審査はなく即時公開され、まず
-          <Link href="/themes?tab=new" className="underline">
+          <Link href="/themes" className="underline">
             新着タブ
           </Link>
           に載ります。10人が投票するとメインの一覧に昇格します。
