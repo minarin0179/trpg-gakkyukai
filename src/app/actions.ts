@@ -18,6 +18,7 @@ import { verifyTurnstile } from "@/lib/turnstile";
 import { maybeRecompute } from "@/lib/recompute";
 import { findContentViolation } from "@/lib/content-filter";
 import { CONTACT_CATEGORIES } from "@/lib/contact";
+import { notifyAdmin } from "@/lib/notify";
 import {
   THEME_TITLE_MAX,
   THEME_DESCRIPTION_MAX,
@@ -197,6 +198,11 @@ export async function submitReportAction(
     targetId,
     reason,
   });
+  after(async () => {
+    await notifyAdmin(
+      `🔔 新しい通報が届きました(対象: ${targetType === "statement" ? "意見" : "テーマ"})。管理ページを確認してください`,
+    );
+  });
   return { done: true };
 }
 
@@ -231,6 +237,9 @@ export async function submitContactAction(
     targetType: "contact",
     targetId: "-",
     reason: replyTo ? `${text}\n\n[連絡先] ${replyTo}` : text,
+  });
+  after(async () => {
+    await notifyAdmin(`📮 新しいお問い合わせが届きました(${category})。管理ページを確認してください`);
   });
   return { done: true };
 }
