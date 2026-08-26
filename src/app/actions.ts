@@ -113,6 +113,14 @@ export async function createStatementAction(
   if (!rate.ok) {
     return { error: "意見の投稿は1日30件までです" };
   }
+  // cookie再発行による回避を防ぐため、IP側(日替わりハッシュ)でも緩く計数する
+  const ipRate = await checkAndRecordRate(
+    "statement_create_ip",
+    dailyActorHash(`ip:${await clientIp()}`),
+  );
+  if (!ipRate.ok) {
+    return { error: "この回線からの投稿が多すぎます。時間を置いてください" };
+  }
 
   const dup = await db
     .select({ id: statements.id })
@@ -172,6 +180,15 @@ export async function submitReportAction(
   }
   if (reason.length < 5 || reason.length > 500) {
     return { error: "通報理由は5〜500文字で入力してください" };
+  }
+
+  // 通報洪水で管理キューを埋める攻撃への速度制限
+  const rate = await checkAndRecordRate(
+    "report_create",
+    dailyActorHash(`ip:${await clientIp()}`),
+  );
+  if (!rate.ok) {
+    return { error: "通報が多すぎます。時間を置いてください" };
   }
 
   await db.insert(reports).values({

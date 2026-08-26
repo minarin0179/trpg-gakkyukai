@@ -95,7 +95,9 @@ export const rateEvents = pgTable(
   "rate_events",
   {
     id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
-    kind: text("kind", { enum: ["theme_create", "statement_create"] }).notNull(),
+    kind: text("kind", {
+      enum: ["theme_create", "statement_create", "statement_create_ip", "report_create"],
+    }).notNull(),
     actorHash: text("actor_hash").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
