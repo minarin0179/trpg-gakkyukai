@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { TopicGuidelines } from "@/components/TopicGuidelines";
+import { REMOVAL_CRITERIA } from "@/lib/rules";
 
 export const metadata: Metadata = { title: "仕組みとルール" };
 
@@ -62,13 +63,12 @@ export default function AboutPage() {
         <h2 className="mb-2 text-base font-semibold">削除基準</h2>
         <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-300">
           テーマと意見は審査なしで即時公開されます。運営が削除するのは、通報を受けて確認した
-          次の4つに該当するものだけです。
+          次に該当するものだけです。
         </p>
         <ol className="mt-2 list-decimal pl-5 text-sm text-stone-700 dark:text-stone-300">
-          <li>実在の個人への攻撃・誹謗中傷(実名・特定可能なハンドル問わず)</li>
-          <li>個人情報の暴露</li>
-          <li>法令に違反する内容</li>
-          <li>機械的なスパム</li>
+          {REMOVAL_CRITERIA.map((c) => (
+            <li key={c.label}>{c.detail}</li>
+          ))}
         </ol>
         <p className="mt-2 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
           <strong>「不快である」「論争的である」は削除理由になりません。</strong>

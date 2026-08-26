@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { submitReportAction, type FormState } from "@/app/actions";
+import { REMOVAL_CRITERIA_SHORT } from "@/lib/rules";
 
 export function ReportButton({
   targetType,
@@ -36,7 +37,7 @@ export function ReportButton({
       <input type="hidden" name="targetType" value={targetType} />
       <input type="hidden" name="targetId" value={targetId} />
       <p className="text-xs text-stone-700 dark:text-stone-300">
-        削除対象は「実名個人への攻撃 / 個人情報 / 法令違反 / 機械的スパム」のみです。
+        削除対象は「{REMOVAL_CRITERIA_SHORT}」のみです。
         不快・論争的であることは削除理由になりません(
         <a href="/about" className="underline">基準の全文</a>)。
       </p>

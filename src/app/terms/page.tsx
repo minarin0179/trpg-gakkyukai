@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { REMOVAL_CRITERIA } from "@/lib/rules";
 
 export const metadata: Metadata = { title: "利用規約" };
 
@@ -57,10 +58,9 @@ export default function TermsPage() {
           を参照してください。
         </p>
         <ul className={UL}>
-          <li>実在の個人への攻撃・誹謗中傷(実名・特定可能なハンドル名を問わない)</li>
-          <li>個人情報の暴露</li>
-          <li>法令に違反する内容、または違反を助長する内容</li>
-          <li>機械的なスパム</li>
+          {REMOVAL_CRITERIA.map((c) => (
+            <li key={c.label}>{c.detail}</li>
+          ))}
         </ul>
         <p className={P}>
           「不快である」「論争的である」ことは削除理由になりません。
