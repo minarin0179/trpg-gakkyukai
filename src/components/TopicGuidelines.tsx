@@ -13,11 +13,18 @@ export function TopicGuidelines({ compact = false }: { compact?: boolean }) {
       )}
       <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4">
         <h3 className="mb-1 text-sm font-semibold text-emerald-900">⭕ テーマにできる</h3>
-        <p className="text-sm leading-relaxed text-emerald-900">
-          TRPGに関する、意見の分かれる話題すべて。プレイスタイル、ルールの解釈と運用、
-          卓のマナー、セーフティツール、キャラロスト、配信・リプレイ文化、
-          商業/同人シナリオの事情——賛否が割れるほど、このサイトの出番です。
+        <p className="mb-1 text-sm leading-relaxed text-emerald-900">
+          TRPGに関する、意見の分かれる話題。例えば:
         </p>
+        <ul className="list-disc pl-5 text-sm leading-relaxed text-emerald-900">
+          <li>プレイスタイルや遊び方の方針</li>
+          <li>ルールの解釈と運用</li>
+          <li>卓のマナー・コミュニケーション</li>
+          <li>セーフティツールの使い方</li>
+          <li>キャラクターロストや致死性の扱い</li>
+          <li>配信・リプレイなどの発信文化</li>
+          <li>商業・同人シナリオをめぐる慣行</li>
+        </ul>
       </div>
       <div className="rounded-lg border border-rose-300 bg-rose-50 p-4">
         <h3 className="mb-1 text-sm font-semibold text-rose-900">❌ テーマにできない</h3>
