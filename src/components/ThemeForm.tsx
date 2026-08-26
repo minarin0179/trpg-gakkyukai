@@ -29,7 +29,7 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <Script src="https://challenges.cloudflare.com/turnstile/api.js" async defer />
+      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
       <div>
         <label htmlFor="title" className="mb-1 block text-sm font-medium">
           テーマ(問いの形にすると議論しやすくなります)
