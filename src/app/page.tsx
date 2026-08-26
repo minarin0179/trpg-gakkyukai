@@ -50,14 +50,15 @@ export default async function HomePage() {
           TRPGの論点を、投票で見晴らす
         </p>
         <h1 className="text-3xl font-bold leading-snug sm:text-4xl">
-          対立の地図を、
+          レスバより、
           <br className="sm:hidden" />
-          みんなで描く。
+          セッションを。
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-stone-600 dark:text-stone-300">
           TRPG学級会は、TRPGにまつわる賛否の分かれる話題に
           「賛成 / 反対 / パス」で投票して、意見の全体像と
           <strong>グループを越えた合意点</strong>を見つける場所です。
+          言い合いではなく、卓を囲んで一緒に作る——議論もまた、ひとつのセッションです。
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link

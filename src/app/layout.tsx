@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     template: "%s | TRPG学級会",
   },
   description:
-    "TRPGの論点に賛成・反対・パスで投票して、対立の地図と合意点をみんなで描く場所。",
+    "レスバより、セッションを。TRPGの論点に賛成・反対・パスで投票して、意見の全体像とグループを越えた合意点を見つける場所。",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -20,7 +20,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/" className="text-lg font-bold tracking-tight">
               TRPG学級会
               <span className="ml-2 hidden text-xs font-normal text-stone-500 sm:inline dark:text-stone-400">
-                対立の地図を、みんなで描く
+                レスバより、セッションを。
               </span>
             </Link>
             <nav className="flex items-center gap-4 text-sm">
