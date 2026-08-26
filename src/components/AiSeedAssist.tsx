@@ -186,6 +186,13 @@ export function AiSeedAssist({
             : "AIで最初の意見を生成"}
       </button>
       {errorMsg && <span className="text-xs text-red-600">{errorMsg}</span>}
+      {status === "downloading" && (
+        <span className="max-w-64 text-right text-xs leading-relaxed text-stone-500">
+          初回のみAIモデルの準備に数分かかることがあります。
+          再読み込みすると最初からやり直しになるため、このままお待ちください。
+          次回からはすぐに生成できます
+        </span>
+      )}
     </span>
   );
 }
