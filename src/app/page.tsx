@@ -120,7 +120,7 @@ export default async function HomePage() {
           {FEATURES.map((f) => (
             <div
               key={f.title}
-              className="rounded-lg border border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900"
+              className="reveal rounded-lg border border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900"
             >
               <h3 className="mb-2 font-semibold">{f.title}</h3>
               <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">{f.body}</p>
@@ -148,7 +148,7 @@ export default async function HomePage() {
           {STEPS.map((s, i) => (
             <li
               key={s.title}
-              className="flex gap-4 rounded-lg border border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900"
+              className="reveal flex gap-4 rounded-lg border border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900"
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-900 text-sm font-bold text-white dark:bg-stone-100 dark:text-stone-900">
                 {i + 1}
@@ -177,7 +177,9 @@ export default async function HomePage() {
           <h2 className="mb-4 text-center text-xl font-bold">いま議論されているテーマ</h2>
           <div className="flex flex-col gap-3">
             {featured.map((t) => (
-              <ThemeCard key={t.id} theme={t} />
+              <div key={t.id} className="reveal">
+                <ThemeCard theme={t} />
+              </div>
             ))}
           </div>
           <p className="mt-4 text-center">
