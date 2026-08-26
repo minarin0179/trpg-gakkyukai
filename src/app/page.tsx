@@ -52,7 +52,7 @@ export default async function HomePage() {
           セッションを。
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-stone-600 dark:text-stone-300">
-          TRPG学級会は、TRPGにまつわる賛否の分かれる話題に
+          <strong>TRPG学級会</strong>は、TRPGにまつわる賛否の分かれる話題に
           「賛成 / 反対 / パス」で投票して、意見の全体像と
           <strong>グループを越えた合意点</strong>を見つける場所です。
           言い合いではなく、卓を囲んで一緒に作る——議論もまた、ひとつのセッションです。
@@ -85,7 +85,7 @@ export default async function HomePage() {
           <p>
             TRPG界隈では、セッションの作法、システムの解釈、セーフティツール、
             キャラロストの是非——さまざまな話題で、定期的にSNSが炎上します。
-            界隈ではそれを半ば自嘲的に<strong>「学級会」</strong>と呼んできました。
+            界隈ではそれを半ば自嘲的に「学級会」と呼んできました。
           </p>
           <p>
             でも、よく思い出してください。学級会が荒れるのは、

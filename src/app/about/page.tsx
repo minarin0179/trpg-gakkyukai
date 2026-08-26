@@ -8,7 +8,7 @@ export default function AboutPage() {
       <section>
         <h1 className="mb-3 text-xl font-bold">仕組みとルール</h1>
         <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-300">
-          TRPG学級会は、TRPGにまつわる論点への「賛成 / 反対 / パス」の投票から、
+          <strong>TRPG学級会</strong>は、TRPGにまつわる論点への「賛成 / 反対 / パス」の投票から、
           意見グループの地図と、グループを越えて合意されている意見を見つけ出す場所です。
           SNSのリプライ欄と違って、ここでは誰かを言い負かす必要はありません。
         </p>
