@@ -23,7 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 レスバより、セッションを。
               </span>
             </Link>
-            <nav className="flex items-center gap-4 text-sm">
+            <nav className="flex items-center gap-3 text-sm sm:gap-4">
               <Link
                 href="/themes"
                 className="text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100"
@@ -38,14 +38,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               </Link>
               <Link
                 href="/about"
-                className="text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100"
+                className="hidden text-stone-600 hover:text-stone-900 sm:inline dark:text-stone-300 dark:hover:text-stone-100"
               >
                 仕組みとルール
               </Link>
             </nav>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">{children}</main>
+        <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">{children}</main>
         <footer className="border-t border-stone-200 bg-white py-6 text-center text-xs text-stone-500 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400">
           <p>
             Inspired by{" "}

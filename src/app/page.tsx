@@ -43,7 +43,7 @@ export default async function HomePage() {
   const featured = [...main, ...fresh].slice(0, 3);
 
   return (
-    <div className="flex flex-col gap-16 py-4">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-16 py-4">
       {/* ヒーロー */}
       <section className="text-center">
         <h1 className="text-3xl font-bold leading-snug sm:text-4xl">
@@ -51,7 +51,7 @@ export default async function HomePage() {
           <br className="sm:hidden" />
           セッションを。
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+        <p className="mt-4 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
           <strong>TRPG学級会</strong>は、TRPGにまつわる賛否の分かれる話題に
           「賛成 / 反対 / パス」で投票して、意見の全体像と
           <strong>グループを越えた合意点</strong>を見つける場所です。
@@ -77,7 +77,7 @@ export default async function HomePage() {
       </section>
 
       {/* 問題提起と理念 */}
-      <section className="mx-auto max-w-2xl">
+      <section>
         <h2 className="mb-4 text-center text-xl font-bold">
           なぜTRPGの話題は、いつも同じ荒れ方をするのか
         </h2>
@@ -135,7 +135,7 @@ export default async function HomePage() {
       </section>
 
       {/* 使い方 */}
-      <section className="mx-auto w-full max-w-2xl">
+      <section>
         <h2 className="mb-6 text-center text-xl font-bold">使い方は3ステップ</h2>
         <ol className="flex flex-col gap-4">
           {STEPS.map((s, i) => (
@@ -185,7 +185,7 @@ export default async function HomePage() {
       )}
 
       {/* 運営方針 */}
-      <section className="mx-auto max-w-2xl rounded-lg border border-stone-200 bg-white p-6 text-center dark:border-stone-800 dark:bg-stone-900">
+      <section className="rounded-lg border border-stone-200 bg-white p-6 text-center dark:border-stone-800 dark:bg-stone-900">
         <h2 className="mb-2 text-base font-bold">運営の約束</h2>
         <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">
           「不快・論争的だから」という理由で投稿を消しません。削除するのは実在個人への攻撃・
