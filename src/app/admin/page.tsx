@@ -45,6 +45,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         </p>
       )}
       {rows.map((r) => {
+        const isContact = r.targetType === "contact";
         const stmt = r.targetType === "statement" ? stmtMap.get(r.targetId) : null;
         const theme = r.targetType === "theme" ? themeMap.get(r.targetId) : null;
         const targetText =
@@ -52,12 +53,12 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
             ? (stmt?.text ?? "(対象が見つかりません)")
             : (theme?.title ?? "(対象が見つかりません)");
         const targetStatus = stmt?.status ?? theme?.status ?? "?";
-        const themeLink = r.targetType === "statement" ? stmt?.themeId : r.targetId;
+        const themeLink = isContact ? null : r.targetType === "statement" ? stmt?.themeId : r.targetId;
         return (
           <div key={r.id} className="rounded-lg border border-stone-400 bg-white p-4">
             <p className="text-xs text-stone-600">
-              {r.createdAt.toLocaleString("ja-JP")} · 対象:
-              {r.targetType === "statement" ? "意見" : "テーマ"} · 現在の状態: {targetStatus}
+              {r.createdAt.toLocaleString("ja-JP")} ·{" "}
+              {isContact ? "お問い合わせ" : `対象: ${r.targetType === "statement" ? "意見" : "テーマ"} · 現在の状態: ${targetStatus}`}
               {themeLink && (
                 <>
                   {" · "}
@@ -67,9 +68,12 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                 </>
               )}
             </p>
-            <p className="mt-2 text-sm font-medium">「{targetText}」</p>
-            <p className="mt-1 text-sm text-stone-700">通報理由: {r.reason}</p>
+            {!isContact && <p className="mt-2 text-sm font-medium">「{targetText}」</p>}
+            <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">
+              {isContact ? r.reason : `通報理由: ${r.reason}`}
+            </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
+              {!isContact && (
               <form action={removeContentAction} className="flex items-center gap-2">
                 <input type="hidden" name="key" value={key} />
                 <input type="hidden" name="reportId" value={r.id} />
@@ -94,6 +98,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                   対象を削除
                 </button>
               </form>
+              )}
               <form action={dismissReportAction}>
                 <input type="hidden" name="key" value={key} />
                 <input type="hidden" name="reportId" value={r.id} />
@@ -101,7 +106,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                   type="submit"
                   className="rounded-md border border-stone-400 px-3 py-1 text-xs font-medium text-stone-700"
                 >
-                  通報を却下(基準外)
+                  {isContact ? "対応済みにする" : "通報を却下(基準外)"}
                 </button>
               </form>
             </div>

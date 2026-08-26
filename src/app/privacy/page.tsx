@@ -33,6 +33,10 @@ export default function PrivacyPage() {
             <strong>投票・投稿内容</strong> — 賛成/反対/パスの投票、投稿された意見・テーマ
           </li>
           <li>
+            <strong>お問い合わせの送信内容</strong> — 問い合わせ対応にのみ使用します。
+            返信先の記入は任意です
+          </li>
+          <li>
             <strong>連投対策のための一時的な識別値</strong> — IPアドレスそのものは保存しません。
             IPアドレスから<strong>日替わりの方法で計算した復元不能な値</strong>を最大48時間保持します。
             計算方法が毎日変わるため、日をまたいだ突き合わせや長期的な追跡はできません
@@ -83,6 +87,7 @@ export default function PrivacyPage() {
         <p className={P}>本ポリシーを変更する場合は、以下の改定履歴に記載します。</p>
         <ul className={UL}>
           <li>2026年8月27日 制定。同日、IP関連の保持方法を「30日保存」から「日替わり計算値を最大48時間保持」に変更</li>
+          <li>2026年8月27日 お問い合わせフォームの設置に伴い、収集する情報に送信内容を追記</li>
         </ul>
       </section>
     </article>

@@ -198,3 +198,33 @@ export async function submitReportAction(
   });
   return { done: true };
 }
+
+export async function submitContactAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const body = String(formData.get("body") ?? "").trim();
+  const replyTo = String(formData.get("replyTo") ?? "").trim();
+
+  if (body.length < 5 || body.length > 2000) {
+    return { error: "本文は5〜2000文字で入力してください" };
+  }
+  if (replyTo.length > 200) {
+    return { error: "連絡先は200文字以内で入力してください" };
+  }
+
+  const rate = await checkAndRecordRate(
+    "report_create",
+    dailyActorHash(`ip:${await clientIp()}`),
+  );
+  if (!rate.ok) {
+    return { error: "送信が多すぎます。時間を置いてください" };
+  }
+
+  await db.insert(reports).values({
+    targetType: "contact",
+    targetId: "-",
+    reason: replyTo ? `${body}\n\n[連絡先] ${replyTo}` : body,
+  });
+  return { done: true };
+}

@@ -91,7 +91,7 @@ export default function TermsPage() {
       <section>
         <h2 className={H}>8. 連絡</h2>
         <p className={P}>
-          削除依頼・お問い合わせは各投稿の「通報」ボタンから届きます。
+          削除依頼は各投稿の「通報」ボタンから、その他のお問い合わせは<Link href="/contact" className="underline">お問い合わせフォーム</Link>から届きます。
         </p>
       </section>
 

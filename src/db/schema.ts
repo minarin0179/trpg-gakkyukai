@@ -83,7 +83,7 @@ export const mathResults = pgTable("math_results", {
 // 通報。事後モデレーション(notice & takedown)の入口
 export const reports = pgTable("reports", {
   id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
-  targetType: text("target_type", { enum: ["theme", "statement"] }).notNull(),
+  targetType: text("target_type", { enum: ["theme", "statement", "contact"] }).notNull(),
   targetId: text("target_id").notNull(),
   reason: text("reason").notNull(),
   ipHash: text("ip_hash"),

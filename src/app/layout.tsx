@@ -90,6 +90,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/privacy" className="underline">
               プライバシーポリシー
             </Link>
+            {" · "}
+            <Link href="/contact" className="underline">
+              お問い合わせ
+            </Link>
+          </p>
+          <p className="mt-2">
+            開発・運営:{" "}
+            <a href="https://x.com/minarin0179" className="underline" rel="noopener">
+              @minarin0179
+            </a>
           </p>
         </footer>
       </body>
