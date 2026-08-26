@@ -103,6 +103,23 @@ export function OpinionMap({
     })
     .sort((a, b) => b.members.length - a.members.length); // 大きいなわばりを下に描く
 
+  // 近接クラスタのラベルが重ならないよう、縦方向に押しのける
+  const LABEL_W = 90;
+  const LABEL_H = 26;
+  const placed: { cid: number; cx: number; cy: number }[] = [...clusters]
+    .sort((a, b) => a.cy - b.cy)
+    .map((c) => ({ cid: c.cid, cx: c.cx, cy: c.cy }));
+  for (let i = 0; i < placed.length; i++) {
+    for (let j = 0; j < i; j++) {
+      const dx = Math.abs(placed[i].cx - placed[j].cx);
+      const dy = placed[i].cy - placed[j].cy;
+      if (dx < LABEL_W && Math.abs(dy) < LABEL_H) {
+        placed[i].cy = placed[j].cy + LABEL_H;
+      }
+    }
+  }
+  const labelPos = new Map(placed.map((p) => [p.cid, { cx: p.cx, cy: p.cy }]));
+
   // ホバー中グループの特徴的な意見(上位2件)
   const activeRepness =
     activeGroup !== null
