@@ -1,0 +1,9 @@
+{
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/recompute",
+      "schedule": "0 18 * * *"
+    }
+  ]
+}
