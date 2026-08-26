@@ -6,11 +6,19 @@ import { db, reports, statements, themes } from "@/db";
 import { removeContentAction, dismissReportAction } from "./actions";
 import { REMOVAL_CRITERIA } from "@/lib/rules";
 
-export const metadata: Metadata = {
-  title: "通報管理",
-  robots: { index: false, follow: false },
-};
 export const dynamic = "force-dynamic";
+
+// タイトル等のメタ情報も、正しいキーがある場合にのみ返す
+// (404時に「通報管理」がタブに出てページの正体が漏れるのを防ぐ)
+export async function generateMetadata({
+  searchParams,
+}: PageProps<"/admin">): Promise<Metadata> {
+  const { key } = await searchParams;
+  if (typeof key === "string" && process.env.ADMIN_KEY && key === process.env.ADMIN_KEY) {
+    return { title: "通報管理", robots: { index: false, follow: false } };
+  }
+  return {};
+}
 
 export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const { key } = await searchParams;
