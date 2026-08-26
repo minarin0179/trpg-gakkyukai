@@ -3,14 +3,9 @@
 // 基準の変更は必ずこのファイルだけで行うこと(掲載箇所間の食い違いを防ぐ)。
 // 削除基準(ハードルール)は src/lib/rules.ts を参照。
 
-export function TopicGuidelines({ compact = false }: { compact?: boolean }) {
+export function TopicGuidelines() {
   return (
     <div className="flex flex-col gap-3">
-      {!compact && (
-        <p className="text-sm leading-relaxed text-stone-700">
-          迷ったときの原則はひとつ——<strong>「人ではなく、論点を扱う」</strong>。
-        </p>
-      )}
       <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4">
         <h3 className="mb-1 text-sm font-semibold text-emerald-900">⭕ テーマにできる</h3>
         <p className="mb-1 text-sm leading-relaxed text-emerald-900">
@@ -38,9 +33,8 @@ export function TopicGuidelines({ compact = false }: { compact?: boolean }) {
       </div>
       <p className="text-sm leading-relaxed text-stone-700">
         個別の揉め事や特定の作品への不満も、<strong>一般化すればテーマにできます</strong>。
-        「〇〇さんの発言はどうなのか」ではなく「配信中のGMの発言は、どこまで卓の外に持ち出してよいか」。
-        「シナリオ〇〇は地雷か」ではなく「高難度・高致死シナリオの事前警告はどこまで必要か」。
-        この言い換えこそが、学級会をセッションに変える第一歩です。
+        「〇〇さんの発言はどうなのか」→「配信中のGMの発言は、どこまで卓の外に持ち出してよいか」。
+        人ではなく、論点を扱ってください。
       </p>
     </div>
   );
