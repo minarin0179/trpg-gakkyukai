@@ -1,77 +1,203 @@
 import Link from "next/link";
-import { listThemes, type ThemeWithCounts } from "@/lib/queries";
-import { PROMOTION_MIN_PARTICIPANTS } from "@/lib/config";
+import { listThemes } from "@/lib/queries";
+import { ThemeCard } from "@/components/ThemeCard";
 
 export const dynamic = "force-dynamic";
 
-function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
-  return (
-    <Link
-      href={`/t/${theme.id}`}
-      className="block rounded-lg border border-stone-200 bg-white p-4 transition hover:border-stone-400 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-600"
-    >
-      <h3 className="font-semibold">{theme.title}</h3>
-      {theme.description && (
-        <p className="mt-1 line-clamp-2 text-sm text-stone-600 dark:text-stone-400">{theme.description}</p>
-      )}
-      <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
-        {theme.voterCount}人が投票 · 意見{theme.statementCount}件
-      </p>
-    </Link>
-  );
-}
+const FEATURES = [
+  {
+    title: "反論ではなく、投票する",
+    body: "リプライ機能はありません。他人の意見には「賛成 / 反対 / パス」で答えるだけ。言い負かす手段が存在しないので、レスバトルは構造的に起きません。",
+  },
+  {
+    title: "自分の立ち位置が地図になる",
+    body: "投票のパターンから、考えの近い人同士が自動でグループにまとまり、2Dの「意見マップ」に描かれます。自分がどのあたりにいるのか、界隈にどんな立場があるのかが一目で分かります。",
+  },
+  {
+    title: "極論ではなく、合意にフォーカス",
+    body: "SNSでは一番過激な意見が一番拡散されます。ここでは逆に、立場の違うグループ全部が賛成した意見(=界隈の共通認識)をシステムが見つけて表示します。",
+  },
+  {
+    title: "登録不要・完全匿名",
+    body: "アカウント作成はありません。名前もメールアドレスも聞きません。リンクを開いてタップするだけで、いつでも議論に参加できます。",
+  },
+];
 
-export default async function HomePage({
-  searchParams,
-}: PageProps<"/">) {
-  const { tab } = await searchParams;
-  const showFresh = tab === "new";
+const STEPS = [
+  {
+    title: "テーマを開く",
+    body: "気になるテーマを選ぶと、これまでに投稿された意見がカードで1枚ずつ表示されます。",
+  },
+  {
+    title: "賛成・反対・パスで投票",
+    body: "各意見に直感で答えていくだけ。7票以上投票すると、意見マップにあなたの点が現れます。どちらとも言えないときは遠慮なくパスしてOK。",
+  },
+  {
+    title: "自分の意見を書いてもいい",
+    body: "言い足りないことがあれば、あなたの意見を1つ280文字以内で投稿できます。それが今度は他の参加者の投票対象になり、賛同が集まればグループを越えた合意として浮かび上がります。",
+  },
+];
+
+export default async function HomePage() {
   const { main, fresh } = await listThemes();
-  const list = showFresh ? fresh : main;
+  const featured = [...main, ...fresh].slice(0, 3);
 
   return (
-    <div>
-      <div className="mb-4 flex gap-1 border-b border-stone-200 dark:border-stone-800">
-        <Link
-          href="/"
-          className={`px-4 py-2 text-sm font-medium ${!showFresh ? "border-b-2 border-stone-900 dark:border-stone-100" : "text-stone-500 dark:text-stone-400"}`}
-        >
-          議論中
-        </Link>
-        <Link
-          href="/?tab=new"
-          className={`px-4 py-2 text-sm font-medium ${showFresh ? "border-b-2 border-stone-900 dark:border-stone-100" : "text-stone-500 dark:text-stone-400"}`}
-        >
-          新着
-        </Link>
-      </div>
-
-      {list.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-stone-300 p-8 text-center text-sm text-stone-500 dark:border-stone-700 dark:text-stone-400">
-          {showFresh ? (
-            <>
-              まだ新着テーマがありません。
-              <Link href="/new" className="ml-1 underline">
-                最初のテーマを提案してみませんか?
-              </Link>
-            </>
-          ) : (
-            <>
-              {PROMOTION_MIN_PARTICIPANTS}人以上が投票したテーマがここに並びます。
-              <Link href="/?tab=new" className="ml-1 underline">
-                新着タブ
-              </Link>
-              から投票に参加してください。
-            </>
-          )}
+    <div className="flex flex-col gap-16 py-4">
+      {/* ヒーロー */}
+      <section className="text-center">
+        <p className="mb-3 text-sm font-medium text-stone-500 dark:text-stone-400">
+          #TRPGの論点を、レスバなしで
+        </p>
+        <h1 className="text-3xl font-bold leading-snug sm:text-4xl">
+          対立の地図を、
+          <br className="sm:hidden" />
+          みんなで描く。
+        </h1>
+        <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+          TRPG学級会は、TRPGにまつわる賛否の分かれる話題に
+          「賛成 / 反対 / パス」で投票して、意見の全体像と
+          <strong>グループを越えた合意点</strong>を見つける場所です。
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/themes"
+            className="rounded-md bg-stone-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-stone-700 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300"
+          >
+            議論をのぞいてみる
+          </Link>
+          <Link
+            href="/new"
+            className="rounded-md border border-stone-300 px-6 py-2.5 text-sm font-semibold text-stone-700 hover:border-stone-500 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-500"
+          >
+            テーマを提案する
+          </Link>
         </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {list.map((t) => (
-            <ThemeCard key={t.id} theme={t} />
+        <p className="mt-3 text-xs text-stone-500 dark:text-stone-400">
+          ＼ 登録不要・匿名・無料 ／
+        </p>
+      </section>
+
+      {/* 問題提起と理念 */}
+      <section className="mx-auto max-w-2xl">
+        <h2 className="mb-4 text-center text-xl font-bold">
+          SNSの「学級会」に、疲れていませんか?
+        </h2>
+        <div className="flex flex-col gap-4 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
+          <p>
+            TRPG界隈では、セッションの作法、システムの解釈、セーフティツール、
+            キャラロストの是非——さまざまな話題で、定期的にSNSが炎上します。
+            界隈ではそれを半ば自嘲的に<strong>「学級会」</strong>と呼んできました。
+          </p>
+          <p>
+            でも、よく思い出してください。学級会が荒れるのは、
+            声の大きい人の極論ばかりが目立ち、言い負かし合いになり、
+            静かに聞いている大多数の「そこまで極端じゃない意見」が
+            どこにも見えないからです。SNSのタイムラインとリプライ欄は、
+            まさにその構造でできています。
+          </p>
+          <p>
+            このサイトは、その構造ごと取り替える試みです。
+            反論の応酬の代わりに投票を。声の大きさの代わりに全員の分布を。
+            勝ち負けの代わりに、立場が違っても共有できている認識を。
+          </p>
+          <p className="font-medium">
+            どうせ「学級会」と呼ばれるなら——ちゃんと結論の出る学級会をやりましょう。
+            それがこの名前の由来です。
+          </p>
+        </div>
+      </section>
+
+      {/* 特徴 */}
+      <section>
+        <h2 className="mb-6 text-center text-xl font-bold">このサイトの仕組み</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {FEATURES.map((f) => (
+            <div
+              key={f.title}
+              className="rounded-lg border border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900"
+            >
+              <h3 className="mb-2 font-semibold">{f.title}</h3>
+              <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">{f.body}</p>
+            </div>
           ))}
         </div>
+        <p className="mt-4 text-center text-xs text-stone-500 dark:text-stone-400">
+          意見マップの計算には、台湾の国民的議論などで実績のある{" "}
+          <a href="https://pol.is" className="underline" rel="noopener">
+            Polis
+          </a>{" "}
+          と同じ公開アルゴリズムを使っています。
+          詳しくは
+          <Link href="/about" className="underline">
+            仕組みとルール
+          </Link>
+          へ。
+        </p>
+      </section>
+
+      {/* 使い方 */}
+      <section className="mx-auto w-full max-w-2xl">
+        <h2 className="mb-6 text-center text-xl font-bold">使い方は3ステップ</h2>
+        <ol className="flex flex-col gap-4">
+          {STEPS.map((s, i) => (
+            <li
+              key={s.title}
+              className="flex gap-4 rounded-lg border border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-900 text-sm font-bold text-white dark:bg-stone-100 dark:text-stone-900">
+                {i + 1}
+              </span>
+              <div>
+                <h3 className="mb-1 font-semibold">{s.title}</h3>
+                <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">{s.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-4 rounded-lg border border-dashed border-stone-300 p-4 text-sm leading-relaxed text-stone-600 dark:border-stone-700 dark:text-stone-400">
+          <strong className="text-stone-800 dark:text-stone-200">議題を立てたい人へ:</strong>{" "}
+          テーマの提案も登録不要です。審査はなく即時公開され、まず
+          <Link href="/themes?tab=new" className="underline">
+            新着タブ
+          </Link>
+          に載ります。10人が投票するとメインの一覧に昇格します。
+          運営が事前に内容を選別することはありません。
+        </div>
+      </section>
+
+      {/* いま議論されているテーマ */}
+      {featured.length > 0 && (
+        <section>
+          <h2 className="mb-4 text-center text-xl font-bold">いま議論されているテーマ</h2>
+          <div className="flex flex-col gap-3">
+            {featured.map((t) => (
+              <ThemeCard key={t.id} theme={t} />
+            ))}
+          </div>
+          <p className="mt-4 text-center">
+            <Link
+              href="/themes"
+              className="text-sm font-medium underline"
+            >
+              すべてのテーマを見る →
+            </Link>
+          </p>
+        </section>
       )}
+
+      {/* 運営方針 */}
+      <section className="mx-auto max-w-2xl rounded-lg border border-stone-200 bg-white p-6 text-center dark:border-stone-800 dark:bg-stone-900">
+        <h2 className="mb-2 text-base font-bold">運営の約束</h2>
+        <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">
+          「不快・論争的だから」という理由で投稿を消しません。削除するのは実在個人への攻撃・
+          個人情報・違法・スパムだけです。個人情報は集めず、マップの計算方法は公開されていて、
+          運営が結果を操作していないことを誰でも検証できるようにしていきます。
+        </p>
+        <Link href="/about" className="mt-3 inline-block text-sm font-medium underline">
+          仕組みとルールの全文を読む
+        </Link>
+      </section>
     </div>
   );
 }

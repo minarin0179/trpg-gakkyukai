@@ -25,6 +25,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </Link>
             <nav className="flex items-center gap-4 text-sm">
               <Link
+                href="/themes"
+                className="text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100"
+              >
+                テーマ一覧
+              </Link>
+              <Link
                 href="/new"
                 className="rounded-md bg-stone-900 px-3 py-1.5 font-medium text-white hover:bg-stone-700 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300"
               >
