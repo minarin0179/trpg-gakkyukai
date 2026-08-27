@@ -16,6 +16,7 @@ import { StatementForm } from "@/components/StatementForm";
 import { OpinionMap, type PublicMathResult } from "@/components/OpinionMap";
 import { StatementList } from "@/components/StatementList";
 import { ReportButton } from "@/components/ReportButton";
+import { ShareTheme } from "@/components/ShareTheme";
 import { formatRelativeDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -57,10 +58,11 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         {theme.description && (
           <p className="mt-2 whitespace-pre-wrap text-sm text-stone-700 dark:text-stone-300">{theme.description}</p>
         )}
-        <div className="mt-2 flex items-center gap-3 text-xs text-stone-600 dark:text-stone-500">
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-stone-600 dark:text-stone-500">
           <span>
             {counts.voterCount}人が投票 · 意見{allStatements.length}件 · {formatRelativeDate(theme.createdAt)}
           </span>
+          <ShareTheme themeId={theme.id} title={theme.title} />
           <ReportButton targetType="theme" targetId={theme.id} />
         </div>
       </div>
