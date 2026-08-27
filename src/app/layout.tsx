@@ -53,7 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               </Link>
               <Link
                 href="/new"
-                className="whitespace-nowrap rounded-md bg-stone-900 px-2.5 py-1.5 font-medium text-white hover:bg-stone-700 sm:px-3"
+                className="whitespace-nowrap rounded-md bg-stone-900 px-3.5 py-1.5 font-medium text-white hover:bg-stone-700 sm:px-4"
               >
                 テーマを提案
               </Link>
