@@ -84,39 +84,6 @@ export default async function HomePage() {
         </p>
       </section>
 
-      {/* 問題提起と理念 */}
-      <section id="why" className="reveal scroll-mt-20">
-        <div className="mx-auto mb-4 w-fit">
-          <Image src="/illustrations/1122.png" alt="スマホのクソリプに手をかざす人のイラスト" width={150} height={150} />
-        </div>
-        <h2 className="mb-4 text-center text-xl font-bold">
-          なぜTRPGの話題は、いつも同じ荒れ方をするのか
-        </h2>
-        <div className="flex flex-col gap-4 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
-          <p>
-            TRPG界隈では、セッションの作法、システムの解釈、セーフティツール、
-            キャラロストの是非——さまざまな話題で、定期的に論争が起きます。
-            界隈ではそれを半ば自嘲的に「学級会」と呼んできました。
-          </p>
-          <p>
-            でも、よく思い出してください。学級会が荒れるのは、
-            いちばん強い言葉ばかりが拡散され、言い負かし合いになり、
-            静かに聞いている大多数の「そこまで極端じゃない意見」が
-            どこにも見えないからです。SNSのタイムラインとリプライ欄は、
-            まさにその構造でできています。
-          </p>
-          <p>
-            このサイトは、その構造ごと取り替える試みです。
-            反論の応酬の代わりに投票を。声の大きさの代わりに全員の分布を。
-            勝ち負けの代わりに、立場が違っても共有できている認識を。
-          </p>
-          <p className="font-medium">
-            どうせ「学級会」と呼ばれるなら——ちゃんと結論の出る学級会にしませんか。
-            それがこの名前の由来です。
-          </p>
-        </div>
-      </section>
-
       {/* 特徴 */}
       <section id="features" className="reveal scroll-mt-20">
         <div className="mx-auto mb-4 w-fit">
@@ -205,6 +172,39 @@ export default async function HomePage() {
           </p>
         </section>
       )}
+
+      {/* 問題提起と理念 */}
+      <section id="why" className="reveal scroll-mt-20">
+        <div className="mx-auto mb-4 w-fit">
+          <Image src="/illustrations/1122.png" alt="スマホのクソリプに手をかざす人のイラスト" width={150} height={150} />
+        </div>
+        <h2 className="mb-4 text-center text-xl font-bold">
+          なぜTRPGの話題は、いつも同じ荒れ方をするのか
+        </h2>
+        <div className="flex flex-col gap-4 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
+          <p>
+            TRPG界隈では、セッションの作法、システムの解釈、セーフティツール、
+            キャラロストの是非——さまざまな話題で、定期的に論争が起きます。
+            界隈ではそれを半ば自嘲的に「学級会」と呼んできました。
+          </p>
+          <p>
+            でも、よく思い出してください。学級会が荒れるのは、
+            いちばん強い言葉ばかりが拡散され、言い負かし合いになり、
+            静かに聞いている大多数の「そこまで極端じゃない意見」が
+            どこにも見えないからです。SNSのタイムラインとリプライ欄は、
+            まさにその構造でできています。
+          </p>
+          <p>
+            このサイトは、その構造ごと取り替える試みです。
+            反論の応酬の代わりに投票を。声の大きさの代わりに全員の分布を。
+            勝ち負けの代わりに、立場が違っても共有できている認識を。
+          </p>
+          <p className="font-medium">
+            どうせ「学級会」と呼ばれるなら——ちゃんと結論の出る学級会にしませんか。
+            それがこの名前の由来です。
+          </p>
+        </div>
+      </section>
 
       {/* 運営方針 */}
       <section id="policy" className="reveal scroll-mt-20 rounded-lg border border-stone-400 bg-white p-6 text-center dark:border-stone-800 dark:bg-stone-900">
