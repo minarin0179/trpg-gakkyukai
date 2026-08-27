@@ -157,8 +157,8 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
         />
         <p className="mt-1 text-xs text-stone-600 dark:text-stone-500">
-          賛成/反対が分かれそうな意見を並べておくと、参加者が投票しやすくなります
-        </p>
+          賛成/反対が分かれそうな意見を並べておくと、参加者が投票しやすくなります。
+</p>
       </div>
       <div ref={containerRef} />
       {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}

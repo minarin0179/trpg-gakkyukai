@@ -311,7 +311,7 @@ export function OpinionMap({
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-stone-600">特徴的な意見はまだ検出されていません</p>
+                <p className="text-xs text-stone-600">特徴的な意見はまだ検出されていません。</p>
               )}
             </div>
           )}

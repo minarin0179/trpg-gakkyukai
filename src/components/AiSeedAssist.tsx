@@ -165,7 +165,7 @@ export function AiSeedAssist({
   if (status === "hidden") {
     return (
       <span className="text-xs text-stone-500">
-        対応スペックのPC版Chromeでは、AIで最初の意見を生成できます
+        対応スペックのPC版Chromeでは、AIで最初の意見を生成できます。
       </span>
     );
   }
@@ -176,7 +176,6 @@ export function AiSeedAssist({
         type="button"
         onClick={generate}
         disabled={status === "generating" || status === "downloading"}
-        title="お使いのブラウザに内蔵されたAIがその場で動作します。入力内容が外部に送信されることはありません"
         className="rounded-md bg-stone-900 px-5 py-2 text-xs font-medium text-white hover:bg-stone-700 disabled:opacity-50"
       >
         {status === "generating"
@@ -185,12 +184,16 @@ export function AiSeedAssist({
             ? `準備中... ${progress}%`
             : "AIで最初の意見を生成"}
       </button>
+      {/* 安全性はホバーではなく常時テキストで示す(隠さない) */}
+      <span className="max-w-72 text-right text-xs leading-relaxed text-stone-500">
+        ブラウザ内蔵のAIがその場で動作し、入力内容が外部に送信されることはありません。
+      </span>
       {errorMsg && <span className="text-xs text-red-600">{errorMsg}</span>}
       {status === "downloading" && (
-        <span className="max-w-64 text-right text-xs leading-relaxed text-stone-500">
+        <span className="max-w-72 text-right text-xs leading-relaxed text-stone-500">
           初回のみAIモデルの準備に数分かかることがあります。
           再読み込みすると最初からやり直しになるため、このままお待ちください。
-          次回からはすぐに生成できます
+          次回からはすぐに生成できます。
         </span>
       )}
     </span>

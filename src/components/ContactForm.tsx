@@ -47,8 +47,8 @@ export function ContactForm() {
         {category === "投稿の削除依頼" && (
           <p className="mt-1 text-xs text-stone-600">
             対象の投稿が特定できるよう、テーマ名や意見の文面を本文に含めてください。
-            各投稿の「通報」ボタンからも送れます
-          </p>
+            各投稿の「通報」ボタンからも送れます。
+</p>
         )}
       </div>
       <div>
@@ -82,8 +82,8 @@ export function ContactForm() {
           className="w-full rounded-md border border-stone-400 bg-white px-3 py-2 text-sm"
         />
         <p className="mt-1 text-xs text-stone-600">
-          記入は任意です。書かれた連絡先は問い合わせ対応にのみ使用します
-        </p>
+          記入は任意です。書かれた連絡先は問い合わせ対応にのみ使用します。
+</p>
       </div>
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button

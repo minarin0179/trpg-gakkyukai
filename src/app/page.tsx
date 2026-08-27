@@ -80,8 +80,8 @@ export default async function HomePage() {
           </Link>
         </div>
         <p className="mt-3 text-xs text-stone-600 dark:text-stone-500">
-          アカウント登録なし・匿名のまま、いますぐ参加できます
-        </p>
+          アカウント登録なし・匿名のまま、いますぐ参加できます。
+</p>
       </section>
 
       {/* 特徴 */}
