@@ -308,6 +308,25 @@ export async function getMyVoteCount(themeId: string, participantId: string | nu
   return row?.n ?? 0;
 }
 
+// この参加者がこのテーマに投稿した(可視の)意見のID。自分の意見だけ削除ボタンを出すのに使う
+export async function getMyStatementIds(
+  themeId: string,
+  participantId: string | null,
+): Promise<number[]> {
+  if (!participantId) return [];
+  const rows = await db
+    .select({ id: statements.id })
+    .from(statements)
+    .where(
+      and(
+        eq(statements.themeId, themeId),
+        eq(statements.participantId, participantId),
+        eq(statements.status, "visible"),
+      ),
+    );
+  return rows.map((r) => r.id);
+}
+
 // この参加者のこのテーマでの投票(意見ID→値)。投票の訂正UIで現在の投票を表示するのに使う
 export async function getMyVotes(
   themeId: string,

@@ -7,6 +7,7 @@ import {
   getMathResult,
   getMyVoteCount,
   getMyVotes,
+  getMyStatementIds,
 } from "@/lib/queries";
 import { getParticipantId } from "@/lib/participant";
 import type { MathResultJson } from "@/lib/recompute";
@@ -25,14 +26,16 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
   if (!theme) notFound();
 
   const participantId = await getParticipantId();
-  const [counts, unvoted, allStatements, mathRow, myVoteCount, myVotes] = await Promise.all([
-    getThemeCounts(id),
-    getUnvotedStatements(id, participantId),
-    getVisibleStatements(id),
-    getMathResult(id),
-    getMyVoteCount(id, participantId),
-    getMyVotes(id, participantId),
-  ]);
+  const [counts, unvoted, allStatements, mathRow, myVoteCount, myVotes, myStatementIds] =
+    await Promise.all([
+      getThemeCounts(id),
+      getUnvotedStatements(id, participantId),
+      getVisibleStatements(id),
+      getMathResult(id),
+      getMyVoteCount(id, participantId),
+      getMyVotes(id, participantId),
+      getMyStatementIds(id, participantId),
+    ]);
 
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない
   const raw = (mathRow?.result ?? null) as MathResultJson | null;
@@ -101,7 +104,12 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         <p className="mb-3 text-xs text-stone-600 dark:text-stone-400">
           自分の投票がハイライトされます。押し直せば訂正できます。
         </p>
-        <StatementList themeId={theme.id} statements={allStatements} myVotes={myVotes} />
+        <StatementList
+          themeId={theme.id}
+          statements={allStatements}
+          myVotes={myVotes}
+          myStatementIds={myStatementIds}
+        />
       </section>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { castVoteAction } from "@/app/actions";
+import { castVoteAction, deleteOwnStatementAction } from "@/app/actions";
 import { ReportButton } from "./ReportButton";
 
 type S = { id: number; text: string };
@@ -18,15 +18,30 @@ export function StatementList({
   themeId,
   statements,
   myVotes,
+  myStatementIds = [],
 }: {
   themeId: string;
   statements: S[];
   myVotes: Record<number, number>;
+  myStatementIds?: number[];
 }) {
   const [votes, setVotes] = useState<Record<number, number>>(myVotes);
   const [pendingId, setPendingId] = useState<number | null>(null);
+  const [removingId, setRemovingId] = useState<number | null>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
+  const mine = new Set(myStatementIds);
+
+  function remove(statementId: number) {
+    if (removingId !== null) return;
+    if (!window.confirm("この意見を削除しますか?元に戻せません。")) return;
+    setRemovingId(statementId);
+    startTransition(async () => {
+      const res = await deleteOwnStatementAction(statementId);
+      setRemovingId(null);
+      if (res.ok) router.refresh(); // 一覧・デッキ・マップを最新化
+    });
+  }
 
   // router.refresh() 後もコンポーネントはマウントされたままなので、
   // サーバーから来た最新の投票状態(投票デッキ側での投票を含む)を反映する。
@@ -56,7 +71,17 @@ export function StatementList({
           >
             <div className="flex items-start justify-between gap-3">
               <span className="min-w-0">{s.text}</span>
-              <ReportButton targetType="statement" targetId={String(s.id)} />
+              {mine.has(s.id) ? (
+                <button
+                  onClick={() => remove(s.id)}
+                  disabled={removingId === s.id}
+                  className="shrink-0 whitespace-nowrap text-xs text-stone-500 underline hover:text-stone-700 disabled:opacity-50"
+                >
+                  {removingId === s.id ? "削除中..." : "削除"}
+                </button>
+              ) : (
+                <ReportButton targetType="statement" targetId={String(s.id)} />
+              )}
             </div>
             <div className="mt-2 flex items-center gap-2">
               <div className="inline-flex overflow-hidden rounded-md border border-stone-300 dark:border-stone-700">

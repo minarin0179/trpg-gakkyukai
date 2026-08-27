@@ -9,13 +9,14 @@ import { nanoid } from "nanoid";
 import { db, themes, statements, votes, reports } from "@/db";
 import {
   getOrCreateParticipantId,
+  getParticipantId,
   ensureParticipant,
   actorHash,
   dailyActorHash,
 } from "@/lib/participant";
 import { checkAndRecordRate } from "@/lib/rate-limit";
 import { verifyTurnstile } from "@/lib/turnstile";
-import { maybeRecompute } from "@/lib/recompute";
+import { maybeRecompute, recomputeTheme } from "@/lib/recompute";
 import { findContentViolation } from "@/lib/content-filter";
 import { CONTACT_CATEGORIES } from "@/lib/contact";
 import { notifyAdmin } from "@/lib/notify";
@@ -164,6 +165,31 @@ export async function castVoteAction(
   // レスポンスを返した後にバックグラウンドで再計算(必要な場合のみ)
   after(async () => {
     await maybeRecompute(themeId);
+  });
+
+  return { ok: true };
+}
+
+// 自分が投稿した意見を削除する(cookieのparticipantIdが投稿者と一致する場合のみ)。
+export async function deleteOwnStatementAction(
+  statementId: number,
+): Promise<{ ok: boolean }> {
+  const participantId = await getParticipantId();
+  if (!participantId) return { ok: false };
+  const [stmt] = await db
+    .select({ themeId: statements.themeId, participantId: statements.participantId })
+    .from(statements)
+    .where(eq(statements.id, statementId));
+  if (!stmt || stmt.participantId !== participantId) return { ok: false };
+
+  await db
+    .update(statements)
+    .set({ status: "removed", removedReason: "投稿者による削除" })
+    .where(eq(statements.id, statementId));
+
+  // 削除した意見を除いてマップを再計算(票数は変わらないため force 相当で直接呼ぶ)
+  after(async () => {
+    await recomputeTheme(stmt.themeId).catch(() => {});
   });
 
   return { ok: true };
