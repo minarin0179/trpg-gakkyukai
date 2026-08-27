@@ -3,12 +3,18 @@ import type { ThemeWithCounts } from "@/lib/queries";
 import { formatRelativeDate } from "@/lib/format";
 
 export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
-  // 参加済みテーマで、まだ投票していない意見がある場合の「新着」バッジ(要望#4)。
-  // 未参加のテーマでは全件が未投票なので出さない。
-  const showNew =
-    theme.participated && theme.unansweredCount != null && theme.unansweredCount > 0;
-  // 参加済みテーマでマップが生成済みかを示す(要望#5)。
-  const showMapStatus = theme.participated;
+  // participated が boolean のときだけ状態が判定できる(cookie未発行の匿名は undefined)。
+  const isParticipated = theme.participated === true;
+  const isNotParticipated = theme.participated === false;
+  const unanswered = theme.unansweredCount ?? 0;
+  // 参加済みで、まだ投票していない意見がある(要望#4)
+  const showNew = isParticipated && unanswered > 0;
+  // 参加済みで全部回答済み
+  const showParticipatedDone = isParticipated && unanswered === 0;
+  // 未参加(どのタブでも一貫して表示する)
+  const showNotParticipated = isNotParticipated;
+  // 参加済みテーマは意見マップの生成状況を出す(要望#5)
+  const showMapStatus = isParticipated;
 
   return (
     <Link
@@ -17,11 +23,19 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold">{theme.title}</h3>
-        {showNew && (
+        {showNew ? (
           <span className="shrink-0 rounded-full border border-rose-400 bg-white px-2 py-0.5 text-xs font-medium text-rose-600 dark:bg-stone-900">
             新着 {theme.unansweredCount}件
           </span>
-        )}
+        ) : showParticipatedDone ? (
+          <span className="shrink-0 rounded-full border border-emerald-400 bg-white px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-stone-900">
+            参加済み
+          </span>
+        ) : showNotParticipated ? (
+          <span className="shrink-0 rounded-full border border-stone-300 bg-white px-2 py-0.5 text-xs font-medium text-stone-500 dark:border-stone-700 dark:bg-stone-900">
+            未参加
+          </span>
+        ) : null}
       </div>
       {theme.description && (
         <p className="mt-1 line-clamp-2 text-sm text-stone-700 dark:text-stone-500">
