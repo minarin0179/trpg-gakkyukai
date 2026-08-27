@@ -120,6 +120,14 @@ export function OpinionMap({
   }
   const labelPos = new Map(placed.map((p) => [p.cid, { cx: p.cx, cy: p.cy }]));
 
+  // 各グループラベルの矩形(「あなた」ラベルの重なり回避に使う)
+  const groupLabelRects = clusters.map(({ cid, members }) => {
+    const pos = labelPos.get(cid)!;
+    const label = `${GROUP_NAMES[cid] ?? cid} · ${members.length}人`;
+    const w = label.length * 7 + 18;
+    return { x0: pos.cx - w / 2, y0: pos.cy - 11, x1: pos.cx + w / 2, y1: pos.cy + 11 };
+  });
+
   // ホバー中グループの特徴的な意見(上位2件)
   const activeRepness =
     activeGroup !== null
@@ -202,8 +210,9 @@ export function OpinionMap({
               );
             })}
 
-            {/* グループラベル */}
-            {clusters.map(({ cid, cx, cy, members }) => {
+            {/* グループラベル(近接時は縦にずらして重なりを避ける) */}
+            {clusters.map(({ cid, members }) => {
+              const { cx, cy } = labelPos.get(cid)!;
               const color = GROUP_COLORS[cid % GROUP_COLORS.length];
               const label = `${GROUP_NAMES[cid] ?? cid} · ${members.length}人`;
               const w = label.length * 7 + 18;
@@ -228,16 +237,33 @@ export function OpinionMap({
                 const me = pts.find((p) => p.id === myIndex);
                 if (!me) return null;
                 const color = me.cluster !== null ? GROUP_COLORS[me.cluster % GROUP_COLORS.length] : "#a8a29e";
-                const labelLeft = sx(me.x) < W - 60; // 右端に近ければラベルを左側に出す
+                const mx = sx(me.x);
+                const my = sy(me.y);
+                const TW = 34; // 「あなた」の概算幅
+                const HH = 8; // テキスト矩形の半高
+                // 点の右→左→上→下の順に、グループラベルと重ならず画面内に収まる位置を選ぶ
+                const candidates = [
+                  { anchor: "start" as const, tx: mx + 11, ty: my + 4, x0: mx + 9, y0: my - HH, x1: mx + 11 + TW, y1: my + HH },
+                  { anchor: "end" as const, tx: mx - 11, ty: my + 4, x0: mx - 11 - TW, y0: my - HH, x1: mx - 9, y1: my + HH },
+                  { anchor: "middle" as const, tx: mx, ty: my - 12, x0: mx - TW / 2, y0: my - 22, x1: mx + TW / 2, y1: my - 8 },
+                  { anchor: "middle" as const, tx: mx, ty: my + 18, x0: mx - TW / 2, y0: my + 8, x1: mx + TW / 2, y1: my + 22 },
+                ];
+                const overlaps = (c: (typeof candidates)[number], g: (typeof groupLabelRects)[number]) =>
+                  c.x0 < g.x1 && c.x1 > g.x0 && c.y0 < g.y1 && c.y1 > g.y0;
+                const inBounds = (c: (typeof candidates)[number]) => c.x0 >= 0 && c.x1 <= W && c.y0 >= 0 && c.y1 <= H;
+                const chosen =
+                  candidates.find((c) => inBounds(c) && !groupLabelRects.some((g) => overlaps(c, g))) ??
+                  candidates.find((c) => inBounds(c)) ??
+                  candidates[0];
                 return (
                   <g pointerEvents="none">
-                    <circle cx={sx(me.x)} cy={sy(me.y)} r={7} fill={color} strokeWidth={2} className="stroke-stone-900" />
+                    <circle cx={mx} cy={my} r={7} fill={color} strokeWidth={2} className="stroke-stone-900" />
                     <text
-                      x={labelLeft ? sx(me.x) + 11 : sx(me.x) - 11}
-                      y={sy(me.y) + 4}
+                      x={chosen.tx}
+                      y={chosen.ty}
                       fontSize="11"
                       fontWeight="bold"
-                      textAnchor={labelLeft ? "start" : "end"}
+                      textAnchor={chosen.anchor}
                       className="fill-stone-900"
                       stroke="white"
                       strokeWidth={3}
