@@ -283,6 +283,10 @@ export function OpinionMap({
         <p className="mt-2 text-center text-xs text-stone-600">
           近くにいる人ほど投票傾向が似ています · グループに触れると特徴的な意見が見られます
         </p>
+        <p className="mt-1 text-center text-xs text-stone-500">
+          投票が少ないうちは、傾向がはっきりした一部の人だけが表示されます。
+          参加が増えるほど、より多くの立場が地図に現れます。
+        </p>
       </div>
 
       {consensusAgree.length > 0 && (

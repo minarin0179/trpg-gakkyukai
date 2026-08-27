@@ -3,10 +3,6 @@
 // 構造的沈降: この人数が投票したテーマだけメイン一覧に昇格する
 export const PROMOTION_MIN_PARTICIPANTS = 10;
 
-// マップに自分の点が載るのに必要な投票数(Polis標準の7票ルール)。
-// 意見数がこれ未満のテーマでは意見数まで下がる。api/_logic.py と合わせること
-export const MAP_VOTE_THRESHOLD = 7;
-
 // 再計算の最短間隔(秒)。投票のたびに叩かれても計算が暴走しないための抑制
 export const RECOMPUTE_MIN_INTERVAL_SEC = 20;
 

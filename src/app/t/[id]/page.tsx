@@ -8,7 +8,6 @@ import {
   getMyVoteCount,
 } from "@/lib/queries";
 import { getParticipantId } from "@/lib/participant";
-import { MAP_VOTE_THRESHOLD } from "@/lib/config";
 import type { MathResultJson } from "@/lib/recompute";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
@@ -31,9 +30,6 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
     getMathResult(id),
     getMyVoteCount(id, participantId),
   ]);
-
-  // マップに載る閾値: Polis標準の7票、ただし意見数がそれ未満なら意見数(api/_logic.pyと一致)
-  const mapThreshold = Math.min(MAP_VOTE_THRESHOLD, allStatements.length);
 
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない
   const raw = (mathRow?.result ?? null) as MathResultJson | null;
@@ -73,7 +69,6 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
           statements={unvoted}
           total={allStatements.length}
           alreadyVoted={myVoteCount}
-          mapThreshold={mapThreshold}
         />
       </section>
 

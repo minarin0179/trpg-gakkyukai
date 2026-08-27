@@ -11,13 +11,11 @@ export function VoteDeck({
   statements,
   total,
   alreadyVoted,
-  mapThreshold,
 }: {
   themeId: string;
   statements: Statement[];
   total: number; // このテーマの可視の意見の総数(未投票が0でも「意見なし」と「全投票済み」を区別する)
-  alreadyVoted: number; // この参加者がこのテーマで既に投票済みの数(再訪時の加算表示用)
-  mapThreshold: number; // マップに自分が載るのに必要な投票数(Polisの7票ルール等)
+  alreadyVoted: number; // この参加者がこのテーマで既に投票済みの数(累計表示用)
 }) {
   const [index, setIndex] = useState(0);
   const [voted, setVoted] = useState(alreadyVoted); // 累計投票数(このセッション+過去)
@@ -27,7 +25,6 @@ export function VoteDeck({
 
   const current = statements[index];
   const done = index >= statements.length;
-  const remainingForMap = Math.max(0, mapThreshold - voted);
 
   function vote(value: number) {
     if (!current || pending) return;
@@ -61,11 +58,7 @@ export function VoteDeck({
       <p className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
         このテーマの意見にはすべて投票しました。
         <br />
-        {remainingForMap > 0 ? (
-          <>まだ意見が増えれば、続けて投票できます。結果は下の意見マップへ。</>
-        ) : (
-          <>あなたの点は意見マップに反映されています。結果は下のマップへ。</>
-        )}
+        あなたの投票は下の意見マップに反映されます。新しい意見が増えれば、続けて投票できます。
       </p>
     );
   }
@@ -100,9 +93,7 @@ export function VoteDeck({
         </button>
       </div>
       <p className="mt-3 text-center text-xs text-stone-500">
-        {voted}件に投票済み
-        {remainingForMap > 0 ? `(あと${remainingForMap}票でマップに載ります)` : "(マップに反映済み)"}
-        {" · "}
+        {voted}件に投票済み · 直感でどんどん答えてOK。
         <button
           onClick={() => document.getElementById("map")?.scrollIntoView({ behavior: "smooth" })}
           className="underline"
