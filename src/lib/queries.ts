@@ -135,10 +135,24 @@ async function enrichThemesForParticipant(
   list: ThemeWithCounts[],
   participantId: string | null,
 ): Promise<ThemeWithCounts[]> {
-  if (!participantId || list.length === 0) return list;
+  if (list.length === 0) return list;
   const ids = list.map((t) => t.id);
-  const [answered, maps] = await Promise.all([
-    db
+
+  // マップの有無はテーマの公開情報なので、参加の有無に関係なく常に算出する
+  const maps = await db
+    .select({ themeId: mathResults.themeId, result: mathResults.result })
+    .from(mathResults)
+    .where(inArray(mathResults.themeId, ids));
+  const mapReady = new Set(
+    maps
+      .filter((m) => (m.result as { status?: string } | null)?.status === "ok")
+      .map((m) => m.themeId),
+  );
+
+  // 参加者依存の情報(未回答数・参加有無)は cookie があるときだけ算出する
+  const answeredMap = new Map<string, number>();
+  if (participantId) {
+    const answered = await db
       .select({ themeId: statements.themeId, n: countDistinct(votes.statementId) })
       .from(statements)
       .innerJoin(
@@ -146,25 +160,19 @@ async function enrichThemesForParticipant(
         and(eq(votes.statementId, statements.id), eq(votes.participantId, participantId)),
       )
       .where(and(inArray(statements.themeId, ids), eq(statements.status, "visible")))
-      .groupBy(statements.themeId),
-    db
-      .select({ themeId: mathResults.themeId, result: mathResults.result })
-      .from(mathResults)
-      .where(inArray(mathResults.themeId, ids)),
-  ]);
-  const answeredMap = new Map(answered.map((a) => [a.themeId, a.n]));
-  const mapReady = new Set(
-    maps
-      .filter((m) => (m.result as { status?: string } | null)?.status === "ok")
-      .map((m) => m.themeId),
-  );
+      .groupBy(statements.themeId);
+    for (const a of answered) answeredMap.set(a.themeId, a.n);
+  }
+
   return list.map((t) => {
+    const hasMap = mapReady.has(t.id);
+    if (!participantId) return { ...t, hasMap };
     const myAnswered = answeredMap.get(t.id) ?? 0;
     return {
       ...t,
+      hasMap,
       unansweredCount: Math.max(t.statementCount - myAnswered, 0),
       participated: myAnswered > 0,
-      hasMap: mapReady.has(t.id),
     };
   });
 }

@@ -13,8 +13,10 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
   const showParticipatedDone = isParticipated && unanswered === 0;
   // 未参加(どのタブでも一貫して表示する)
   const showNotParticipated = isNotParticipated;
-  // 参加済みテーマは意見マップの生成状況を出す(要望#5)
-  const showMapStatus = isParticipated;
+  // 「意見マップあり」はテーマの性質(参加の有無に依存しない)。
+  // まだマップが無いテーマでは、参加済みの人にだけ「投票が集まると出ます」と促す。
+  const showMap = theme.hasMap === true;
+  const showMapPending = isParticipated && theme.hasMap === false;
 
   return (
     <Link
@@ -44,12 +46,11 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
       )}
       <p className="mt-2 text-xs text-stone-600 dark:text-stone-500">
         {theme.voterCount}人が投票 · 意見{theme.statementCount}件 · {formatRelativeDate(theme.createdAt)}
-        {showMapStatus &&
-          (theme.hasMap ? (
-            <span className="ml-1 text-emerald-700">· 意見マップあり</span>
-          ) : (
-            <span className="ml-1 text-stone-500">· 投票が集まるとマップが出ます</span>
-          ))}
+        {showMap ? (
+          <span className="ml-1 text-emerald-700">· 意見マップあり</span>
+        ) : showMapPending ? (
+          <span className="ml-1 text-stone-500">· 投票が集まるとマップが出ます</span>
+        ) : null}
       </p>
     </Link>
   );
