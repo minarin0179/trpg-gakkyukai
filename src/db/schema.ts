@@ -9,7 +9,7 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 
-// テーマ(議題)。事前審査なしで即時公開、一定の参加を得ると新着→メイン一覧へ昇格する
+// テーマ(議題)。事前審査なしで即時公開、一定の参加を得ると人気タブにも並ぶ
 export const themes = pgTable("themes", {
   id: text("id").primaryKey(), // nanoid
   title: text("title").notNull(),

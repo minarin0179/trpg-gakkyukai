@@ -30,6 +30,11 @@ function computeEndpoint(): string {
 }
 
 export async function recomputeTheme(themeId: string): Promise<void> {
+  // computedAt は「投票を読み込む前」の時刻にする。計算(fetch往復)中に入った票の
+  // updatedAt が computedAt より前になって恒久的に取りこぼされるのを防ぐ
+  // (次サイクルで lastVoteAt > computedAt となり拾える)。
+  const startedAt = new Date();
+
   const allVotes = await db
     .select({
       participantId: votes.participantId,
@@ -86,15 +91,15 @@ export async function recomputeTheme(themeId: string): Promise<void> {
       themeId,
       voteCount: payload.votes.length,
       result,
-      computedAt: new Date(),
+      computedAt: startedAt,
     })
     .onConflictDoUpdate({
       target: mathResults.themeId,
-      set: { voteCount: payload.votes.length, result, computedAt: new Date() },
+      set: { voteCount: payload.votes.length, result, computedAt: startedAt },
     });
 }
 
-// 投票のたびに呼ばれる。実際に再計算するのは「投票数が変わっていて、
+// 投票のたびに呼ばれる。実際に再計算するのは「前回計算以降に投票の追加・変更があり、
 // 前回計算から一定時間経過している」場合のみ
 export async function maybeRecompute(themeId: string): Promise<boolean> {
   const [counts, existing] = await Promise.all([

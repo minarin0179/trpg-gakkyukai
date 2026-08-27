@@ -94,8 +94,8 @@ async function listFreshPage(offset: number, limit: number): Promise<ThemeWithCo
     .offset(offset);
 }
 
-// 議論中タブ: 10票以上を勢い順(スコアはJS計算のため、全件取得してsort→slice)。
-// 議論中は母集団が小さいため全件取得のコストは小さい。
+// 人気タブ: 10票以上を勢い順(スコアはJS計算のため、全件取得してsort→slice)。
+// 人気は母集団が小さいため全件取得のコストは小さい。
 async function listActivePage(offset: number, limit: number): Promise<ThemeWithCounts[]> {
   const rows = await themesWithCountsQuery().limit(1000);
   const score = (r: (typeof rows)[number]) => {
@@ -108,8 +108,8 @@ async function listActivePage(offset: number, limit: number): Promise<ThemeWithC
     .slice(offset, offset + limit);
 }
 
-// 未読タブ: 自分がまだ一度も投票していないテーマを新着順(=参加済みの逆)。
-// 未参加(participantIdなし)の場合は全テーマが未読なので新着と同じ。
+// 未参加タブ: 自分がまだ一度も投票していないテーマを新着順(=参加済みの逆)。
+// participantIdなしの場合は全テーマが未参加なので新着と同じ。
 async function listUnreadPage(
   participantId: string | null,
   offset: number,

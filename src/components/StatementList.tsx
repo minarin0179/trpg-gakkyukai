@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { castVoteAction } from "@/app/actions";
 import { ReportButton } from "./ReportButton";
@@ -27,6 +27,12 @@ export function StatementList({
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
+
+  // router.refresh() 後もコンポーネントはマウントされたままなので、
+  // サーバーから来た最新の投票状態(投票デッキ側での投票を含む)を反映する。
+  useEffect(() => {
+    setVotes(myVotes);
+  }, [myVotes]);
 
   function change(statementId: number, value: number) {
     if (votes[statementId] === value || pendingId !== null) return;

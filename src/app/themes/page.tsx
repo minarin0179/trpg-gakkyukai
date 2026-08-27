@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "テーマ一覧" };
 export const dynamic = "force-dynamic";
 
 // 新着=全テーマ新着順 / 人気=10票以上を勢い順 / 参加済み=自分が投票したテーマ /
-// 未読=自分がまだ投票していないテーマ(参加済みの逆)を新着順。
+// 未参加=自分がまだ投票していないテーマ(参加済みの逆)を新着順。
 // どのタブもスクロール到達で無限に追加読み込みする。新着をデフォルトにする。
 export default async function ThemesPage({ searchParams }: PageProps<"/themes">) {
   const { tab } = await searchParams;
