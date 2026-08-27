@@ -294,7 +294,13 @@ export function OpinionMap({
                   {activeRepness.map((i) => (
                     <li key={i.statement_id}>
                       「{statementTexts[i.statement_id]}」
-                      <span className="text-stone-600">
+                      <span
+                        className={
+                          i.repful_for === "agree"
+                            ? "font-medium text-emerald-700"
+                            : "font-medium text-red-600"
+                        }
+                      >
                         {i.repful_for === "agree" ? "に賛成しがち" : "に反対しがち"}
                       </span>
                     </li>
@@ -351,7 +357,11 @@ export function OpinionMap({
                   {visible.map((i) => (
                     <li key={i.statement_id}>
                       「{statementTexts[i.statement_id]}」
-                      <span className="ml-1 text-xs text-stone-600">
+                      <span
+                        className={`ml-1 text-xs font-medium ${
+                          i.repful_for === "agree" ? "text-emerald-700" : "text-red-600"
+                        }`}
+                      >
                         {i.repful_for === "agree" ? "に賛成しがち" : "に反対しがち"}
                       </span>
                     </li>
