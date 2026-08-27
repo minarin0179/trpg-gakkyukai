@@ -1,6 +1,6 @@
 import { and, countDistinct, desc, eq, count, notInArray, sql } from "drizzle-orm";
 import { db, themes, statements, votes, mathResults } from "@/db";
-import { PROMOTION_MIN_PARTICIPANTS, RANKING_GRAVITY } from "./config";
+import { PROMOTION_MIN_PARTICIPANTS, RANKING_GRAVITY, THEMES_PAGE_SIZE } from "./config";
 
 export type ThemeWithCounts = {
   id: string;
@@ -45,6 +45,58 @@ export async function listThemes(): Promise<{
     .sort((a, b) => score(b) - score(a));
   const fresh = rows.filter((r) => r.voterCount < PROMOTION_MIN_PARTICIPANTS);
   return { main, fresh };
+}
+
+// テーマ一覧(無限スクロール)用のページ取得。
+// 集計列(投票者数・意見数)を含む共通の select を組み立てる。
+function themesWithCountsQuery() {
+  return db
+    .select({
+      id: themes.id,
+      title: themes.title,
+      description: themes.description,
+      createdAt: themes.createdAt,
+      voterCount: countDistinct(votes.participantId),
+      statementCount: countDistinct(statements.id),
+    })
+    .from(themes)
+    .leftJoin(votes, eq(votes.themeId, themes.id))
+    .leftJoin(
+      statements,
+      and(eq(statements.themeId, themes.id), eq(statements.status, "visible")),
+    )
+    .where(eq(themes.status, "active"))
+    .groupBy(themes.id);
+}
+
+// 新着タブ: 全アクティブテーマを新着順。DBのoffset/limitでそのままページング
+async function listFreshPage(offset: number, limit: number): Promise<ThemeWithCounts[]> {
+  return themesWithCountsQuery()
+    .orderBy(desc(themes.createdAt), desc(themes.id))
+    .limit(limit)
+    .offset(offset);
+}
+
+// 議論中タブ: 10票以上を勢い順(スコアはJS計算のため、全件取得してsort→slice)。
+// 議論中は母集団が小さいため全件取得のコストは小さい。
+async function listActivePage(offset: number, limit: number): Promise<ThemeWithCounts[]> {
+  const rows = await themesWithCountsQuery().limit(1000);
+  const score = (r: (typeof rows)[number]) => {
+    const ageDays = (Date.now() - r.createdAt.getTime()) / 86_400_000;
+    return r.voterCount / Math.pow(ageDays + 2, RANKING_GRAVITY);
+  };
+  return rows
+    .filter((r) => r.voterCount >= PROMOTION_MIN_PARTICIPANTS)
+    .sort((a, b) => score(b) - score(a))
+    .slice(offset, offset + limit);
+}
+
+export async function listThemesPage(
+  tab: "fresh" | "active",
+  offset: number,
+  limit: number = THEMES_PAGE_SIZE,
+): Promise<ThemeWithCounts[]> {
+  return tab === "active" ? listActivePage(offset, limit) : listFreshPage(offset, limit);
 }
 
 export async function getTheme(id: string) {

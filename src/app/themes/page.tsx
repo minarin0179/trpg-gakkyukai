@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listThemes } from "@/lib/queries";
-import { PROMOTION_MIN_PARTICIPANTS } from "@/lib/config";
-import { ThemeCard } from "@/components/ThemeCard";
+import { listThemesPage } from "@/lib/queries";
+import { PROMOTION_MIN_PARTICIPANTS, THEMES_PAGE_SIZE } from "@/lib/config";
+import { ThemeInfiniteList } from "@/components/ThemeInfiniteList";
 
 export const metadata: Metadata = { title: "テーマ一覧" };
 export const dynamic = "force-dynamic";
 
-// 新着をデフォルト表示にする(新しい議論に人が集まる方が新陳代謝の思想に合うため)
+// 新着をデフォルト表示にする(新しい議論に人が集まる方が新陳代謝の思想に合うため)。
+// 新着=全テーマを新着順、議論中=10票以上を勢い順。どちらもスクロールで無限に追加読み込みする。
 export default async function ThemesPage({ searchParams }: PageProps<"/themes">) {
   const { tab } = await searchParams;
   const showActive = tab === "active";
-  const { main, fresh } = await listThemes();
-  const list = showActive ? main : fresh;
+  const currentTab = showActive ? "active" : "fresh";
+  const initialItems = await listThemesPage(currentTab, 0);
 
   return (
     <div>
@@ -31,7 +32,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         </Link>
       </div>
 
-      {list.length === 0 ? (
+      {initialItems.length === 0 ? (
         <div className="rounded-lg border border-dashed border-stone-400 p-8 text-center text-sm text-stone-600">
           {showActive ? (
             <>
@@ -51,11 +52,12 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {list.map((t) => (
-            <ThemeCard key={t.id} theme={t} />
-          ))}
-        </div>
+        <ThemeInfiniteList
+          key={currentTab}
+          tab={currentTab}
+          initialItems={initialItems}
+          pageSize={THEMES_PAGE_SIZE}
+        />
       )}
     </div>
   );

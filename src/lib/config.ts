@@ -15,3 +15,6 @@ export const SEED_STATEMENTS_MAX = 10;
 // score = 投票者数 / (経過日数 + 2)^GRAVITY
 // 新しいテーマほど有利になり、古いテーマは参加者が多くても自然に沈む
 export const RANKING_GRAVITY = 1.8;
+
+// テーマ一覧(無限スクロール)の1ページ件数
+export const THEMES_PAGE_SIZE = 20;
