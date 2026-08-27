@@ -22,7 +22,7 @@ export function ReportButton({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-xs text-stone-500 underline hover:text-stone-700 dark:text-stone-600 dark:hover:text-stone-300"
+        className="shrink-0 whitespace-nowrap text-xs text-stone-500 underline hover:text-stone-700 dark:text-stone-600 dark:hover:text-stone-300"
       >
         通報
       </button>

@@ -101,7 +101,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
               key={s.id}
               className="flex items-start justify-between gap-3 rounded-md border border-stone-400 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900"
             >
-              <span>{s.text}</span>
+              <span className="min-w-0">{s.text}</span>
               <ReportButton targetType="statement" targetId={String(s.id)} />
             </li>
           ))}
