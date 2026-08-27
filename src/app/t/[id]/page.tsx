@@ -5,8 +5,10 @@ import {
   getUnvotedStatements,
   getVisibleStatements,
   getMathResult,
+  getMyVoteCount,
 } from "@/lib/queries";
 import { getParticipantId } from "@/lib/participant";
+import { MAP_VOTE_THRESHOLD } from "@/lib/config";
 import type { MathResultJson } from "@/lib/recompute";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
@@ -22,12 +24,16 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
   if (!theme) notFound();
 
   const participantId = await getParticipantId();
-  const [counts, unvoted, allStatements, mathRow] = await Promise.all([
+  const [counts, unvoted, allStatements, mathRow, myVoteCount] = await Promise.all([
     getThemeCounts(id),
     getUnvotedStatements(id, participantId),
     getVisibleStatements(id),
     getMathResult(id),
+    getMyVoteCount(id, participantId),
   ]);
+
+  // マップに載る閾値: Polis標準の7票、ただし意見数がそれ未満なら意見数(api/_logic.pyと一致)
+  const mapThreshold = Math.min(MAP_VOTE_THRESHOLD, allStatements.length);
 
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない
   const raw = (mathRow?.result ?? null) as MathResultJson | null;
@@ -57,25 +63,43 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         </div>
       </div>
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">投票する</h2>
-        <VoteDeck themeId={theme.id} statements={unvoted} total={allStatements.length} />
+      <section id="vote" className="scroll-mt-20">
+        <h2 className="mb-1 text-sm font-semibold text-stone-700 dark:text-stone-300">まずは投票してみましょう</h2>
+        <p className="mb-3 text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+          投票を重ねると、あなたと考えの近い人がわかり、下の意見マップにあなたの立場が現れます。
+        </p>
+        <VoteDeck
+          themeId={theme.id}
+          statements={unvoted}
+          total={allStatements.length}
+          alreadyVoted={myVoteCount}
+          mapThreshold={mapThreshold}
+        />
       </section>
 
       <section id="post" className="scroll-mt-20">
-        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">意見を投稿する</h2>
+        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">
+          まだ出ていない視点が思い浮かんだら、あなたの意見を投稿してみましょう
+        </h2>
+        <p className="mb-3 rounded-md bg-stone-100 px-3 py-2 text-xs leading-relaxed text-stone-600 dark:bg-stone-800 dark:text-stone-400">
+          1つの意見には主張を1つだけ。賛成/反対で答えられる形にすると、みんなが投票しやすくなります。
+        </p>
         <StatementForm themeId={theme.id} />
       </section>
 
+      <div className="mt-6 border-t border-stone-400 pt-16 dark:border-stone-700">
+        <h2 className="text-lg font-bold">みんなの考えを見てみましょう</h2>
+      </div>
+
       <section id="map" className="scroll-mt-20">
-        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">意見マップ</h2>
+        <h3 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">意見マップ</h3>
         <OpinionMap result={publicResult} myIndex={myIndex} statementTexts={statementTexts} />
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">
+        <h3 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">
           すべての意見({allStatements.length})
-        </h2>
+        </h3>
         <ul className="flex flex-col gap-2">
           {allStatements.map((s) => (
             <li

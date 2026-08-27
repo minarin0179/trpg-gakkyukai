@@ -97,3 +97,13 @@ export async function getMathResult(themeId: string) {
   const [row] = await db.select().from(mathResults).where(eq(mathResults.themeId, themeId));
   return row ?? null;
 }
+
+// この参加者がこのテーマで既に投票した数(再訪時のマップ閾値カウント用)
+export async function getMyVoteCount(themeId: string, participantId: string | null): Promise<number> {
+  if (!participantId) return 0;
+  const [row] = await db
+    .select({ n: count() })
+    .from(votes)
+    .where(and(eq(votes.themeId, themeId), eq(votes.participantId, participantId)));
+  return row?.n ?? 0;
+}

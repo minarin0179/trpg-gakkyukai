@@ -9,10 +9,14 @@ export function StatementForm({ themeId }: { themeId: string }) {
     {},
   );
   const [text, setText] = useState("");
+  const [justPosted, setJustPosted] = useState(false);
 
-  // 投稿成功時のみ入力をクリア(エラー時は保持)
+  // 投稿成功時のみ入力をクリア(エラー時は保持)し、投票への誘導を出す
   useEffect(() => {
-    if (state.done) setText("");
+    if (state.done) {
+      setText("");
+      setJustPosted(true);
+    }
   }, [state]);
 
   return (
@@ -24,12 +28,29 @@ export function StatementForm({ themeId }: { themeId: string }) {
         minLength={2}
         maxLength={140}
         rows={2}
-        placeholder="あなたの意見(140文字まで)。賛成でも反対でもない新しい視点も歓迎"
+        placeholder="あなたの意見(140文字まで)"
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (justPosted) setJustPosted(false);
+        }}
         className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
       />
       {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
+      {justPosted && (
+        // 投稿直後はエンゲージメントが高い。この瞬間に投票へ橋渡しする
+        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+          投稿しました。ほかの人の意見にも
+          <button
+            type="button"
+            onClick={() => document.getElementById("vote")?.scrollIntoView({ behavior: "smooth" })}
+            className="font-medium underline"
+          >
+            投票してみませんか?
+          </button>
+          投票が集まると意見マップがはっきりしていきます。
+        </p>
+      )}
       <button
         type="submit"
         disabled={pending}

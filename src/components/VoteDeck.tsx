@@ -10,23 +10,30 @@ export function VoteDeck({
   themeId,
   statements,
   total,
+  alreadyVoted,
+  mapThreshold,
 }: {
   themeId: string;
   statements: Statement[];
   total: number; // このテーマの可視の意見の総数(未投票が0でも「意見なし」と「全投票済み」を区別する)
+  alreadyVoted: number; // この参加者がこのテーマで既に投票済みの数(再訪時の加算表示用)
+  mapThreshold: number; // マップに自分が載るのに必要な投票数(Polisの7票ルール等)
 }) {
   const [index, setIndex] = useState(0);
+  const [voted, setVoted] = useState(alreadyVoted); // 累計投票数(このセッション+過去)
   const [passStreak, setPassStreak] = useState(0);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
   const current = statements[index];
   const done = index >= statements.length;
+  const remainingForMap = Math.max(0, mapThreshold - voted);
 
   function vote(value: number) {
     if (!current || pending) return;
     startTransition(async () => {
       await castVoteAction(themeId, current.id, value);
+      setVoted((v) => v + 1);
       // パスが続いている=既存の意見がしっくり来ていないサインなので、投稿を提案する
       setPassStreak(value === 0 ? passStreak + 1 : 0);
       const next = index + 1;
@@ -52,16 +59,20 @@ export function VoteDeck({
   if (statements.length === 0 || done) {
     return (
       <p className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
-        このテーマの意見にはすべて投票済みです。
+        このテーマの意見にはすべて投票しました。
         <br />
-        言い足りないことがあれば新しい意見を投稿できます。結果は下の意見マップへ。
+        {remainingForMap > 0 ? (
+          <>まだ意見が増えれば、続けて投票できます。結果は下の意見マップへ。</>
+        ) : (
+          <>あなたの点は意見マップに反映されています。結果は下のマップへ。</>
+        )}
       </p>
     );
   }
 
   return (
     <div className="rounded-lg border border-stone-400 bg-white p-6 dark:border-stone-800 dark:bg-stone-900">
-      <p className="mb-1 text-xs text-stone-600 dark:text-stone-500">
+      <p className="mb-2 text-xs text-stone-500 dark:text-stone-500">
         意見 {index + 1} / {statements.length}
       </p>
       <p className="min-h-16 text-base leading-relaxed">{current.text}</p>
@@ -89,7 +100,9 @@ export function VoteDeck({
         </button>
       </div>
       <p className="mt-3 text-center text-xs text-stone-500">
-        全部に答えなくても大丈夫。
+        {voted}件に投票済み
+        {remainingForMap > 0 ? `(あと${remainingForMap}票でマップに載ります)` : "(マップに反映済み)"}
+        {" · "}
         <button
           onClick={() => document.getElementById("map")?.scrollIntoView({ behavior: "smooth" })}
           className="underline"
