@@ -103,7 +103,10 @@ export async function maybeRecompute(themeId: string): Promise<boolean> {
   ]);
   if (existing) {
     const ageSec = (Date.now() - existing.computedAt.getTime()) / 1000;
-    if (existing.voteCount === counts.voteCount) return false;
+    // 前回計算以降に投票の追加・変更(訂正)が無ければスキップ。
+    // 票数だけでなく最終更新時刻で見るので、値の訂正でも再計算される。
+    const lastVoteAt = counts.lastVoteAt ? new Date(counts.lastVoteAt) : null;
+    if (!lastVoteAt || lastVoteAt <= existing.computedAt) return false;
     if (ageSec < RECOMPUTE_MIN_INTERVAL_SEC) return false;
   }
   try {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createStatementAction, type FormState } from "@/app/actions";
 
 export function StatementForm({ themeId }: { themeId: string }) {
@@ -10,14 +11,18 @@ export function StatementForm({ themeId }: { themeId: string }) {
   );
   const [text, setText] = useState("");
   const [justPosted, setJustPosted] = useState(false);
+  const router = useRouter();
 
-  // 投稿成功時のみ入力をクリア(エラー時は保持)し、投票への誘導を出す
+  // 投稿成功時のみ入力をクリア(エラー時は保持)し、投票への誘導を出す。
+  // あわせてサーバーコンポーネントを再取得し、投稿した意見がリロードなしで
+  // 投票デッキ・意見一覧に現れるようにする
   useEffect(() => {
     if (state.done) {
       setText("");
       setJustPosted(true);
+      router.refresh();
     }
-  }, [state]);
+  }, [state, router]);
 
   return (
     <form action={formAction} className="flex flex-col gap-2">

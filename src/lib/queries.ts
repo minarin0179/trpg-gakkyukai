@@ -191,10 +191,12 @@ export async function getThemeCounts(themeId: string) {
     .select({
       voterCount: countDistinct(votes.participantId),
       voteCount: count(votes.statementId),
+      // 投票の追加・変更(訂正)を検知するための最終更新時刻
+      lastVoteAt: max(votes.updatedAt),
     })
     .from(votes)
     .where(eq(votes.themeId, themeId));
-  return row ?? { voterCount: 0, voteCount: 0 };
+  return row ?? { voterCount: 0, voteCount: 0, lastVoteAt: null };
 }
 
 export async function getMathResult(themeId: string) {
@@ -210,4 +212,19 @@ export async function getMyVoteCount(themeId: string, participantId: string | nu
     .from(votes)
     .where(and(eq(votes.themeId, themeId), eq(votes.participantId, participantId)));
   return row?.n ?? 0;
+}
+
+// この参加者のこのテーマでの投票(意見ID→値)。投票の訂正UIで現在の投票を表示するのに使う
+export async function getMyVotes(
+  themeId: string,
+  participantId: string | null,
+): Promise<Record<number, number>> {
+  if (!participantId) return {};
+  const rows = await db
+    .select({ statementId: votes.statementId, value: votes.value })
+    .from(votes)
+    .where(and(eq(votes.themeId, themeId), eq(votes.participantId, participantId)));
+  const map: Record<number, number> = {};
+  for (const r of rows) map[r.statementId] = r.value;
+  return map;
 }

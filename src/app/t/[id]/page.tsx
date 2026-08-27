@@ -6,12 +6,14 @@ import {
   getVisibleStatements,
   getMathResult,
   getMyVoteCount,
+  getMyVotes,
 } from "@/lib/queries";
 import { getParticipantId } from "@/lib/participant";
 import type { MathResultJson } from "@/lib/recompute";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
 import { OpinionMap, type PublicMathResult } from "@/components/OpinionMap";
+import { StatementList } from "@/components/StatementList";
 import { ReportButton } from "@/components/ReportButton";
 import { formatRelativeDate } from "@/lib/format";
 
@@ -23,12 +25,13 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
   if (!theme) notFound();
 
   const participantId = await getParticipantId();
-  const [counts, unvoted, allStatements, mathRow, myVoteCount] = await Promise.all([
+  const [counts, unvoted, allStatements, mathRow, myVoteCount, myVotes] = await Promise.all([
     getThemeCounts(id),
     getUnvotedStatements(id, participantId),
     getVisibleStatements(id),
     getMathResult(id),
     getMyVoteCount(id, participantId),
+    getMyVotes(id, participantId),
   ]);
 
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない
@@ -92,20 +95,13 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
       </section>
 
       <section>
-        <h3 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">
+        <h3 className="mb-1 text-sm font-semibold text-stone-700 dark:text-stone-300">
           すべての意見({allStatements.length})
         </h3>
-        <ul className="flex flex-col gap-2">
-          {allStatements.map((s) => (
-            <li
-              key={s.id}
-              className="flex items-start justify-between gap-3 rounded-md border border-stone-400 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900"
-            >
-              <span className="min-w-0">{s.text}</span>
-              <ReportButton targetType="statement" targetId={String(s.id)} />
-            </li>
-          ))}
-        </ul>
+        <p className="mb-3 text-xs text-stone-600 dark:text-stone-400">
+          自分の投票がハイライトされます。押し直せば訂正できます。
+        </p>
+        <StatementList themeId={theme.id} statements={allStatements} myVotes={myVotes} />
       </section>
     </div>
   );
