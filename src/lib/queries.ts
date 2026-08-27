@@ -1,4 +1,4 @@
-import { and, countDistinct, desc, eq, count, notInArray, sql } from "drizzle-orm";
+import { and, countDistinct, desc, eq, count, inArray, max, notInArray, sql } from "drizzle-orm";
 import { db, themes, statements, votes, mathResults } from "@/db";
 import { PROMOTION_MIN_PARTICIPANTS, RANKING_GRAVITY, THEMES_PAGE_SIZE } from "./config";
 
@@ -97,6 +97,58 @@ export async function listThemesPage(
   limit: number = THEMES_PAGE_SIZE,
 ): Promise<ThemeWithCounts[]> {
   return tab === "active" ? listActivePage(offset, limit) : listFreshPage(offset, limit);
+}
+
+// 参加済みタブ: 自分(participantId)が投票したアクティブなテーマを、
+// 最後に投票した日時が新しい順(最近さわった順)で返す。
+export async function listParticipatedPage(
+  participantId: string | null,
+  offset: number,
+  limit: number = THEMES_PAGE_SIZE,
+): Promise<ThemeWithCounts[]> {
+  if (!participantId) return [];
+  // 1) 自分が投票したテーマを最終投票日時の降順でページング
+  const mine = await db
+    .select({
+      id: themes.id,
+      title: themes.title,
+      description: themes.description,
+      createdAt: themes.createdAt,
+      lastVotedAt: max(votes.createdAt),
+    })
+    .from(votes)
+    .innerJoin(themes, and(eq(themes.id, votes.themeId), eq(themes.status, "active")))
+    .where(eq(votes.participantId, participantId))
+    .groupBy(themes.id)
+    .orderBy(desc(max(votes.createdAt)))
+    .limit(limit)
+    .offset(offset);
+  if (mine.length === 0) return [];
+  // 2) 表示用の集計(投票者数・意見数)をまとめて取得し、1)の順序を保って合成
+  const ids = mine.map((m) => m.id);
+  const counts = await db
+    .select({
+      id: themes.id,
+      voterCount: countDistinct(votes.participantId),
+      statementCount: countDistinct(statements.id),
+    })
+    .from(themes)
+    .leftJoin(votes, eq(votes.themeId, themes.id))
+    .leftJoin(
+      statements,
+      and(eq(statements.themeId, themes.id), eq(statements.status, "visible")),
+    )
+    .where(inArray(themes.id, ids))
+    .groupBy(themes.id);
+  const countMap = new Map(counts.map((c) => [c.id, c]));
+  return mine.map((m) => ({
+    id: m.id,
+    title: m.title,
+    description: m.description,
+    createdAt: m.createdAt,
+    voterCount: countMap.get(m.id)?.voterCount ?? 0,
+    statementCount: countMap.get(m.id)?.statementCount ?? 0,
+  }));
 }
 
 export async function getTheme(id: string) {

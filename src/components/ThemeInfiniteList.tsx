@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ThemeCard } from "./ThemeCard";
 import type { ThemeWithCounts } from "@/lib/queries";
-import { loadMoreThemes } from "@/app/themes/actions";
+import { loadMoreThemes, type ThemesTab } from "@/app/themes/actions";
 
 // スクロール到達で次ページを追記する無限スクロール一覧(Twitter/YouTube風)。
 // 初回分はサーバーで描画済みのものを initialItems で受け取る。
@@ -12,7 +12,7 @@ export function ThemeInfiniteList({
   initialItems,
   pageSize,
 }: {
-  tab: "fresh" | "active";
+  tab: ThemesTab;
   initialItems: ThemeWithCounts[];
   pageSize: number;
 }) {

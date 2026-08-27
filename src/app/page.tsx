@@ -143,7 +143,7 @@ export default async function HomePage() {
           <Link href="/themes" className="underline">
             新着タブ
           </Link>
-          に載ります。10人が投票するとメインの一覧に昇格します。
+          に載ります。10人が投票すると人気タブにも並びます。
           運営が事前に内容を選別することはありません。
         </div>
       </section>
