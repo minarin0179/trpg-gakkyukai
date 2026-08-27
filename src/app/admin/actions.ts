@@ -5,21 +5,12 @@ import { eq } from "drizzle-orm";
 import { after } from "next/server";
 import { db, themes, statements, reports } from "@/db";
 import { recomputeTheme } from "@/lib/recompute";
-
-function verifyKey(key: unknown): asserts key is string {
-  if (
-    typeof key !== "string" ||
-    !process.env.ADMIN_KEY ||
-    key !== process.env.ADMIN_KEY
-  ) {
-    throw new Error("unauthorized");
-  }
-}
+import { isAdmin } from "@/lib/admin-auth";
+import { notFound } from "next/navigation";
 
 // 通報対象を削除(status=removed)して通報を消化する
 export async function removeContentAction(formData: FormData) {
-  const key = formData.get("key");
-  verifyKey(key);
+  if (!(await isAdmin())) notFound();
   const reportId = Number(formData.get("reportId"));
   const targetType = String(formData.get("targetType"));
   const targetId = String(formData.get("targetId"));
@@ -49,14 +40,13 @@ export async function removeContentAction(formData: FormData) {
   }
 
   await db.delete(reports).where(eq(reports.id, reportId));
-  redirect(`/admin?key=${encodeURIComponent(key)}`);
+  redirect("/admin");
 }
 
 // 基準に該当しない通報を却下する
 export async function dismissReportAction(formData: FormData) {
-  const key = formData.get("key");
-  verifyKey(key);
+  if (!(await isAdmin())) notFound();
   const reportId = Number(formData.get("reportId"));
   await db.delete(reports).where(eq(reports.id, reportId));
-  redirect(`/admin?key=${encodeURIComponent(key)}`);
+  redirect("/admin");
 }

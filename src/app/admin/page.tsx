@@ -1,34 +1,17 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import { desc, eq, inArray } from "drizzle-orm";
 import { db, reports, statements, themes } from "@/db";
 import { removeContentAction, dismissReportAction } from "./actions";
 import { REMOVAL_CRITERIA } from "@/lib/rules";
+import { requireAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
-// タイトル等のメタ情報も、正しいキーがある場合にのみ返す
-// (404時に「通報管理」がタブに出てページの正体が漏れるのを防ぐ)
-export async function generateMetadata({
-  searchParams,
-}: PageProps<"/admin">): Promise<Metadata> {
-  const { key } = await searchParams;
-  if (typeof key === "string" && process.env.ADMIN_KEY && key === process.env.ADMIN_KEY) {
-    return { title: "通報管理", robots: { index: false, follow: false } };
-  }
-  return {};
-}
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
-export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
-  const { key } = await searchParams;
-  if (
-    typeof key !== "string" ||
-    !process.env.ADMIN_KEY ||
-    key !== process.env.ADMIN_KEY
-  ) {
-    notFound();
-  }
+export default async function AdminPage() {
+  await requireAdmin();
 
   const rows = await db.select().from(reports).orderBy(desc(reports.createdAt)).limit(100);
 
@@ -83,7 +66,6 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {!isContact && (
               <form action={removeContentAction} className="flex items-center gap-2">
-                <input type="hidden" name="key" value={key} />
                 <input type="hidden" name="reportId" value={r.id} />
                 <input type="hidden" name="targetType" value={r.targetType} />
                 <input type="hidden" name="targetId" value={r.targetId} />
@@ -108,7 +90,6 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
               </form>
               )}
               <form action={dismissReportAction}>
-                <input type="hidden" name="key" value={key} />
                 <input type="hidden" name="reportId" value={r.id} />
                 <button
                   type="submit"
