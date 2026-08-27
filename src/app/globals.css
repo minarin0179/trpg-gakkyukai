@@ -10,15 +10,11 @@
 }
 
 body {
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    "Hiragino Kaku Gothic ProN",
-    "Hiragino Sans",
-    "Yu Gothic UI",
-    Meiryo,
-    sans-serif;
+  /* ユーザーのブラウザ既定フォントを尊重する。
+     MDN: 本文は system-ui でなく sans-serif を使う(system-ui はUI用途で、
+     Windowsのラテン描画が崩れる/ユーザーが変更できない等の問題がある)。
+     アクセシビリティ・可読性を優先し、具体フォントは固定しない。 */
+  font-family: sans-serif;
 }
 
 /* スクロール連動のセクション出現演出。
