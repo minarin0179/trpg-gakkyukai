@@ -32,7 +32,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
           人気
         </Link>
         <Link href="/themes?tab=unread" className={tabClass(currentTab === "unread")}>
-          未読
+          未参加
         </Link>
         <Link href="/themes?tab=mine" className={tabClass(currentTab === "mine")}>
           参加済み
@@ -58,9 +58,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
               から探してみてください。
             </>
           ) : currentTab === "unread" ? (
-            <>
-              未読のテーマはありません。公開中のテーマにはすべて参加済みです。
-            </>
+            <>未参加のテーマはありません。公開中のテーマにはすべて参加済みです。</>
           ) : (
             <>
               まだ新着テーマがありません。

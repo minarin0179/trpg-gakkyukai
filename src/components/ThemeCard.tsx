@@ -3,9 +3,9 @@ import type { ThemeWithCounts } from "@/lib/queries";
 import { formatRelativeDate } from "@/lib/format";
 
 export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
-  // 参加済みで未回答が残っている場合のバッジ(要望#4)。
-  // 未参加のテーマ(未読)では全件が未回答なので出さない。
-  const showUnanswered =
+  // 参加済みテーマで、まだ投票していない意見がある場合の「新着」バッジ(要望#4)。
+  // 未参加のテーマでは全件が未投票なので出さない。
+  const showNew =
     theme.participated && theme.unansweredCount != null && theme.unansweredCount > 0;
   // 参加済みテーマでマップが生成済みかを示す(要望#5)。
   const showMapStatus = theme.participated;
@@ -17,9 +17,9 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold">{theme.title}</h3>
-        {showUnanswered && (
-          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-            未回答 {theme.unansweredCount}件
+        {showNew && (
+          <span className="shrink-0 rounded-full border border-rose-400 bg-white px-2 py-0.5 text-xs font-medium text-rose-600 dark:bg-stone-900">
+            新着 {theme.unansweredCount}件
           </span>
         )}
       </div>
