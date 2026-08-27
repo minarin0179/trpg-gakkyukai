@@ -185,27 +185,20 @@ export function OpinionMap({
               );
             })}
 
-            {/* 参加者の点 */}
+            {/* 参加者の点(自分以外)。自分は最前面に別途描く */}
             {pts.map((p) => {
-              const isMe = myIndex !== null && p.id === myIndex;
+              if (myIndex !== null && p.id === myIndex) return null;
               const color = p.cluster !== null ? GROUP_COLORS[p.cluster % GROUP_COLORS.length] : "#a8a29e";
               return (
-                <g key={p.id} pointerEvents="none">
-                  <circle
-                    cx={sx(p.x)}
-                    cy={sy(p.y)}
-                    r={isMe ? 7 : 4.5}
-                    fill={color}
-                    fillOpacity={isMe ? 1 : 0.55}
-                    strokeWidth={isMe ? 2 : 0}
-                    className={isMe ? "stroke-stone-900" : undefined}
-                  />
-                  {isMe && (
-                    <text x={sx(p.x) + 10} y={sy(p.y) + 4} fontSize="11" fontWeight="bold" className="fill-stone-900">
-                      あなた
-                    </text>
-                  )}
-                </g>
+                <circle
+                  key={p.id}
+                  cx={sx(p.x)}
+                  cy={sy(p.y)}
+                  r={4.5}
+                  fill={color}
+                  fillOpacity={0.55}
+                  pointerEvents="none"
+                />
               );
             })}
 
@@ -228,6 +221,33 @@ export function OpinionMap({
                 </g>
               );
             })}
+
+            {/* 自分の点とラベルは最前面に描き、なわばりやグループラベルに隠れないようにする */}
+            {myIndex !== null &&
+              (() => {
+                const me = pts.find((p) => p.id === myIndex);
+                if (!me) return null;
+                const color = me.cluster !== null ? GROUP_COLORS[me.cluster % GROUP_COLORS.length] : "#a8a29e";
+                const labelLeft = sx(me.x) < W - 60; // 右端に近ければラベルを左側に出す
+                return (
+                  <g pointerEvents="none">
+                    <circle cx={sx(me.x)} cy={sy(me.y)} r={7} fill={color} strokeWidth={2} className="stroke-stone-900" />
+                    <text
+                      x={labelLeft ? sx(me.x) + 11 : sx(me.x) - 11}
+                      y={sy(me.y) + 4}
+                      fontSize="11"
+                      fontWeight="bold"
+                      textAnchor={labelLeft ? "start" : "end"}
+                      className="fill-stone-900"
+                      stroke="white"
+                      strokeWidth={3}
+                      paintOrder="stroke"
+                    >
+                      あなた
+                    </text>
+                  </g>
+                );
+              })()}
           </svg>
 
           {/* ホバー中グループの意見ツールチップ */}
