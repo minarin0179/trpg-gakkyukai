@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import { createThemeAction, type FormState } from "@/app/actions";
 import { AiSeedAssist } from "@/components/AiSeedAssist";
+import { SEED_STATEMENTS_MAX } from "@/lib/config";
 
 declare global {
   interface Window {
@@ -25,6 +26,11 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [seeds, setSeeds] = useState("");
+  // 空行を除いた「意見の数」。ラベルに (3/10) のように表示する
+  const seedCount = seeds
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean).length;
 
   const widgetIdRef = useRef<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -124,6 +130,13 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
         <div className="mb-1 flex flex-wrap items-end justify-between gap-2">
           <label htmlFor="seeds" className="block text-sm font-medium">
             最初の意見(1行に1つ、2〜10個)
+            <span
+              className={`ml-1.5 font-normal ${
+                seedCount > SEED_STATEMENTS_MAX ? "text-red-600" : "text-stone-500"
+              }`}
+            >
+              {seedCount}/{SEED_STATEMENTS_MAX}
+            </span>
           </label>
           <AiSeedAssist
             title={title}

@@ -12,11 +12,11 @@ export default function NewThemePage() {
       <p className="mb-6 text-sm text-stone-700 dark:text-stone-300">
         アカウント登録は不要です。TRPGにまつわる、賛否の分かれそうな問いを投げてみてください。
       </p>
-      <ThemeForm siteKey={TURNSTILE_SITE_KEY} />
-      <div className="mt-10">
+      <div className="mb-8">
         <h2 className="mb-3 text-base font-semibold">テーマにできること・できないこと</h2>
         <TopicGuidelines />
       </div>
+      <ThemeForm siteKey={TURNSTILE_SITE_KEY} />
     </div>
   );
 }
