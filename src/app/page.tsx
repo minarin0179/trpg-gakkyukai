@@ -179,7 +179,7 @@ export default async function HomePage() {
           <Image src="/illustrations/1122.png" alt="スマホのクソリプに手をかざす人のイラスト" width={150} height={150} />
         </div>
         <h2 className="mb-4 text-center text-xl font-bold">
-          なぜTRPGの話題は、いつも同じ荒れ方をするのか
+          このサイトが目指すもの
         </h2>
         <div className="flex flex-col gap-4 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
           <p>
@@ -188,10 +188,10 @@ export default async function HomePage() {
             界隈ではそれを半ば自嘲的に「学級会」と呼んできました。
           </p>
           <p>
-            でも、よく思い出してください。学級会が荒れるのは、
-            いちばん強い言葉ばかりが拡散され、言い負かし合いになり、
-            静かに聞いている大多数の「そこまで極端じゃない意見」が
-            どこにも見えないからです。SNSのタイムラインとリプライ欄は、
+            でも、思い出してみてください。学級会が荒れるのは、
+            いちばん強い言葉ばかりが拡散され、言い負かし合いになるからです。
+            静かに聞いている大多数の「そこまで極端じゃない意見」は、
+            どこにも見えません。SNSのタイムラインとリプライ欄は、
             まさにその構造でできています。
           </p>
           <p>
@@ -200,8 +200,7 @@ export default async function HomePage() {
             勝ち負けの代わりに、立場が違っても共有できている認識を。
           </p>
           <p className="font-medium">
-            どうせ「学級会」と呼ばれるなら——ちゃんと結論の出る学級会にしませんか。
-            それがこの名前の由来です。
+            同じ「学級会」をするなら、ちゃんと結論の出る学級会にしてみませんか。
           </p>
         </div>
       </section>
