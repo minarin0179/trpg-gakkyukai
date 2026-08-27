@@ -1,24 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listThemesPage, listParticipatedPage } from "@/lib/queries";
+import { listThemesForTab, type ThemesTab } from "@/lib/queries";
 import { getParticipantId } from "@/lib/participant";
 import { PROMOTION_MIN_PARTICIPANTS, THEMES_PAGE_SIZE } from "@/lib/config";
 import { ThemeInfiniteList } from "@/components/ThemeInfiniteList";
-import type { ThemesTab } from "@/app/themes/actions";
 
 export const metadata: Metadata = { title: "テーマ一覧" };
 export const dynamic = "force-dynamic";
 
-// 新着=全テーマを新着順 / 人気=10票以上を勢い順 / 参加済み=自分が投票したテーマを最終投票順。
-// どのタブもスクロール到達で無限に追加読み込みする。新着をデフォルト表示にする。
+// 新着=全テーマ新着順 / 人気=10票以上を勢い順 / 参加済み=自分が投票したテーマ /
+// 未読=自分がまだ投票していないテーマ(参加済みの逆)を新着順。
+// どのタブもスクロール到達で無限に追加読み込みする。新着をデフォルトにする。
 export default async function ThemesPage({ searchParams }: PageProps<"/themes">) {
   const { tab } = await searchParams;
-  const currentTab: ThemesTab = tab === "active" ? "active" : tab === "mine" ? "mine" : "fresh";
+  const currentTab: ThemesTab =
+    tab === "active" ? "active" : tab === "mine" ? "mine" : tab === "unread" ? "unread" : "fresh";
 
-  const initialItems =
-    currentTab === "mine"
-      ? await listParticipatedPage(await getParticipantId(), 0)
-      : await listThemesPage(currentTab, 0);
+  const participantId = await getParticipantId();
+  const initialItems = await listThemesForTab(currentTab, participantId, 0);
 
   const tabClass = (active: boolean) =>
     `px-4 py-2 text-sm font-medium ${active ? "border-b-2 border-stone-900" : "text-stone-600"}`;
@@ -31,6 +30,9 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         </Link>
         <Link href="/themes?tab=active" className={tabClass(currentTab === "active")}>
           人気
+        </Link>
+        <Link href="/themes?tab=unread" className={tabClass(currentTab === "unread")}>
+          未読
         </Link>
         <Link href="/themes?tab=mine" className={tabClass(currentTab === "mine")}>
           参加済み
@@ -54,6 +56,10 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
                 新着タブ
               </Link>
               から探してみてください。
+            </>
+          ) : currentTab === "unread" ? (
+            <>
+              未読のテーマはありません。公開中のテーマにはすべて参加済みです。
             </>
           ) : (
             <>

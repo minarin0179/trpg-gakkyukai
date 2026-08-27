@@ -1,6 +1,19 @@
-import { and, countDistinct, desc, eq, count, inArray, max, notInArray, sql } from "drizzle-orm";
+import {
+  and,
+  countDistinct,
+  desc,
+  eq,
+  count,
+  inArray,
+  max,
+  notInArray,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { db, themes, statements, votes, mathResults } from "@/db";
 import { PROMOTION_MIN_PARTICIPANTS, RANKING_GRAVITY, THEMES_PAGE_SIZE } from "./config";
+
+export type ThemesTab = "fresh" | "active" | "mine" | "unread";
 
 export type ThemeWithCounts = {
   id: string;
@@ -9,6 +22,10 @@ export type ThemeWithCounts = {
   createdAt: Date;
   voterCount: number;
   statementCount: number;
+  // 以下は参加者(cookie)ごとに算出する任意の付加情報
+  unansweredCount?: number; // 自分がまだ投票していない意見の数
+  participated?: boolean; // 自分がこのテーマで1件以上投票したか
+  hasMap?: boolean; // 意見マップ(status ok)が生成済みか
 };
 
 export async function listThemes(): Promise<{
@@ -49,7 +66,7 @@ export async function listThemes(): Promise<{
 
 // テーマ一覧(無限スクロール)用のページ取得。
 // 集計列(投票者数・意見数)を含む共通の select を組み立てる。
-function themesWithCountsQuery() {
+function themesWithCountsQuery(extra?: SQL) {
   return db
     .select({
       id: themes.id,
@@ -65,7 +82,7 @@ function themesWithCountsQuery() {
       statements,
       and(eq(statements.themeId, themes.id), eq(statements.status, "visible")),
     )
-    .where(eq(themes.status, "active"))
+    .where(extra ? and(eq(themes.status, "active"), extra) : eq(themes.status, "active"))
     .groupBy(themes.id);
 }
 
@@ -89,6 +106,83 @@ async function listActivePage(offset: number, limit: number): Promise<ThemeWithC
     .filter((r) => r.voterCount >= PROMOTION_MIN_PARTICIPANTS)
     .sort((a, b) => score(b) - score(a))
     .slice(offset, offset + limit);
+}
+
+// 未読タブ: 自分がまだ一度も投票していないテーマを新着順(=参加済みの逆)。
+// 未参加(participantIdなし)の場合は全テーマが未読なので新着と同じ。
+async function listUnreadPage(
+  participantId: string | null,
+  offset: number,
+  limit: number,
+): Promise<ThemeWithCounts[]> {
+  if (!participantId) return listFreshPage(offset, limit);
+  const myVotedThemes = db
+    .select({ id: votes.themeId })
+    .from(votes)
+    .where(eq(votes.participantId, participantId));
+  return themesWithCountsQuery(notInArray(themes.id, myVotedThemes))
+    .orderBy(desc(themes.createdAt), desc(themes.id))
+    .limit(limit)
+    .offset(offset);
+}
+
+// 一覧のテーマに、参加者(cookie)ごとの付加情報を合成する。
+// - unansweredCount: 自分がまだ投票していない可視の意見数
+// - participated: 自分が1件以上投票したか
+// - hasMap: 意見マップ(status ok)が生成済みか
+// 匿名(participantIdなし)や空配列のときは追加クエリを打たずそのまま返す。
+async function enrichThemesForParticipant(
+  list: ThemeWithCounts[],
+  participantId: string | null,
+): Promise<ThemeWithCounts[]> {
+  if (!participantId || list.length === 0) return list;
+  const ids = list.map((t) => t.id);
+  const [answered, maps] = await Promise.all([
+    db
+      .select({ themeId: statements.themeId, n: countDistinct(votes.statementId) })
+      .from(statements)
+      .innerJoin(
+        votes,
+        and(eq(votes.statementId, statements.id), eq(votes.participantId, participantId)),
+      )
+      .where(and(inArray(statements.themeId, ids), eq(statements.status, "visible")))
+      .groupBy(statements.themeId),
+    db
+      .select({ themeId: mathResults.themeId, result: mathResults.result })
+      .from(mathResults)
+      .where(inArray(mathResults.themeId, ids)),
+  ]);
+  const answeredMap = new Map(answered.map((a) => [a.themeId, a.n]));
+  const mapReady = new Set(
+    maps
+      .filter((m) => (m.result as { status?: string } | null)?.status === "ok")
+      .map((m) => m.themeId),
+  );
+  return list.map((t) => {
+    const myAnswered = answeredMap.get(t.id) ?? 0;
+    return {
+      ...t,
+      unansweredCount: Math.max(t.statementCount - myAnswered, 0),
+      participated: myAnswered > 0,
+      hasMap: mapReady.has(t.id),
+    };
+  });
+}
+
+// タブに応じてページを取得し、参加者ごとの付加情報を合成して返す。
+export async function listThemesForTab(
+  tab: ThemesTab,
+  participantId: string | null,
+  offset: number,
+  limit: number = THEMES_PAGE_SIZE,
+): Promise<ThemeWithCounts[]> {
+  const raw =
+    tab === "mine"
+      ? await listParticipatedPage(participantId, offset, limit)
+      : tab === "unread"
+        ? await listUnreadPage(participantId, offset, limit)
+        : await listThemesPage(tab, offset, limit);
+  return enrichThemesForParticipant(raw, participantId);
 }
 
 export async function listThemesPage(
