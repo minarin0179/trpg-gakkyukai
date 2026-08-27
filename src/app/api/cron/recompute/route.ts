@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq, lt, isNotNull } from "drizzle-orm";
 import { db, themes, rateEvents, reports } from "@/db";
-import { maybeRecompute } from "@/lib/recompute";
+import { maybeRecompute, recomputeTheme } from "@/lib/recompute";
 
 // 日次のバックストップ再計算。通常は投票時に都度再計算されるため、
 // これは取りこぼし(計算失敗など)の回収用
@@ -12,6 +12,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // ?force=1 で、投票数の増減に関わらず全アクティブテーマを再計算する。
+  // 計算ロジック(_logic.py 等)を変更した後にキャッシュを一括更新する用途。
+  const force = new URL(request.url).searchParams.get("force") === "1";
+
   const active = await db
     .select({ id: themes.id })
     .from(themes)
@@ -19,7 +23,16 @@ export async function GET(request: Request) {
 
   let recomputed = 0;
   for (const t of active) {
-    if (await maybeRecompute(t.id)) recomputed++;
+    if (force) {
+      try {
+        await recomputeTheme(t.id);
+        recomputed++;
+      } catch (e) {
+        console.error(`forced recompute failed for theme ${t.id}:`, e);
+      }
+    } else if (await maybeRecompute(t.id)) {
+      recomputed++;
+    }
   }
 
   // レート制限の窓(24時間)を過ぎた記録は不要なので48時間で消し込む。
