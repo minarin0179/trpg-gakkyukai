@@ -39,14 +39,21 @@ export async function removeContentAction(formData: FormData) {
       .where(eq(themes.id, targetId));
   }
 
-  await db.delete(reports).where(eq(reports.id, reportId));
+  // 通報は削除せず「対応済み(削除)」として残す
+  await db
+    .update(reports)
+    .set({ resolvedAt: new Date(), resolution: "removed" })
+    .where(eq(reports.id, reportId));
   redirect("/admin");
 }
 
-// 基準に該当しない通報を却下する
+// 基準に該当しない通報を却下する(削除せず「対応済み(却下)」として残す)
 export async function dismissReportAction(formData: FormData) {
   if (!(await isAdmin())) notFound();
   const reportId = Number(formData.get("reportId"));
-  await db.delete(reports).where(eq(reports.id, reportId));
+  await db
+    .update(reports)
+    .set({ resolvedAt: new Date(), resolution: "dismissed" })
+    .where(eq(reports.id, reportId));
   redirect("/admin");
 }

@@ -88,6 +88,10 @@ export const reports = pgTable("reports", {
   reason: text("reason").notNull(),
   ipHash: text("ip_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // 対応済みの記録。resolvedAt が null なら未対応。
+  // resolution は対応の種別(removed=対象を削除 / dismissed=却下)。
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolution: text("resolution", { enum: ["removed", "dismissed"] }),
 });
 
 // レート制限イベント(テーマ提案・意見投稿の流量制御)
