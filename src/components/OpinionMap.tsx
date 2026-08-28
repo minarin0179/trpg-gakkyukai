@@ -161,6 +161,7 @@ export function OpinionMap({
             role="img"
             aria-label="意見マップ"
             onMouseLeave={() => setActiveGroup(null)}
+            onClick={() => setActiveGroup(null)}
           >
             {/* 参考軸(意見全体の重心を通る十字) */}
             {axisX !== null && <line x1={axisX} y1={0} x2={axisX} y2={H} stroke="#d6d3d1" strokeWidth={1} />}
@@ -181,7 +182,12 @@ export function OpinionMap({
                 <g
                   key={`hull-${cid}`}
                   onMouseEnter={() => setActiveGroup(cid)}
-                  onClick={() => setActiveGroup(active ? null : cid)}
+                  onClick={(e) => {
+                    // トグルにするとiOSのhover疑似発火(mouseenter→click)で開いた直後に
+                    // 閉じてしまうため、常にそのグループを選択する(閉じるは空白タップ)。
+                    e.stopPropagation();
+                    setActiveGroup(cid);
+                  }}
                   className="cursor-pointer"
                 >
                   {hull.length >= 3 ? (
@@ -226,7 +232,10 @@ export function OpinionMap({
                 <g
                   key={`label-${cid}`}
                   onMouseEnter={() => setActiveGroup(cid)}
-                  onClick={() => setActiveGroup(activeGroup === cid ? null : cid)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveGroup(cid);
+                  }}
                   className="cursor-pointer"
                 >
                   <rect x={cx - w / 2} y={cy - 11} width={w} height={22} rx={11} fill="white" stroke={color} strokeWidth={1.5} />
