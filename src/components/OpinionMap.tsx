@@ -137,9 +137,15 @@ export function OpinionMap({
       : [];
   const activeCluster = clusters.find((c) => c.cid === activeGroup);
 
+  // グループを越えた合意。賛成で一致した意見も、反対で一致した意見も、どちらも合意として扱う
+  // (反対の合意 = 全員がその意見を退けた、という共有された認識)。
   const consensusAgree = (result.consensus?.agree ?? []).filter(
     (c) => statementTexts[c.statement_id],
   );
+  const consensusDisagree = (result.consensus?.disagree ?? []).filter(
+    (c) => statementTexts[c.statement_id],
+  );
+  const hasConsensus = consensusAgree.length > 0 || consensusDisagree.length > 0;
 
   // PCA空間の原点(意見の重心)を通る参考軸
   const axisX = minX < 0 && maxX > 0 ? sx(0) : null;
@@ -325,18 +331,28 @@ export function OpinionMap({
         </p>
       </div>
 
-      {consensusAgree.length > 0 && (
+      {hasConsensus && (
         <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4">
           <h3 className="mb-2 text-sm font-semibold text-emerald-900">
-            グループを越えて合意された意見
+            グループを越えて意見が一致したもの
           </h3>
           <ul className="flex flex-col gap-1.5 text-sm text-emerald-900">
             {consensusAgree.map((c) => (
-              <li key={c.statement_id}>
+              <li key={`agree-${c.statement_id}`}>
                 「{statementTexts[c.statement_id]}」
                 {c.agree_ratio !== null && (
-                  <span className="ml-1 text-xs text-emerald-700">
-                    (賛成 {Math.round(c.agree_ratio * 100)}%)
+                  <span className="ml-1 text-xs font-medium text-emerald-700">
+                    賛成 {Math.round(c.agree_ratio * 100)}%
+                  </span>
+                )}
+              </li>
+            ))}
+            {consensusDisagree.map((c) => (
+              <li key={`disagree-${c.statement_id}`} className="text-rose-700">
+                「{statementTexts[c.statement_id]}」
+                {c.agree_ratio !== null && (
+                  <span className="ml-1 text-xs font-medium">
+                    反対 {Math.round(c.agree_ratio * 100)}%
                   </span>
                 )}
               </li>
