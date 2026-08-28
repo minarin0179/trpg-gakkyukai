@@ -319,7 +319,7 @@ export function OpinionMap({
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-stone-600">特徴的な意見はまだ検出されていません。</p>
+                <p className="text-xs text-stone-600">特徴的な意見はまだ見つかっていません。</p>
               )}
             </div>
           )}
@@ -334,16 +334,16 @@ export function OpinionMap({
       </div>
 
       {hasConsensus && (
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4">
+        <div className="rounded-lg border border-emerald-300 bg-white p-4">
           <h3 className="mb-2 text-sm font-semibold text-emerald-900">
             グループを越えて意見が一致したもの
           </h3>
-          <ul className="flex flex-col gap-1.5 text-sm text-emerald-900">
+          <ul className="flex flex-col gap-1.5 text-sm">
             {consensusAgree.map((c) => (
-              <li key={`agree-${c.statement_id}`}>
+              <li key={`agree-${c.statement_id}`} className="text-emerald-700">
                 「{statementTexts[c.statement_id]}」
                 {c.agree_ratio !== null && (
-                  <span className="ml-1 text-xs font-medium text-emerald-700">
+                  <span className="ml-1 text-xs font-medium">
                     賛成 {Math.round(c.agree_ratio * 100)}%
                   </span>
                 )}
@@ -363,31 +363,39 @@ export function OpinionMap({
         </div>
       )}
 
-      {result.repness && Object.keys(result.repness).length > 0 && (
+      {clusters.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2">
-          {Object.entries(result.repness).map(([gid, items]) => {
-            const visible = items.filter((i) => statementTexts[i.statement_id]).slice(0, 4);
-            if (visible.length === 0) return null;
-            const g = Number(gid);
-            return (
-              <div key={gid} className="rounded-lg border border-stone-400 bg-white p-4">
-                <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
-                  <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: GROUP_COLORS[g % GROUP_COLORS.length] }} />
-                  グループ{GROUP_NAMES[g] ?? g}の特徴的な意見
-                </h4>
-                <ul className="flex flex-col gap-1.5 text-sm">
-                  {visible.map((i) => (
-                    <li
-                      key={i.statement_id}
-                      className={i.repful_for === "agree" ? "text-emerald-700" : "text-rose-700"}
-                    >
-                      「{statementTexts[i.statement_id]}」に{i.repful_for === "agree" ? "賛成" : "反対"}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
+          {/* 全グループを表示する。特徴的な意見が無いグループもカードを残し、
+              「まだ検出されていません」と出す(吹き出しの表示と揃える) */}
+          {[...clusters]
+            .sort((a, b) => a.cid - b.cid)
+            .map(({ cid }) => {
+              const visible = (result.repness?.[String(cid)] ?? [])
+                .filter((i) => statementTexts[i.statement_id])
+                .slice(0, 4);
+              return (
+                <div key={cid} className="rounded-lg border border-stone-400 bg-white p-4">
+                  <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: GROUP_COLORS[cid % GROUP_COLORS.length] }} />
+                    グループ{GROUP_NAMES[cid] ?? cid}の特徴的な意見
+                  </h4>
+                  {visible.length > 0 ? (
+                    <ul className="flex flex-col gap-1.5 text-sm">
+                      {visible.map((i) => (
+                        <li
+                          key={i.statement_id}
+                          className={i.repful_for === "agree" ? "text-emerald-700" : "text-rose-700"}
+                        >
+                          「{statementTexts[i.statement_id]}」に{i.repful_for === "agree" ? "賛成" : "反対"}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-stone-500">特徴的な意見はまだ見つかっていません。</p>
+                  )}
+                </div>
+              );
+            })}
         </div>
       )}
     </div>
