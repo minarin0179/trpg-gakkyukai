@@ -72,6 +72,9 @@ export function OpinionMap({
   }
 
   const pts = result.participants;
+  // 自分が属するグループ(クラスタ)のID。マップ上で7票未満などで未クラスタなら null。
+  const myCluster =
+    myIndex !== null ? (pts.find((p) => p.id === myIndex)?.cluster ?? null) : null;
   const xs = pts.map((p) => p.x);
   const ys = pts.map((p) => p.y);
   const pad = 0.28;
@@ -306,6 +309,11 @@ export function OpinionMap({
             >
               <p className="mb-1 text-xs font-bold" style={{ color: GROUP_COLORS[activeGroup % GROUP_COLORS.length] }}>
                 グループ{GROUP_NAMES[activeGroup] ?? activeGroup}({activeCluster.members.length}人)
+                {activeGroup === myCluster && (
+                  <span className="ml-1.5 rounded-full bg-stone-900 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    あなた
+                  </span>
+                )}
               </p>
               {activeRepness.length > 0 ? (
                 <ul className="flex flex-col gap-1 text-xs leading-relaxed">
@@ -378,6 +386,11 @@ export function OpinionMap({
                   <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
                     <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: GROUP_COLORS[cid % GROUP_COLORS.length] }} />
                     グループ{GROUP_NAMES[cid] ?? cid}の特徴的な意見
+                    {cid === myCluster && (
+                      <span className="rounded-full bg-stone-900 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                        あなた
+                      </span>
+                    )}
                   </h4>
                   {visible.length > 0 ? (
                     <ul className="flex flex-col gap-1.5 text-sm">
