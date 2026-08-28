@@ -71,14 +71,23 @@ export async function recomputeTheme(themeId: string): Promise<void> {
     mod_out_statement_ids: [],
   };
 
-  const res = await fetch(computeEndpoint(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Internal-Key": process.env.CRON_SECRET ?? "",
-    },
-    body: JSON.stringify(payload),
-  });
+  // 計算関数がハングしても呼び出し側(同期実行するページ含む)を止めないようタイムアウトを設ける
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
+  let res: Response;
+  try {
+    res = await fetch(computeEndpoint(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Key": process.env.CRON_SECRET ?? "",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
   if (!res.ok) {
     throw new Error(`compute failed: ${res.status} ${await res.text()}`);
   }

@@ -9,7 +9,7 @@ import {
   getMyVotes,
 } from "@/lib/queries";
 import { getParticipantId } from "@/lib/participant";
-import type { MathResultJson } from "@/lib/recompute";
+import { recomputeTheme, type MathResultJson } from "@/lib/recompute";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
 import { OpinionMap, type PublicMathResult } from "@/components/OpinionMap";
@@ -35,8 +35,25 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
     getMyVotes(id, participantId),
   ]);
 
+  // 保存済みの結果が最後の投票より古い(投票の追加・訂正が未反映)なら、その場で
+  // 再計算して最新化する。投票のたびの再計算はスロットルされ得るため、この自己修復で
+  // 「訂正しても数値が戻らない/リロードでも直らない」不整合を解消する。
+  let effectiveMathRow = mathRow;
+  if (
+    mathRow &&
+    counts.lastVoteAt &&
+    new Date(counts.lastVoteAt).getTime() > mathRow.computedAt.getTime()
+  ) {
+    try {
+      await recomputeTheme(id);
+      effectiveMathRow = await getMathResult(id);
+    } catch {
+      // 計算失敗・タイムアウト時は古い結果のまま表示する
+    }
+  }
+
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない
-  const raw = (mathRow?.result ?? null) as MathResultJson | null;
+  const raw = (effectiveMathRow?.result ?? null) as MathResultJson | null;
   let myIndex: number | null = null;
   let publicResult: PublicMathResult | null = null;
   if (raw) {
