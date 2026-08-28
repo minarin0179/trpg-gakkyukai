@@ -166,7 +166,9 @@ async function enrichThemesForParticipant(
 
   return list.map((t) => {
     const hasMap = mapReady.has(t.id);
-    if (!participantId) return { ...t, hasMap };
+    // cookieが無い(未参加の匿名)訪問者は、識別子を新規発行せずに
+    // 表示上「未参加」として扱う。1票入れれば cookie が発行され参加済みになる。
+    if (!participantId) return { ...t, hasMap, participated: false };
     const myAnswered = answeredMap.get(t.id) ?? 0;
     return {
       ...t,
