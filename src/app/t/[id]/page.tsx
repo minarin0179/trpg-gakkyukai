@@ -29,11 +29,23 @@ export async function generateMetadata({ params }: PageProps<"/t/[id]">): Promis
   const description =
     theme.description?.trim().slice(0, 120) ||
     "賛成・反対・パスで投票して、グループを越えた合意点を見つけよう。";
+  // Next.jsは openGraph / twitter を丸ごと置換するため、レイアウトの
+  // siteName や card(summary_large_image)をここでも明示しないと失われる。
   return {
     title: theme.title,
     description,
-    openGraph: { title: theme.title, description },
-    twitter: { title: theme.title, description },
+    openGraph: {
+      type: "article",
+      siteName: "TRPG学級会",
+      locale: "ja_JP",
+      title: theme.title,
+      description,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: theme.title,
+      description,
+    },
   };
 }
 
