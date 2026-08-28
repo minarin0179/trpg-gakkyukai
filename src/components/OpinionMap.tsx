@@ -287,7 +287,10 @@ export function OpinionMap({
             <div
               className="pointer-events-none absolute z-10 w-64 -translate-x-1/2 rounded-lg border bg-white p-3 shadow-lg"
               style={{
-                left: `${(activeCluster.cx / W) * 100}%`,
+                // 幅256px(w-64)を中央寄せ(translate-x-1/2)するため、左右に
+                // はみ出さないよう中心位置を [136px, 100%-136px] にクランプする
+                // (半幅128px + 余白8px)。スマホの左端切れを防ぐ。
+                left: `clamp(136px, ${(activeCluster.cx / W) * 100}%, calc(100% - 136px))`,
                 top: `${(Math.min(activeCluster.cy + 24, H - 10) / H) * 100}%`,
                 borderColor: GROUP_COLORS[activeGroup % GROUP_COLORS.length],
               }}
