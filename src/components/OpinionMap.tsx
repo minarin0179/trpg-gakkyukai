@@ -308,23 +308,13 @@ export function OpinionMap({
                 グループ{GROUP_NAMES[activeGroup] ?? activeGroup}({activeCluster.members.length}人)
               </p>
               {activeRepness.length > 0 ? (
-                <ul className="flex flex-col gap-1 text-xs leading-relaxed text-stone-700">
+                <ul className="flex flex-col gap-1 text-xs leading-relaxed">
                   {activeRepness.map((i) => (
-                    <li key={i.statement_id}>
-                      「{statementTexts[i.statement_id]}」
-                      <span className="text-stone-600">
-                        に
-                        <span
-                          className={
-                            i.repful_for === "agree"
-                              ? "font-medium text-emerald-700"
-                              : "font-medium text-red-600"
-                          }
-                        >
-                          {i.repful_for === "agree" ? "賛成" : "反対"}
-                        </span>
-                        しがち
-                      </span>
+                    <li
+                      key={i.statement_id}
+                      className={i.repful_for === "agree" ? "text-emerald-700" : "text-rose-700"}
+                    >
+                      「{statementTexts[i.statement_id]}」に{i.repful_for === "agree" ? "賛成" : "反対"}
                     </li>
                   ))}
                 </ul>
@@ -385,21 +375,13 @@ export function OpinionMap({
                   <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: GROUP_COLORS[g % GROUP_COLORS.length] }} />
                   グループ{GROUP_NAMES[g] ?? g}の特徴的な意見
                 </h4>
-                <ul className="flex flex-col gap-1.5 text-sm text-stone-700">
+                <ul className="flex flex-col gap-1.5 text-sm">
                   {visible.map((i) => (
-                    <li key={i.statement_id}>
-                      「{statementTexts[i.statement_id]}」
-                      <span className="ml-1 text-xs text-stone-600">
-                        に
-                        <span
-                          className={`font-medium ${
-                            i.repful_for === "agree" ? "text-emerald-700" : "text-red-600"
-                          }`}
-                        >
-                          {i.repful_for === "agree" ? "賛成" : "反対"}
-                        </span>
-                        しがち
-                      </span>
+                    <li
+                      key={i.statement_id}
+                      className={i.repful_for === "agree" ? "text-emerald-700" : "text-rose-700"}
+                    >
+                      「{statementTexts[i.statement_id]}」に{i.repful_for === "agree" ? "賛成" : "反対"}
                     </li>
                   ))}
                 </ul>
