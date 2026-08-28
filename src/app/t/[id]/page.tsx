@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   getTheme,
@@ -19,6 +20,22 @@ import { ShareTheme } from "@/components/ShareTheme";
 import { formatRelativeDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+// 共有時のカードのタイトル・説明をテーマ固有にする(OG画像は opengraph-image.tsx)
+export async function generateMetadata({ params }: PageProps<"/t/[id]">): Promise<Metadata> {
+  const { id } = await params;
+  const theme = await getTheme(id).catch(() => null);
+  if (!theme) return {};
+  const description =
+    theme.description?.trim().slice(0, 120) ||
+    "賛成・反対・パスで投票して、グループを越えた合意点を見つけよう。";
+  return {
+    title: theme.title,
+    description,
+    openGraph: { title: theme.title, description },
+    twitter: { title: theme.title, description },
+  };
+}
 
 export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
   const { id } = await params;
