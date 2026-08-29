@@ -9,6 +9,10 @@ import { useState } from "react";
 const GROUP_COLORS = ["#2563eb", "#dc2626", "#059669", "#d97706", "#7c3aed"];
 const GROUP_NAMES = ["A", "B", "C", "D", "E"];
 
+// ホバー吹き出し・合意・グループカードで共通の「既定で見せる件数」。
+// 絞り込みのルールを全体で揃え、続きは「すべて見る」で展開する。
+const PREVIEW_COUNT = 2;
+
 export type PublicMathResult = {
   status: "ok" | "insufficient";
   group_count?: number;
@@ -62,6 +66,7 @@ export function OpinionMap({
   statementTexts: Record<number, string>;
 }) {
   const [activeGroup, setActiveGroup] = useState<number | null>(null);
+  const [showAllConsensus, setShowAllConsensus] = useState(false);
 
   if (!result || result.status !== "ok" || !result.participants?.length) {
     return (
@@ -131,12 +136,12 @@ export function OpinionMap({
     return { x0: pos.cx - w / 2, y0: pos.cy - 11, x1: pos.cx + w / 2, y1: pos.cy + 11 };
   });
 
-  // ホバー中グループの特徴的な意見(上位2件)
+  // ホバー中グループの特徴的な意見(既定件数)。下のカードと同じ絞り込みルール。
   const activeRepness =
     activeGroup !== null
       ? (result.repness?.[String(activeGroup)] ?? [])
           .filter((i) => statementTexts[i.statement_id])
-          .slice(0, 2)
+          .slice(0, PREVIEW_COUNT)
       : [];
   const activeCluster = clusters.find((c) => c.cid === activeGroup);
 
@@ -149,6 +154,15 @@ export function OpinionMap({
     (c) => statementTexts[c.statement_id],
   );
   const hasConsensus = consensusAgree.length > 0 || consensusDisagree.length > 0;
+
+  // 既定では方向ごと上位数件だけ見せ、「すべて見る」で有意な合意を全部展開する。
+  // 合意は am/dm(賛成率×確からしさ)の降順で並んでいるので、先頭が代表的。
+  const agreeShown = showAllConsensus ? consensusAgree : consensusAgree.slice(0, PREVIEW_COUNT);
+  const disagreeShown = showAllConsensus
+    ? consensusDisagree
+    : consensusDisagree.slice(0, PREVIEW_COUNT);
+  const hiddenConsensusCount =
+    consensusAgree.length - agreeShown.length + (consensusDisagree.length - disagreeShown.length);
 
   // PCA空間の原点(意見の重心)を通る参考軸
   const axisX = minX < 0 && maxX > 0 ? sx(0) : null;
@@ -332,13 +346,15 @@ export function OpinionMap({
             </div>
           )}
         </div>
-        <p className="mt-2 text-center text-xs text-stone-600">
-          近くにいる人ほど投票傾向が似ています · グループに触れると特徴的な意見が見られます
-        </p>
-        <p className="mt-1 text-center text-xs text-stone-500">
-          投票が少ないうちは、傾向がはっきりした一部の人だけが表示されます。
-          参加が増えるほど、より多くの立場が地図に現れます。
-        </p>
+        {/* 間引きの注意は「まだ人数が少ないマップ」でだけ意味があるので、
+            表示人数が少ないときのみ出す(大人数のマップでは冗長なため隠す)。 */}
+        {pts.length < 60 && (
+          <p className="mt-2 text-center text-xs leading-relaxed text-stone-500">
+            投票が少ないうちは、傾向がはっきりした一部の人だけが表示されます。
+            <br />
+            参加が増えるほど、より多くの立場が地図に現れます。
+          </p>
+        )}
       </div>
 
       {hasConsensus && (
@@ -347,7 +363,7 @@ export function OpinionMap({
             グループを越えて意見が一致したもの
           </h3>
           <ul className="flex flex-col gap-1.5 text-sm">
-            {consensusAgree.map((c) => (
+            {agreeShown.map((c) => (
               <li key={`agree-${c.statement_id}`} className="text-emerald-700">
                 「{statementTexts[c.statement_id]}」
                 {c.agree_ratio !== null && (
@@ -357,7 +373,7 @@ export function OpinionMap({
                 )}
               </li>
             ))}
-            {consensusDisagree.map((c) => (
+            {disagreeShown.map((c) => (
               <li key={`disagree-${c.statement_id}`} className="text-rose-700">
                 「{statementTexts[c.statement_id]}」
                 {c.agree_ratio !== null && (
@@ -368,6 +384,15 @@ export function OpinionMap({
               </li>
             ))}
           </ul>
+          {(hiddenConsensusCount > 0 || showAllConsensus) && (
+            <button
+              type="button"
+              onClick={() => setShowAllConsensus((v) => !v)}
+              className="mt-2.5 text-xs font-medium text-stone-700 underline hover:text-stone-900"
+            >
+              {showAllConsensus ? "折りたたむ" : "すべて見る"}
+            </button>
+          )}
         </div>
       )}
 
@@ -377,39 +402,77 @@ export function OpinionMap({
               「まだ検出されていません」と出す(吹き出しの表示と揃える) */}
           {[...clusters]
             .sort((a, b) => a.cid - b.cid)
-            .map(({ cid }) => {
-              const visible = (result.repness?.[String(cid)] ?? [])
-                .filter((i) => statementTexts[i.statement_id])
-                .slice(0, 4);
-              return (
-                <div key={cid} className="rounded-lg border border-stone-400 bg-white p-4">
-                  <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
-                    <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: GROUP_COLORS[cid % GROUP_COLORS.length] }} />
-                    グループ{GROUP_NAMES[cid] ?? cid}の特徴的な意見
-                    {cid === myCluster && (
-                      <span className="rounded-full bg-stone-900 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                        あなた
-                      </span>
-                    )}
-                  </h4>
-                  {visible.length > 0 ? (
-                    <ul className="flex flex-col gap-1.5 text-sm">
-                      {visible.map((i) => (
-                        <li
-                          key={i.statement_id}
-                          className={i.repful_for === "agree" ? "text-emerald-700" : "text-rose-700"}
-                        >
-                          「{statementTexts[i.statement_id]}」に{i.repful_for === "agree" ? "賛成" : "反対"}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-stone-500">特徴的な意見はまだ見つかっていません。</p>
-                  )}
-                </div>
-              );
-            })}
+            .map(({ cid }) => (
+              <GroupRepnessCard
+                key={cid}
+                cid={cid}
+                isMine={cid === myCluster}
+                items={(result.repness?.[String(cid)] ?? []).filter(
+                  (i) => statementTexts[i.statement_id],
+                )}
+                statementTexts={statementTexts}
+              />
+            ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// グループごとの特徴的な意見カード。既定は PREVIEW_COUNT 件だけ見せ、
+// 「すべて見る」で残りを展開する(合意の折りたたみと同じ絞り込みルール)。
+function GroupRepnessCard({
+  cid,
+  items,
+  isMine,
+  statementTexts,
+}: {
+  cid: number;
+  items: { statement_id: number; repful_for: string }[];
+  isMine: boolean;
+  statementTexts: Record<number, string>;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const shown = showAll ? items : items.slice(0, PREVIEW_COUNT);
+  const hidden = items.length - shown.length;
+  return (
+    <div className="rounded-lg border border-stone-400 bg-white p-4">
+      <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+        <span
+          className="inline-block h-2.5 w-2.5 rounded-full"
+          style={{ backgroundColor: GROUP_COLORS[cid % GROUP_COLORS.length] }}
+        />
+        グループ{GROUP_NAMES[cid] ?? cid}の特徴的な意見
+        {isMine && (
+          <span className="rounded-full bg-stone-900 px-1.5 py-0.5 text-[10px] font-medium text-white">
+            あなた
+          </span>
+        )}
+      </h4>
+      {items.length > 0 ? (
+        <>
+          <ul className="flex flex-col gap-1.5 text-sm">
+            {shown.map((i) => (
+              <li
+                key={i.statement_id}
+                className={i.repful_for === "agree" ? "text-emerald-700" : "text-rose-700"}
+              >
+                「{statementTexts[i.statement_id]}」に{i.repful_for === "agree" ? "賛成" : "反対"}
+              </li>
+            ))}
+          </ul>
+          {(hidden > 0 || showAll) && (
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              className="mt-2 text-xs font-medium text-stone-700 underline hover:text-stone-900"
+            >
+              {showAll ? "折りたたむ" : "すべて見る"}
+            </button>
+          )}
+        </>
+      ) : (
+        <p className="text-sm text-stone-500">特徴的な意見はまだ見つかっていません。</p>
       )}
     </div>
   );
