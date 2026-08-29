@@ -10,7 +10,9 @@ export type { ThemesTab } from "@/lib/queries";
 export async function loadMoreThemes(
   tab: ThemesTab,
   offset: number,
+  query?: string,
 ): Promise<ThemeWithCounts[]> {
   const safeOffset = Number.isFinite(offset) && offset > 0 ? Math.floor(offset) : 0;
-  return listThemesForTab(tab, await getParticipantId(), safeOffset);
+  const q = typeof query === "string" ? query.slice(0, 100) : undefined;
+  return listThemesForTab(tab, await getParticipantId(), safeOffset, undefined, q);
 }

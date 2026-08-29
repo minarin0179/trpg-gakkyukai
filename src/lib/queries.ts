@@ -90,6 +90,35 @@ function themesWithCountsQuery(extra?: SQL) {
     .where(extra ? and(eq(themes.status, "active"), extra) : eq(themes.status, "active"));
 }
 
+// テーマ検索(タブ非依存)。空白区切りの各語について title/description の
+// 部分一致(ILIKE)を AND で取る。表記ゆれ・略語は拾わない単純一致だが、
+// この規模では十分軽く、検索ボックスとしては挙動が直感的。
+// ユーザー入力中の LIKE ワイルドカード(% _ \)は literal 化してから渡す。
+const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+function buildSearchCondition(query: string): SQL | undefined {
+  const terms = query.split(/\s+/).filter(Boolean).slice(0, 6);
+  if (terms.length === 0) return undefined;
+  const conds = terms.map((t) => {
+    const like = `%${escapeLike(t)}%`;
+    return sql`(themes.title ILIKE ${like} OR themes.description ILIKE ${like})`;
+  });
+  return and(...conds);
+}
+
+async function listSearchPage(
+  query: string,
+  offset: number,
+  limit: number,
+): Promise<ThemeWithCounts[]> {
+  const cond = buildSearchCondition(query);
+  if (!cond) return [];
+  return themesWithCountsQuery(cond)
+    .orderBy(desc(themes.createdAt), desc(themes.id))
+    .limit(limit)
+    .offset(offset);
+}
+
 // 新着タブ: 全アクティブテーマを新着順。DBのoffset/limitでそのままページング
 async function listFreshPage(offset: number, limit: number): Promise<ThemeWithCounts[]> {
   return themesWithCountsQuery()
@@ -189,9 +218,13 @@ export async function listThemesForTab(
   participantId: string | null,
   offset: number,
   limit: number = THEMES_PAGE_SIZE,
+  query?: string,
 ): Promise<ThemeWithCounts[]> {
-  const raw =
-    tab === "mine"
+  // 検索語があればタブに関係なく全アクティブテーマから部分一致で探す
+  const q = query?.trim();
+  const raw = q
+    ? await listSearchPage(q, offset, limit)
+    : tab === "mine"
       ? await listParticipatedPage(participantId, offset, limit)
       : tab === "unread"
         ? await listUnreadPage(participantId, offset, limit)
