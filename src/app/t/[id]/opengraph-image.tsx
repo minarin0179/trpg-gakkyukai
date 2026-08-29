@@ -10,6 +10,12 @@ export const contentType = "image/png";
 // ISRで長めにキャッシュ(7日)してエッジ配信に切り替える。
 export const revalidate = 604800;
 
+// 動的セグメントをランタイムでISRキャッシュするには generateStaticParams が必須
+// (空配列=アクセスされたテーマのOG画像だけをその場でキャッシュする)。
+export function generateStaticParams() {
+  return [];
+}
+
 // 画像に描画する固定テキスト(フォントのサブセット取得に使う)
 const STATIC_TEXT =
   "TRPG学級会レスバより、セッションを。賛成/反対/パスで投票して、意見マップをつくろう。0123456789";

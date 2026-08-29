@@ -19,6 +19,13 @@ import { formatRelativeDate } from "@/lib/format";
 // 新規意見の投稿時は createStatementAction が revalidatePath でこのページを更新する。
 export const revalidate = 30;
 
+// 動的セグメント([id])をランタイムでISRキャッシュするには generateStaticParams が必須。
+// 空配列=ビルド時は生成せず、アクセスされたテーマだけをその場でISRキャッシュする
+// (これが無いと revalidate は無視され毎回オリジン描画=Fast Origin Transferを浪費する)。
+export function generateStaticParams() {
+  return [];
+}
+
 // 共有時のカードのタイトル・説明をテーマ固有にする(OG画像は opengraph-image.tsx)
 export async function generateMetadata({ params }: PageProps<"/t/[id]">): Promise<Metadata> {
   const { id } = await params;
