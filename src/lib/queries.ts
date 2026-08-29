@@ -141,16 +141,16 @@ async function enrichThemesForParticipant(
   if (list.length === 0) return list;
   const ids = list.map((t) => t.id);
 
-  // マップの有無はテーマの公開情報なので、参加の有無に関係なく常に算出する
+  // マップの有無はテーマの公開情報なので、参加の有無に関係なく常に算出する。
+  // 巨大な result JSON全体ではなく status フィールドだけを抽出する(転送量削減)。
   const maps = await db
-    .select({ themeId: mathResults.themeId, result: mathResults.result })
+    .select({
+      themeId: mathResults.themeId,
+      status: sql<string | null>`${mathResults.result} ->> 'status'`,
+    })
     .from(mathResults)
     .where(inArray(mathResults.themeId, ids));
-  const mapReady = new Set(
-    maps
-      .filter((m) => (m.result as { status?: string } | null)?.status === "ok")
-      .map((m) => m.themeId),
-  );
+  const mapReady = new Set(maps.filter((m) => m.status === "ok").map((m) => m.themeId));
 
   // 参加者依存の情報(未回答数・参加有無)は cookie があるときだけ算出する
   const answeredMap = new Map<string, number>();

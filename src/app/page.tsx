@@ -3,7 +3,9 @@ import Image from "next/image";
 import { listThemes } from "@/lib/queries";
 import { ThemeCard } from "@/components/ThemeCard";
 
-export const dynamic = "force-dynamic";
+// トップは個人化データを持たない(featuredは共有情報)ので、ISRで60秒キャッシュし
+// DB転送を大幅に削減する。新規テーマ等は最大60秒で反映される。
+export const revalidate = 60;
 
 const FEATURES = [
   {

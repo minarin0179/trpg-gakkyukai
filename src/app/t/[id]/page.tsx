@@ -9,9 +9,8 @@ import {
   getMyVoteCount,
   getMyVotes,
 } from "@/lib/queries";
-import { after } from "next/server";
 import { getParticipantId } from "@/lib/participant";
-import { maybeRecompute, type MathResultJson } from "@/lib/recompute";
+import type { MathResultJson } from "@/lib/recompute";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
 import { OpinionMap, type PublicMathResult } from "@/components/OpinionMap";
@@ -64,17 +63,6 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
     getMyVoteCount(id, participantId),
     getMyVotes(id, participantId),
   ]);
-
-  // 保存済みの結果が最後の投票より古い(投票の追加・訂正が未反映)なら、応答を返した後に
-  // バックグラウンドで再計算をスケジュールする。次回の表示で最新化される。
-  // ※同期実行するとPython計算(数秒)でページ表示が遅くなるため非ブロッキングにする。
-  if (
-    mathRow &&
-    counts.lastVoteAt &&
-    new Date(counts.lastVoteAt).getTime() > mathRow.computedAt.getTime()
-  ) {
-    after(() => maybeRecompute(id).catch(() => {}));
-  }
 
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない
   const raw = (mathRow?.result ?? null) as MathResultJson | null;
