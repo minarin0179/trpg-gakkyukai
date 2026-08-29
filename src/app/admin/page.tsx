@@ -1,14 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { desc, eq, inArray, isNull, isNotNull, count } from "drizzle-orm";
+import { desc, inArray, isNull, isNotNull, count } from "drizzle-orm";
 import { db, reports, statements, themes } from "@/db";
-import { removeContentAction, dismissReportAction } from "./actions";
+import { removeContentAction, dismissTargetAction, dismissReportAction } from "./actions";
 import { REMOVAL_CRITERIA } from "@/lib/rules";
 import { requireAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
+
+type ReportRow = typeof reports.$inferSelect;
+
+// 同じ対象への通報をまとめる。theme/statement は (targetType,targetId) で束ね、
+// contact は対象IDを共有("-")するため束ねず1件ずつ独立したグループにする。
+type Group = {
+  key: string;
+  targetType: string;
+  targetId: string;
+  reports: ReportRow[];
+  latestAt: Date;
+};
 
 export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   await requireAdmin();
@@ -22,24 +34,52 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
       .from(reports)
       .where(resolvedView ? isNotNull(reports.resolvedAt) : isNull(reports.resolvedAt))
       .orderBy(desc(resolvedView ? reports.resolvedAt : reports.createdAt))
-      .limit(100),
+      .limit(300),
     db.select({ n: count() }).from(reports).where(isNull(reports.resolvedAt)),
     db.select({ n: count() }).from(reports).where(isNotNull(reports.resolvedAt)),
   ]);
   const openCount = openCountRow?.n ?? 0;
   const resolvedCount = resolvedCountRow?.n ?? 0;
 
+  // 対象ごとにグループ化(rowsは新しい順なので、初出順=表示順が保たれる)
+  const groupMap = new Map<string, Group>();
+  for (const r of rows) {
+    const key = r.targetType === "contact" ? `contact:${r.id}` : `${r.targetType}:${r.targetId}`;
+    const sortAt = (resolvedView ? r.resolvedAt : r.createdAt) ?? r.createdAt;
+    const g = groupMap.get(key);
+    if (g) {
+      g.reports.push(r);
+      if (sortAt > g.latestAt) g.latestAt = sortAt;
+    } else {
+      groupMap.set(key, {
+        key,
+        targetType: r.targetType,
+        targetId: r.targetId,
+        reports: [r],
+        latestAt: sortAt,
+      });
+    }
+  }
+  const groups = [...groupMap.values()];
+
   // 通報対象の本文を引き当てる
-  const stmtIds = rows.filter((r) => r.targetType === "statement").map((r) => Number(r.targetId));
-  const themeIds = rows.filter((r) => r.targetType === "theme").map((r) => r.targetId);
+  const stmtIds = groups
+    .filter((g) => g.targetType === "statement")
+    .map((g) => Number(g.targetId));
   const stmts = stmtIds.length
     ? await db.select().from(statements).where(inArray(statements.id, stmtIds))
     : [];
-  const reportedThemes = themeIds.length
+  const stmtMap = new Map(stmts.map((s) => [String(s.id), s]));
+
+  // テーマタイトルは「通報されたテーマ」と「通報された意見が属するテーマ」の両方が必要
+  const themeIdSet = new Set<string>();
+  for (const g of groups) if (g.targetType === "theme") themeIdSet.add(g.targetId);
+  for (const s of stmts) themeIdSet.add(s.themeId);
+  const themeIds = [...themeIdSet];
+  const themeRows = themeIds.length
     ? await db.select().from(themes).where(inArray(themes.id, themeIds))
     : [];
-  const stmtMap = new Map(stmts.map((s) => [String(s.id), s]));
-  const themeMap = new Map(reportedThemes.map((t) => [t.id, t]));
+  const themeMap = new Map(themeRows.map((t) => [t.id, t]));
 
   const tabClass = (active: boolean) =>
     `px-4 py-2 text-sm font-medium ${active ? "border-b-2 border-stone-900" : "text-stone-600"}`;
@@ -57,55 +97,110 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         </Link>
       </div>
 
-      {rows.length === 0 && (
+      {groups.length === 0 && (
         <p className="rounded-lg border border-dashed border-stone-400 p-6 text-center text-sm text-stone-600">
           {resolvedView ? "対応済みの通報はありません。" : "未対応の通報はありません。"}
         </p>
       )}
-      {rows.map((r) => {
-        const isContact = r.targetType === "contact";
-        const stmt = r.targetType === "statement" ? stmtMap.get(r.targetId) : null;
-        const theme = r.targetType === "theme" ? themeMap.get(r.targetId) : null;
-        const targetText =
-          r.targetType === "statement"
-            ? (stmt?.text ?? "(対象が見つかりません)")
+
+      {groups.map((g) => {
+        const isContact = g.targetType === "contact";
+        const isStatement = g.targetType === "statement";
+        const stmt = isStatement ? stmtMap.get(g.targetId) : null;
+        const theme = g.targetType === "theme" ? themeMap.get(g.targetId) : null;
+        // 意見が属するテーマ(意見通報のコンテキスト表示用)
+        const parentTheme = stmt ? themeMap.get(stmt.themeId) : null;
+
+        const targetText = isStatement
+          ? (stmt?.text ?? "(対象が見つかりません)")
+          : isContact
+            ? ""
             : (theme?.title ?? "(対象が見つかりません)");
-        const targetStatus = stmt?.status ?? theme?.status ?? "?";
-        const themeLink = isContact ? null : r.targetType === "statement" ? stmt?.themeId : r.targetId;
+        const targetStatus = stmt?.status ?? theme?.status ?? null;
+        const themeTitle = isStatement ? parentTheme?.title : theme?.title;
+        const themeLink = isStatement ? stmt?.themeId : g.targetType === "theme" ? g.targetId : null;
+
         return (
-          <div key={r.id} className="rounded-lg border border-stone-400 bg-white p-4">
-            <p className="text-xs text-stone-600">
-              {r.createdAt.toLocaleString("ja-JP")} ·{" "}
-              {isContact ? "お問い合わせ" : `対象: ${r.targetType === "statement" ? "意見" : "テーマ"} · 現在の状態: ${targetStatus}`}
-              {themeLink && (
-                <>
-                  {" · "}
+          <div key={g.key} className="rounded-lg border border-stone-400 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-xs text-stone-600">
+                {isContact
+                  ? "お問い合わせ"
+                  : `対象: ${isStatement ? "意見" : "テーマ"}`}
+                {targetStatus && (
+                  <>
+                    {" · 現在の状態: "}
+                    <span className={targetStatus === "removed" ? "font-medium text-rose-700" : ""}>
+                      {targetStatus === "removed" ? "削除済み" : targetStatus}
+                    </span>
+                  </>
+                )}
+              </p>
+              <span className="shrink-0 rounded-full border border-rose-300 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
+                通報 {g.reports.length}件
+              </span>
+            </div>
+
+            {/* テーマタイトル(コンテキスト) */}
+            {!isContact && (
+              <p className="mt-2 text-xs text-stone-600">
+                テーマ:{" "}
+                {themeLink ? (
                   <Link href={`/t/${themeLink}`} className="underline">
-                    テーマを開く
+                    {themeTitle ?? "(不明)"}
                   </Link>
-                </>
-              )}
-            </p>
-            {!isContact && <p className="mt-2 text-sm font-medium">「{targetText}」</p>}
-            <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">
-              {isContact ? r.reason : `通報理由: ${r.reason}`}
-            </p>
+                ) : (
+                  (themeTitle ?? "(不明)")
+                )}
+              </p>
+            )}
+
+            {/* 通報対象の本文 */}
+            {!isContact && <p className="mt-1 text-sm font-medium">「{targetText}」</p>}
+
+            {/* 通報理由のアコーディオン(contactは1件なのでそのまま表示) */}
+            {isContact ? (
+              <p className="mt-2 whitespace-pre-wrap text-sm text-stone-700">{g.reports[0].reason}</p>
+            ) : (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs font-medium text-stone-700">
+                  通報理由を見る（{g.reports.length}件）
+                </summary>
+                <ul className="mt-2 flex flex-col gap-2 border-l-2 border-stone-200 pl-3">
+                  {g.reports.map((r) => (
+                    <li key={r.id} className="text-sm">
+                      <span className="text-xs text-stone-500">
+                        {r.createdAt.toLocaleString("ja-JP")}
+                        {resolvedView && r.resolution && (
+                          <>
+                            {" · "}
+                            {r.resolution === "removed" ? "削除" : "却下"}
+                          </>
+                        )}
+                      </span>
+                      <p className="whitespace-pre-wrap text-stone-700">{r.reason}</p>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+
+            {/* アクション */}
             {resolvedView ? (
               <p className="mt-3 text-xs font-medium text-stone-600">
-                {r.resolution === "removed"
-                  ? "対応: 対象を削除"
-                  : r.resolution === "dismissed"
-                    ? "対応: 却下(基準外)"
-                    : "対応済み"}
-                {r.resolvedAt && ` · ${r.resolvedAt.toLocaleString("ja-JP")}`}
+                {(() => {
+                  const res = g.reports[0].resolution;
+                  const label =
+                    res === "removed" ? "対応: 対象を削除" : res === "dismissed" ? "対応: 却下(基準外)" : "対応済み";
+                  return `${label} · ${g.latestAt.toLocaleString("ja-JP")}`;
+                })()}
               </p>
             ) : (
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {!isContact && (
                   <form action={removeContentAction} className="flex items-center gap-2">
-                    <input type="hidden" name="reportId" value={r.id} />
-                    <input type="hidden" name="targetType" value={r.targetType} />
-                    <input type="hidden" name="targetId" value={r.targetId} />
+                    <input type="hidden" name="targetType" value={g.targetType} />
+                    <input type="hidden" name="targetId" value={g.targetId} />
                     <select
                       name="removedReason"
                       className="rounded-md border border-stone-400 bg-white px-2 py-1 text-xs"
@@ -126,15 +221,28 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                     </button>
                   </form>
                 )}
-                <form action={dismissReportAction}>
-                  <input type="hidden" name="reportId" value={r.id} />
-                  <button
-                    type="submit"
-                    className="rounded-md border border-stone-400 px-3 py-1 text-xs font-medium text-stone-700"
-                  >
-                    {isContact ? "対応済みにする" : "通報を却下(基準外)"}
-                  </button>
-                </form>
+                {isContact ? (
+                  <form action={dismissReportAction}>
+                    <input type="hidden" name="reportId" value={g.reports[0].id} />
+                    <button
+                      type="submit"
+                      className="rounded-md border border-stone-400 px-3 py-1 text-xs font-medium text-stone-700"
+                    >
+                      対応済みにする
+                    </button>
+                  </form>
+                ) : (
+                  <form action={dismissTargetAction}>
+                    <input type="hidden" name="targetType" value={g.targetType} />
+                    <input type="hidden" name="targetId" value={g.targetId} />
+                    <button
+                      type="submit"
+                      className="rounded-md border border-stone-400 px-3 py-1 text-xs font-medium text-stone-700"
+                    >
+                      通報を却下(基準外)
+                    </button>
+                  </form>
+                )}
               </div>
             )}
           </div>

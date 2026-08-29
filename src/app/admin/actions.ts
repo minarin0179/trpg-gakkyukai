@@ -1,18 +1,38 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { after } from "next/server";
 import { db, themes, statements, reports } from "@/db";
 import { recomputeTheme } from "@/lib/recompute";
 import { isAdmin } from "@/lib/admin-auth";
 import { notFound } from "next/navigation";
 
-// 通報対象を削除(status=removed)して通報を消化する
+type TargetType = "theme" | "statement" | "contact";
+
+// 同じ対象(theme/statement)への未対応の通報をまとめて解決する。
+// これにより、対象を消した後に他の通報が未対応のまま残る問題を防ぐ。
+async function resolveOpenReportsForTarget(
+  targetType: TargetType,
+  targetId: string,
+  resolution: "removed" | "dismissed",
+) {
+  await db
+    .update(reports)
+    .set({ resolvedAt: new Date(), resolution })
+    .where(
+      and(
+        eq(reports.targetType, targetType),
+        eq(reports.targetId, targetId),
+        isNull(reports.resolvedAt),
+      ),
+    );
+}
+
+// 通報対象を削除(status=removed)し、その対象への未対応通報を全て消化する
 export async function removeContentAction(formData: FormData) {
   if (!(await isAdmin())) notFound();
-  const reportId = Number(formData.get("reportId"));
-  const targetType = String(formData.get("targetType"));
+  const targetType = String(formData.get("targetType")) as TargetType;
   const targetId = String(formData.get("targetId"));
   const reason = String(formData.get("removedReason") ?? "通報対応");
 
@@ -27,7 +47,6 @@ export async function removeContentAction(formData: FormData) {
       .set({ status: "removed", removedReason: reason })
       .where(eq(statements.id, sid));
     if (stmt) {
-      // 削除された意見を除いてマップを再計算
       after(async () => {
         await recomputeTheme(stmt.themeId).catch(() => {});
       });
@@ -39,15 +58,21 @@ export async function removeContentAction(formData: FormData) {
       .where(eq(themes.id, targetId));
   }
 
-  // 通報は削除せず「対応済み(削除)」として残す
-  await db
-    .update(reports)
-    .set({ resolvedAt: new Date(), resolution: "removed" })
-    .where(eq(reports.id, reportId));
+  // 同じ対象への未対応の通報をまとめて「対応済み(削除)」に
+  await resolveOpenReportsForTarget(targetType, targetId, "removed");
   redirect("/admin");
 }
 
-// 基準に該当しない通報を却下する(削除せず「対応済み(却下)」として残す)
+// 対象(theme/statement)への未対応通報をまとめて却下する(基準外)
+export async function dismissTargetAction(formData: FormData) {
+  if (!(await isAdmin())) notFound();
+  const targetType = String(formData.get("targetType")) as TargetType;
+  const targetId = String(formData.get("targetId"));
+  await resolveOpenReportsForTarget(targetType, targetId, "dismissed");
+  redirect("/admin");
+}
+
+// 単一の通報を対応済みにする(主にお問い合わせ用。contactは対象でまとめない)
 export async function dismissReportAction(formData: FormData) {
   if (!(await isAdmin())) notFound();
   const reportId = Number(formData.get("reportId"));
