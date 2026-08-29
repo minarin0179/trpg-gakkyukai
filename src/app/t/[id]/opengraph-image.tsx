@@ -5,6 +5,11 @@ export const alt = "TRPG学級会のテーマ";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+// OG画像はテーマのタイトルにのみ依存し、タイトルは実質不変。
+// 既定では毎リクエスト再生成(Satoriで約2秒CPU+59KB)されオリジン転送を食うため、
+// ISRで長めにキャッシュ(7日)してエッジ配信に切り替える。
+export const revalidate = 604800;
+
 // 画像に描画する固定テキスト(フォントのサブセット取得に使う)
 const STATIC_TEXT =
   "TRPG学級会レスバより、セッションを。賛成/反対/パスで投票して、意見マップをつくろう。0123456789";
