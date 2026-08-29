@@ -28,6 +28,18 @@ export type ThemeWithCounts = {
   hasMap?: boolean; // 意見マップ(status ok)が生成済みか
 };
 
+// テーマ一覧の集計は、votesとstatementsを同時にJOINすると「投票数×意見数」の
+// 直積で中間結果が爆発し Neon が out of memory になる。各カウントを独立した
+// 相関サブクエリで取ることで直積を避ける(::int で JS の number にする)。
+const voterCountSubquery = sql<number>`(
+  select count(distinct ${votes.participantId})::int
+  from ${votes} where ${votes.themeId} = ${themes.id}
+)`;
+const visibleStatementCountSubquery = sql<number>`(
+  select count(*)::int from ${statements}
+  where ${statements.themeId} = ${themes.id} and ${statements.status} = 'visible'
+)`;
+
 export async function listThemes(): Promise<{
   main: ThemeWithCounts[];
   fresh: ThemeWithCounts[];
@@ -38,17 +50,11 @@ export async function listThemes(): Promise<{
       title: themes.title,
       description: themes.description,
       createdAt: themes.createdAt,
-      voterCount: countDistinct(votes.participantId),
-      statementCount: countDistinct(statements.id),
+      voterCount: voterCountSubquery,
+      statementCount: visibleStatementCountSubquery,
     })
     .from(themes)
-    .leftJoin(votes, eq(votes.themeId, themes.id))
-    .leftJoin(
-      statements,
-      and(eq(statements.themeId, themes.id), eq(statements.status, "visible")),
-    )
     .where(eq(themes.status, "active"))
-    .groupBy(themes.id)
     .orderBy(desc(themes.createdAt))
     .limit(200);
 
@@ -73,17 +79,11 @@ function themesWithCountsQuery(extra?: SQL) {
       title: themes.title,
       description: themes.description,
       createdAt: themes.createdAt,
-      voterCount: countDistinct(votes.participantId),
-      statementCount: countDistinct(statements.id),
+      voterCount: voterCountSubquery,
+      statementCount: visibleStatementCountSubquery,
     })
     .from(themes)
-    .leftJoin(votes, eq(votes.themeId, themes.id))
-    .leftJoin(
-      statements,
-      and(eq(statements.themeId, themes.id), eq(statements.status, "visible")),
-    )
-    .where(extra ? and(eq(themes.status, "active"), extra) : eq(themes.status, "active"))
-    .groupBy(themes.id);
+    .where(extra ? and(eq(themes.status, "active"), extra) : eq(themes.status, "active"));
 }
 
 // 新着タブ: 全アクティブテーマを新着順。DBのoffset/limitでそのままページング
@@ -233,17 +233,11 @@ export async function listParticipatedPage(
   const counts = await db
     .select({
       id: themes.id,
-      voterCount: countDistinct(votes.participantId),
-      statementCount: countDistinct(statements.id),
+      voterCount: voterCountSubquery,
+      statementCount: visibleStatementCountSubquery,
     })
     .from(themes)
-    .leftJoin(votes, eq(votes.themeId, themes.id))
-    .leftJoin(
-      statements,
-      and(eq(statements.themeId, themes.id), eq(statements.status, "visible")),
-    )
-    .where(inArray(themes.id, ids))
-    .groupBy(themes.id);
+    .where(inArray(themes.id, ids));
   const countMap = new Map(counts.map((c) => [c.id, c]));
   return mine.map((m) => ({
     id: m.id,
