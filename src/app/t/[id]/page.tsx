@@ -14,6 +14,7 @@ import type { MathResultJson } from "@/lib/recompute";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
 import { StatementGuidelines } from "@/components/StatementGuidelines";
+import { StatementComposer } from "@/components/StatementComposer";
 import { OpinionMap, type PublicMathResult } from "@/components/OpinionMap";
 import { StatementList } from "@/components/StatementList";
 import { ReportButton } from "@/components/ReportButton";
@@ -111,8 +112,10 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">
           まだ出ていない視点が思い浮かんだら、あなたの意見を投稿してみましょう
         </h2>
-        <StatementGuidelines />
-        <StatementForm themeId={theme.id} />
+        <StatementComposer>
+          <StatementGuidelines />
+          <StatementForm themeId={theme.id} />
+        </StatementComposer>
       </section>
 
       <div className="mt-6 border-t border-stone-400 pt-16 dark:border-stone-700">
