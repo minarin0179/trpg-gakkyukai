@@ -31,13 +31,16 @@ export type ThemeWithCounts = {
 // テーマ一覧の集計は、votesとstatementsを同時にJOINすると「投票数×意見数」の
 // 直積で中間結果が爆発し Neon が out of memory になる。各カウントを独立した
 // 相関サブクエリで取ることで直積を避ける(::int で JS の number にする)。
+// ${themes.id} 等はDrizzleがテーブル修飾なしで出力し、statements.id(整数)と
+// 衝突して型エラーになるため、サブクエリ内はエイリアス付きの生SQLで明示的に書く
+// (外側の themes は .from(themes) でエイリアスなしのため themes.id で参照できる)。
 const voterCountSubquery = sql<number>`(
-  select count(distinct ${votes.participantId})::int
-  from ${votes} where ${votes.themeId} = ${themes.id}
+  select count(distinct v.participant_id)::int
+  from votes v where v.theme_id = themes.id
 )`;
 const visibleStatementCountSubquery = sql<number>`(
-  select count(*)::int from ${statements}
-  where ${statements.themeId} = ${themes.id} and ${statements.status} = 'visible'
+  select count(*)::int from statements s
+  where s.theme_id = themes.id and s.status = 'visible'
 )`;
 
 export async function listThemes(): Promise<{
