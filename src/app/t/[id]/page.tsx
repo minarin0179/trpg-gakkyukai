@@ -13,6 +13,7 @@ import { getParticipantId } from "@/lib/participant";
 import type { MathResultJson } from "@/lib/recompute";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
+import { StatementGuidelines } from "@/components/StatementGuidelines";
 import { OpinionMap, type PublicMathResult } from "@/components/OpinionMap";
 import { StatementList } from "@/components/StatementList";
 import { ReportButton } from "@/components/ReportButton";
@@ -110,9 +111,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">
           まだ出ていない視点が思い浮かんだら、あなたの意見を投稿してみましょう
         </h2>
-        <p className="mb-3 rounded-md bg-stone-100 px-3 py-2 text-xs leading-relaxed text-stone-600 dark:bg-stone-800 dark:text-stone-400">
-          1つの意見には主張を1つだけ。賛成/反対で答えられる形にすると、みんなが投票しやすくなります。
-        </p>
+        <StatementGuidelines />
         <StatementForm themeId={theme.id} />
       </section>
 
