@@ -10,6 +10,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
+import { cache } from "react";
 import { db, themes, statements, votes, mathResults } from "@/db";
 import { PROMOTION_MIN_PARTICIPANTS, RANKING_GRAVITY, THEMES_PAGE_SIZE } from "./config";
 
@@ -252,11 +253,12 @@ export async function listParticipatedPage(
   }));
 }
 
-export async function getTheme(id: string) {
+// 同一リクエスト内での重複呼び出し(ページ描画・generateMetadata等)を1回に統合する。
+export const getTheme = cache(async (id: string) => {
   const [theme] = await db.select().from(themes).where(eq(themes.id, id));
   if (!theme || theme.status !== "active") return null;
   return theme;
-}
+});
 
 export async function getVisibleStatements(themeId: string) {
   return db

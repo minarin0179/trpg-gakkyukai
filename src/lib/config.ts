@@ -3,8 +3,10 @@
 // 構造的沈降: この人数が投票したテーマだけ人気タブに並ぶ
 export const PROMOTION_MIN_PARTICIPANTS = 10;
 
-// 再計算の最短間隔(秒)。投票のたびに叩かれても計算が暴走しないための抑制
-export const RECOMPUTE_MIN_INTERVAL_SEC = 20;
+// 再計算の最短間隔(秒)。投票のたびに叩かれても計算が暴走しないための抑制。
+// 再計算はテーマの全投票を読み込む(=転送量最大の源)ため、頻度を抑えて転送を削減する。
+// 大きくするほどマップ更新は遅くなる(60秒なら実害小)。
+export const RECOMPUTE_MIN_INTERVAL_SEC = 60;
 
 export const THEME_TITLE_MAX = 100;
 export const THEME_DESCRIPTION_MAX = 2000;
