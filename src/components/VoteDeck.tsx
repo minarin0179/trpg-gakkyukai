@@ -1,45 +1,38 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 import { castVoteAction } from "@/app/actions";
+import { usePersonalization } from "./ThemePersonalization";
 
 type Statement = { id: number; text: string };
 
-export function VoteDeck({
-  themeId,
-  statements,
-  total,
-  alreadyVoted,
-}: {
-  themeId: string;
-  statements: Statement[];
-  total: number; // このテーマの可視の意見の総数(未投票が0でも「意見なし」と「全投票済み」を区別する)
-  alreadyVoted: number; // この参加者がこのテーマで既に投票済みの数(累計表示用)
-}) {
+// 偏りを避けるためのFisher-Yatesシャッフル(元のサーバー側 random() 相当)
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// 投票デッキ。テーマの全意見を受け取り、自分が未投票のぶんを(個人化の読み込み完了時に
+// 一度だけ)シャッフルして順に出す。自分の投票状態は ThemePersonalization から取得する。
+export function VoteDeck({ themeId, statements }: { themeId: string; statements: Statement[] }) {
+  const { votes, loaded, setVote } = usePersonalization();
+  const total = statements.length;
+
+  const [deck, setDeck] = useState<Statement[] | null>(null);
   const [index, setIndex] = useState(0);
-  const [voted, setVoted] = useState(alreadyVoted); // 累計投票数(このセッション+過去)
   const [passStreak, setPassStreak] = useState(0);
   const [pending, startTransition] = useTransition();
-  const router = useRouter();
 
-  const current = statements[index];
-  const done = index >= statements.length;
-
-  function vote(value: number) {
-    if (!current || pending) return;
-    startTransition(async () => {
-      await castVoteAction(themeId, current.id, value);
-      setVoted((v) => v + 1);
-      // パスが続いている=既存の意見がしっくり来ていないサインなので、投稿を提案する
-      setPassStreak(value === 0 ? passStreak + 1 : 0);
-      const next = index + 1;
-      setIndex(next);
-      if (next >= statements.length) {
-        router.refresh(); // マップと意見一覧を最新化
-      }
-    });
-  }
+  // 個人化の読み込み完了時に、未投票の意見をスナップショット＋シャッフルして固定する。
+  useEffect(() => {
+    if (loaded && deck === null) {
+      setDeck(shuffle(statements.filter((s) => !(s.id in votes))));
+    }
+  }, [loaded, deck, statements, votes]);
 
   function scrollToPost() {
     document.getElementById("post")?.scrollIntoView({ behavior: "smooth" });
@@ -53,7 +46,31 @@ export function VoteDeck({
     );
   }
 
-  if (statements.length === 0 || done) {
+  // 個人化(自分の投票)の読み込み待ち。誤って投票済みの意見を出さないよう待つ。
+  if (deck === null) {
+    return (
+      <div className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-500 dark:border-stone-800 dark:bg-stone-900">
+        読み込み中…
+      </div>
+    );
+  }
+
+  const current = deck[index];
+  const done = index >= deck.length;
+  const votedCount = Object.keys(votes).length;
+
+  function vote(value: number) {
+    if (!current || pending) return;
+    startTransition(async () => {
+      await castVoteAction(themeId, current.id, value);
+      setVote(current.id, value);
+      // パスが続いている=既存の意見がしっくり来ていないサインなので、投稿を提案する
+      setPassStreak(value === 0 ? passStreak + 1 : 0);
+      setIndex((i) => i + 1);
+    });
+  }
+
+  if (done) {
     return (
       <p className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
         このテーマの意見にはすべて投票しました。
@@ -66,7 +83,7 @@ export function VoteDeck({
   return (
     <div className="rounded-lg border border-stone-400 bg-white p-6 dark:border-stone-800 dark:bg-stone-900">
       <p className="mb-2 text-xs text-stone-500 dark:text-stone-500">
-        意見 {index + 1} / {statements.length}
+        意見 {index + 1} / {deck.length}
       </p>
       <p className="min-h-16 text-base leading-relaxed">{current.text}</p>
       <div className="mt-4 grid grid-cols-3 gap-2">
@@ -93,7 +110,7 @@ export function VoteDeck({
         </button>
       </div>
       <p className="mt-3 text-center text-xs text-stone-500">
-        {voted}件に投票済み · 直感でどんどん答えてOK。
+        {votedCount}件に投票済み · 直感でどんどん答えてOK。
         <button
           onClick={() => document.getElementById("map")?.scrollIntoView({ behavior: "smooth" })}
           className="underline"

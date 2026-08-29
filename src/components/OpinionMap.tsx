@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePersonalization } from "./ThemePersonalization";
 
 // red-dwarfの計算結果を2D散布図として描画する。
 // 点は匿名参加者。クラスタ(意見グループ)は凸包の「なわばり」で囲み、
@@ -58,13 +59,13 @@ function expandHull(hull: Pt[], padding: number): Pt[] {
 
 export function OpinionMap({
   result,
-  myIndex,
   statementTexts,
 }: {
   result: PublicMathResult | null;
-  myIndex: number | null;
   statementTexts: Record<number, string>;
 }) {
+  // 自分の点の位置(myIndex)は cookie 依存の個人化なので context から受け取る。
+  const { myIndex } = usePersonalization();
   const [activeGroup, setActiveGroup] = useState<number | null>(null);
   const [showAllConsensus, setShowAllConsensus] = useState(false);
 

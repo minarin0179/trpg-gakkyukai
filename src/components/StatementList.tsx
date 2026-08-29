@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { castVoteAction } from "@/app/actions";
 import { ReportButton } from "./ReportButton";
+import { usePersonalization } from "./ThemePersonalization";
 
 type S = { id: number; text: string };
 
@@ -14,34 +14,22 @@ const OPTIONS: { v: number; label: string; on: string }[] = [
 ];
 
 // すべての意見の一覧。各意見に「自分の現在の投票」を表示し、その場で押し直せる(訂正)。
-export function StatementList({
-  themeId,
-  statements,
-  myVotes,
-}: {
-  themeId: string;
-  statements: S[];
-  myVotes: Record<number, number>;
-}) {
-  const [votes, setVotes] = useState<Record<number, number>>(myVotes);
+// 自分の投票状態は ThemePersonalization から取得・更新する(投票デッキと即時に同期)。
+export function StatementList({ themeId, statements }: { themeId: string; statements: S[] }) {
+  const { votes, setVote } = usePersonalization();
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [, startTransition] = useTransition();
-  const router = useRouter();
-
-  // router.refresh() 後もコンポーネントはマウントされたままなので、
-  // サーバーから来た最新の投票状態(投票デッキ側での投票を含む)を反映する。
-  useEffect(() => {
-    setVotes(myVotes);
-  }, [myVotes]);
 
   function change(statementId: number, value: number) {
     if (votes[statementId] === value || pendingId !== null) return;
-    setVotes((v) => ({ ...v, [statementId]: value }));
+    setVote(statementId, value); // 楽観的更新(デッキ側にも即反映)
     setPendingId(statementId);
     startTransition(async () => {
-      await castVoteAction(themeId, statementId, value);
-      setPendingId(null);
-      router.refresh(); // マップ・集計を最新化
+      try {
+        await castVoteAction(themeId, statementId, value);
+      } finally {
+        setPendingId(null);
+      }
     });
   }
 
