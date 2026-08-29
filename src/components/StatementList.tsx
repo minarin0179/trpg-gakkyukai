@@ -16,8 +16,9 @@ const OPTIONS: { v: number; label: string; on: string }[] = [
 // すべての意見の一覧。各意見に「自分の現在の投票」を表示し、その場で押し直せる(訂正)。
 // 自分の投票状態は ThemePersonalization から取得・更新する(投票デッキと即時に同期)。
 export function StatementList({ themeId, statements }: { themeId: string; statements: S[] }) {
-  const { votes, setVote } = usePersonalization();
+  const { votes, setVote, refresh } = usePersonalization();
   const [pendingId, setPendingId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   function change(statementId: number, value: number) {
@@ -26,7 +27,14 @@ export function StatementList({ themeId, statements }: { themeId: string; statem
     setPendingId(statementId);
     startTransition(async () => {
       try {
-        await castVoteAction(themeId, statementId, value);
+        const res = await castVoteAction(themeId, statementId, value);
+        if (!res.ok) {
+          // 拒否された票を巻き戻す(サーバーの実状態を取り直す)
+          setError(res.error ?? "投票できませんでした。時間を置いて再読み込みしてください");
+          refresh();
+        } else {
+          setError(null);
+        }
       } finally {
         setPendingId(null);
       }
@@ -34,7 +42,11 @@ export function StatementList({ themeId, statements }: { themeId: string; statem
   }
 
   return (
-    <ul className="flex flex-col gap-2">
+    <>
+      {error && (
+        <p className="mb-2 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>
+      )}
+      <ul className="flex flex-col gap-2">
       {statements.map((s) => {
         const cur = votes[s.id];
         return (
@@ -68,6 +80,7 @@ export function StatementList({ themeId, statements }: { themeId: string; statem
           </li>
         );
       })}
-    </ul>
+      </ul>
+    </>
   );
 }

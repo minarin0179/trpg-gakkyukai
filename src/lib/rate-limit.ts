@@ -11,13 +11,24 @@ const LIMITS: Record<string, { max: number; windowMs: number }> = {
   statement_create: { max: 30, windowMs: DAY },
   statement_create_ip: { max: 100, windowMs: DAY },
   report_create: { max: 20, windowMs: DAY },
+  // 投票(IP×テーマ単位)。上限はテーマの意見数に比例するため、
+  // 呼び出し側が maxOverride で渡す。max: 0 は「渡し忘れたら常に拒否」の安全側の既定
+  vote_ip_theme: { max: 0, windowMs: DAY },
 };
 
 export async function checkAndRecordRate(
-  kind: "theme_create" | "statement_create" | "statement_create_ip" | "report_create",
+  kind:
+    | "theme_create"
+    | "statement_create"
+    | "statement_create_ip"
+    | "report_create"
+    | "vote_ip_theme",
   actor: string,
+  maxOverride?: number,
+  context?: string,
 ): Promise<{ ok: boolean; remaining: number }> {
   const limit = LIMITS[kind];
+  const max = maxOverride ?? limit.max;
   const since = new Date(Date.now() - limit.windowMs);
   const [row] = await db
     .select({ n: count() })
@@ -26,9 +37,13 @@ export async function checkAndRecordRate(
       and(eq(rateEvents.kind, kind), eq(rateEvents.actorHash, actor), gt(rateEvents.createdAt, since)),
     );
   const used = row?.n ?? 0;
-  if (used >= limit.max) {
+  if (used >= max) {
+    // 誤検知(正規ユーザーの巻き添え)の監視用。Vercelのランタイムログで確認する
+    console.warn(
+      `rate limit exceeded: kind=${kind} max=${max}${context ? ` context=${context}` : ""}`,
+    );
     return { ok: false, remaining: 0 };
   }
   await db.insert(rateEvents).values({ kind, actorHash: actor });
-  return { ok: true, remaining: limit.max - used - 1 };
+  return { ok: true, remaining: max - used - 1 };
 }

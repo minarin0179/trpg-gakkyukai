@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
@@ -24,6 +24,8 @@ import {
   THEME_DESCRIPTION_MAX,
   STATEMENT_MAX,
   SEED_STATEMENTS_MAX,
+  VOTE_IP_THEME_PER_STATEMENT,
+  VOTE_IP_THEME_MIN,
 } from "@/lib/config";
 
 export type FormState = { error?: string; done?: boolean };
@@ -148,8 +150,23 @@ export async function castVoteAction(
   themeId: string,
   statementId: number,
   value: number,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   if (![1, 0, -1].includes(value)) return { ok: false };
+
+  // 水増し対策: IP×テーマ単位のレート制限。Cookie側はリセットで逃れられる
+  // (別参加者になり主キー制約ごと回避できる)ため設けない。
+  // 上限は意見数に比例させ、人間の正規参加には届かない天井にする(config参照)
+  const [stmtCount] = await db
+    .select({ n: count() })
+    .from(statements)
+    .where(and(eq(statements.themeId, themeId), eq(statements.status, "visible")));
+  const voteCap = Math.max(VOTE_IP_THEME_MIN, (stmtCount?.n ?? 0) * VOTE_IP_THEME_PER_STATEMENT);
+  const ipTheme = dailyActorHash(`ip:${await clientIp()}:theme:${themeId}`);
+  const rate = await checkAndRecordRate("vote_ip_theme", ipTheme, voteCap, themeId);
+  if (!rate.ok) {
+    return { ok: false, error: "この回線からの投票が多すぎます。時間を置いてください" };
+  }
+
   const participantId = await getOrCreateParticipantId();
   await ensureParticipant(participantId);
 

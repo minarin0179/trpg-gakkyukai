@@ -25,6 +25,7 @@ export function VoteDeck({ themeId, statements }: { themeId: string; statements:
   const [deck, setDeck] = useState<Statement[] | null>(null);
   const [index, setIndex] = useState(0);
   const [passStreak, setPassStreak] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   // 個人化の読み込み完了時に、未投票の意見をスナップショット＋シャッフルして固定する。
@@ -62,7 +63,13 @@ export function VoteDeck({ themeId, statements }: { themeId: string; statements:
   function vote(value: number) {
     if (!current || pending) return;
     startTransition(async () => {
-      await castVoteAction(themeId, current.id, value);
+      const res = await castVoteAction(themeId, current.id, value);
+      if (!res.ok) {
+        // レート制限などで拒否された票は反映せず、カードも進めない
+        setError(res.error ?? "投票できませんでした。時間を置いて再読み込みしてください");
+        return;
+      }
+      setError(null);
       setVote(current.id, value);
       // パスが続いている=既存の意見がしっくり来ていないサインなので、投稿を提案する
       setPassStreak(value === 0 ? passStreak + 1 : 0);
@@ -109,6 +116,11 @@ export function VoteDeck({ themeId, statements }: { themeId: string; statements:
           反対
         </button>
       </div>
+      {error && (
+        <p className="mt-3 rounded-md bg-rose-50 px-3 py-2 text-center text-sm text-rose-700">
+          {error}
+        </p>
+      )}
       <p className="mt-3 text-center text-xs text-stone-500">
         {votedCount}件に投票済み · 直感でどんどん答えてOK。
         <button
