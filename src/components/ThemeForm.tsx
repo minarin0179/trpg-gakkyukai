@@ -127,25 +127,23 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
         />
       </div>
       <div>
-        <div className="mb-1 flex flex-wrap items-end justify-between gap-2">
-          <label htmlFor="seeds" className="block text-sm font-medium">
-            最初の意見(1行に1つ、2〜10個)
-            <span
-              className={`ml-1.5 font-normal ${
-                seedCount > SEED_STATEMENTS_MAX ? "text-red-600" : "text-stone-500"
-              }`}
-            >
-              {seedCount}/{SEED_STATEMENTS_MAX}
-            </span>
-          </label>
-          <AiSeedAssist
-            title={title}
-            description={description}
-            onGenerated={(lines) =>
-              setSeeds((prev) => (prev.trim() ? prev.trimEnd() + "\n" : "") + lines.join("\n"))
-            }
-          />
-        </div>
+        <label htmlFor="seeds" className="mb-1 block text-sm font-medium">
+          最初の意見(1行に1つ、2〜10個)
+          <span
+            className={`ml-1.5 font-normal ${
+              seedCount > SEED_STATEMENTS_MAX ? "text-red-600" : "text-stone-500"
+            }`}
+          >
+            {seedCount}/{SEED_STATEMENTS_MAX}
+          </span>
+        </label>
+        <AiSeedAssist
+          title={title}
+          description={description}
+          onGenerated={(lines) =>
+            setSeeds((prev) => (prev.trim() ? prev.trimEnd() + "\n" : "") + lines.join("\n"))
+          }
+        />
         <textarea
           id="seeds"
           name="seeds"
