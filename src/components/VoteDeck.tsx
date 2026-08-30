@@ -16,9 +16,47 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+// 計算結果に載っていない意見(直近の投稿で票がまだ無い等)の既定priority。
+// 本家の式で0票・極性0の意見が持つ値: (0.5×0.5×1 × 9)² ≈ 5.06
+const DEFAULT_PRIORITY = 5.06;
+
+// priorityに比例した重み付き抽選(非復元)。本家Polisのcomment routingと同じく、
+// 決定的なソートではなく抽選にすることで全員が同一順で見ることによる偏りを避ける
+function weightedShuffle(
+  items: Statement[],
+  priorities: Record<string, number> | null,
+): Statement[] {
+  if (!priorities) return shuffle(items);
+  const pool = items.map((s) => ({
+    s,
+    w: Math.max(priorities[s.id] ?? DEFAULT_PRIORITY, 0.01),
+  }));
+  const out: Statement[] = [];
+  while (pool.length > 0) {
+    let r = Math.random() * pool.reduce((sum, p) => sum + p.w, 0);
+    let idx = 0;
+    for (; idx < pool.length - 1; idx++) {
+      r -= pool[idx].w;
+      if (r <= 0) break;
+    }
+    out.push(pool[idx].s);
+    pool.splice(idx, 1);
+  }
+  return out;
+}
+
 // 投票デッキ。テーマの全意見を受け取り、自分が未投票のぶんを(個人化の読み込み完了時に
-// 一度だけ)シャッフルして順に出す。自分の投票状態は ThemePersonalization から取得する。
-export function VoteDeck({ themeId, statements }: { themeId: string; statements: Statement[] }) {
+// 一度だけ)priority重み付き抽選で並べて順に出す(計算前のテーマは一様ランダム)。
+// 自分の投票状態は ThemePersonalization から取得する。
+export function VoteDeck({
+  themeId,
+  statements,
+  priorities = null,
+}: {
+  themeId: string;
+  statements: Statement[];
+  priorities?: Record<string, number> | null;
+}) {
   const { votes, loaded, setVote } = usePersonalization();
   const total = statements.length;
 
@@ -31,9 +69,9 @@ export function VoteDeck({ themeId, statements }: { themeId: string; statements:
   // 個人化の読み込み完了時に、未投票の意見をスナップショット＋シャッフルして固定する。
   useEffect(() => {
     if (loaded && deck === null) {
-      setDeck(shuffle(statements.filter((s) => !(s.id in votes))));
+      setDeck(weightedShuffle(statements.filter((s) => !(s.id in votes)), priorities));
     }
-  }, [loaded, deck, statements, votes]);
+  }, [loaded, deck, statements, votes, priorities]);
 
   function scrollToPost() {
     document.getElementById("post")?.scrollIntoView({ behavior: "smooth" });

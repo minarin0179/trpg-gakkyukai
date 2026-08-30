@@ -96,6 +96,30 @@ def compute_clusters(payload: dict) -> dict:
         if kept:
             repness[str(gid)] = kept
 
+    # 意見の提示優先度(本家Polisのcomment priority)。
+    # 重要度(賛成率×関与率×(1+極性))×新規ブースト(票が少ないほど最大9倍)の二乗。
+    # 投票デッキがこの値に比例した重み付き抽選で提示順を決める
+    statement_priorities = {}
+    if "priority" in result.statements_df.columns:
+        for pid, row in result.statements_df.iterrows():
+            if not pd.isna(row["priority"]):
+                statement_priorities[int(pid)] = round(float(row["priority"]), 4)
+
+    # 自分の点のライブ投影用の材料(本家Polisクライアントと同じ方式)。
+    # 参加者座標 = sqrt(全意見数 / 本人の投票数) × Σ_投票済み (票 - mean) × (pc1, pc2)
+    # これをクライアントへ渡すと、再計算を待たずに自分の点を投票のたびに動かせる
+    projection_statements = {}
+    cols = result.statements_df.columns
+    if all(c in cols for c in ("pc1", "pc2", "mean")):
+        for tid, row in result.statements_df.iterrows():
+            if pd.isna(row["pc1"]) or pd.isna(row["pc2"]) or pd.isna(row["mean"]):
+                continue
+            projection_statements[int(tid)] = [
+                round(float(row["pc1"]), 5),
+                round(float(row["pc2"]), 5),
+                round(float(row["mean"]), 5),
+            ]
+
     return {
         "status": "ok",
         "threshold_used": threshold,
@@ -103,4 +127,9 @@ def compute_clusters(payload: dict) -> dict:
         "participants": participants,
         "consensus": consensus,
         "repness": repness,
+        "statement_priorities": statement_priorities,
+        "projection": {
+            "n_statements": len(result.statements_df),
+            "statements": projection_statements,
+        },
     }

@@ -16,6 +16,10 @@ export type MathResultJson = {
     disagree: { statement_id: number; agree_ratio: number | null }[];
   };
   repness?: Record<string, { statement_id: number; repful_for: string }[]>;
+  // 意見の提示優先度(本家Polisのcomment priority)。投票デッキの重み付き抽選に使う
+  statement_priorities?: Record<string, number>;
+  // 自分の点のライブ投影用(意見ごとの [pc1, pc2, mean] とマップの全意見数)
+  projection?: { n_statements: number; statements: Record<string, [number, number, number]> };
   pidMap?: Record<string, number>;
 };
 

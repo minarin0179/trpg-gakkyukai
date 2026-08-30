@@ -23,6 +23,10 @@ export type PublicMathResult = {
     disagree: { statement_id: number; agree_ratio: number | null }[];
   };
   repness?: Record<string, { statement_id: number; repful_for: string }[]>;
+  // 意見の提示優先度(投票デッキの重み付き抽選用。マップ自体は使わない)
+  statement_priorities?: Record<string, number>;
+  // 自分の点のライブ投影用の材料(意見ごとの [pc1, pc2, mean] と全意見数)
+  projection?: { n_statements: number; statements: Record<string, [number, number, number]> };
 };
 
 type Pt = { x: number; y: number };
@@ -64,8 +68,8 @@ export function OpinionMap({
   result: PublicMathResult | null;
   statementTexts: Record<number, string>;
 }) {
-  // 自分の点の位置(myIndex)は cookie 依存の個人化なので context から受け取る。
-  const { myIndex } = usePersonalization();
+  // 自分の点の位置(myIndex)と投票状況は cookie 依存の個人化なので context から受け取る。
+  const { myIndex, votes: myVotes } = usePersonalization();
   const [activeGroup, setActiveGroup] = useState<number | null>(null);
   const [showAllConsensus, setShowAllConsensus] = useState(false);
 
@@ -81,8 +85,33 @@ export function OpinionMap({
   // 自分が属するグループ(クラスタ)のID。マップ上で7票未満などで未クラスタなら null。
   const myCluster =
     myIndex !== null ? (pts.find((p) => p.id === myIndex)?.cluster ?? null) : null;
-  const xs = pts.map((p) => p.x);
-  const ys = pts.map((p) => p.y);
+
+  // 自分の点のライブ投影(本家Polisと同じ方式)。公開されているPCAの軸(意見ごとの
+  // 成分と平均)に自分の投票を掛けるだけなので、再計算やリロードを待たずに
+  // 投票のたびに自分の点がすぐ動く。材料が無い古い計算結果では従来どおり
+  // 公式位置(myIndex)のみで表示する
+  let liveSelf: { x: number; y: number } | null = null;
+  const proj = result.projection;
+  if (proj && proj.n_statements > 0) {
+    let lx = 0;
+    let ly = 0;
+    let n = 0;
+    for (const [sid, v] of Object.entries(myVotes)) {
+      const s = proj.statements[sid];
+      if (!s) continue;
+      lx += (v - s[2]) * s[0];
+      ly += (v - s[2]) * s[1];
+      n++;
+    }
+    if (n > 0) {
+      const scale = Math.sqrt(proj.n_statements / n);
+      liveSelf = { x: lx * scale, y: ly * scale };
+    }
+  }
+
+  // ライブ投影中の自分の点が描画範囲の外に出ないよう、範囲計算に含める
+  const xs = [...pts.map((p) => p.x), ...(liveSelf ? [liveSelf.x] : [])];
+  const ys = [...pts.map((p) => p.y), ...(liveSelf ? [liveSelf.y] : [])];
   const pad = 0.28;
   const spanX = Math.max(Math.max(...xs) - Math.min(...xs), 0.01);
   const spanY = Math.max(Math.max(...ys) - Math.min(...ys), 0.01);
@@ -96,16 +125,43 @@ export function OpinionMap({
   const sx = (x: number) => ((x - minX) / (maxX - minX)) * W;
   const sy = (y: number) => H - ((y - minY) / (maxY - minY)) * H;
 
+  // 完全に同じ投票をした参加者は数学的に同一座標になり、点が1つにしか見えない。
+  // 同一座標の点は小さな輪状にほどいて全員を可視化する(半透明の重なりが密度表現になる)。
+  // 乱数でなくインデックス順の決定的な配置にし、再描画で位置が揺れないようにする
+  const displayPos = new Map<number, { x: number; y: number }>();
+  {
+    const byPos = new Map<string, typeof pts>();
+    for (const p of pts) {
+      const key = `${p.x.toFixed(4)},${p.y.toFixed(4)}`;
+      if (!byPos.has(key)) byPos.set(key, []);
+      byPos.get(key)!.push(p);
+    }
+    for (const group of byPos.values()) {
+      const gx = sx(group[0].x);
+      const gy = sy(group[0].y);
+      if (group.length === 1) {
+        displayPos.set(group[0].id, { x: gx, y: gy });
+        continue;
+      }
+      const ringR = Math.min(3.5 + group.length, 10);
+      group.forEach((p, i) => {
+        const ang = (2 * Math.PI * i) / group.length;
+        displayPos.set(p.id, { x: gx + ringR * Math.cos(ang), y: gy + ringR * Math.sin(ang) });
+      });
+    }
+  }
+
   // クラスタごとの点となわばり
+  const HULL_MARGIN = 22;
   const clusterMap = new Map<number, Pt[]>();
   for (const p of pts) {
     if (p.cluster === null) continue;
     if (!clusterMap.has(p.cluster)) clusterMap.set(p.cluster, []);
-    clusterMap.get(p.cluster)!.push({ x: sx(p.x), y: sy(p.y) });
+    clusterMap.get(p.cluster)!.push(displayPos.get(p.id)!);
   }
   const clusters = [...clusterMap.entries()]
     .map(([cid, members]) => {
-      const hull = expandHull(convexHull(members), 22);
+      const hull = expandHull(convexHull(members), HULL_MARGIN);
       const cx = members.reduce((s, p) => s + p.x, 0) / members.length;
       const cy = members.reduce((s, p) => s + p.y, 0) / members.length;
       return { cid, members, hull, cx, cy };
@@ -115,9 +171,23 @@ export function OpinionMap({
   // 近接クラスタのラベルが重ならないよう、縦方向に押しのける
   const LABEL_W = 90;
   const LABEL_H = 26;
+  // ラベルは重心ではなく「なわばり上端の点のない帯」(凸包はHULL_MARGINぶん外側に
+  // 押し広げてあるので、その帯に点は無い)に置き、密集した中心部の点を覆わないようにする
+  const labelAnchorY = (c: (typeof clusters)[number]): number => {
+    const topY =
+      c.hull.length >= 3
+        ? Math.min(...c.hull.map((p) => p.y))
+        : Math.min(...c.members.map((p) => p.y)) -
+          (Math.max(...c.members.map((p) => Math.hypot(p.x - c.cx, p.y - c.cy)), 0) + HULL_MARGIN);
+    return Math.max(topY + LABEL_H / 2 - 4, LABEL_H / 2 + 2);
+  };
   const placed: { cid: number; cx: number; cy: number }[] = [...clusters]
     .sort((a, b) => a.cy - b.cy)
-    .map((c) => ({ cid: c.cid, cx: c.cx, cy: c.cy }));
+    .map((c) => ({
+      cid: c.cid,
+      cx: Math.min(Math.max(c.cx, LABEL_W / 2 + 2), W - LABEL_W / 2 - 2),
+      cy: labelAnchorY(c),
+    }));
   for (let i = 0; i < placed.length; i++) {
     for (let j = 0; j < i; j++) {
       const dx = Math.abs(placed[i].cx - placed[j].cx);
@@ -226,12 +296,15 @@ export function OpinionMap({
             {/* 参加者の点(自分以外)。自分は最前面に別途描く */}
             {pts.map((p) => {
               if (myIndex !== null && p.id === myIndex) return null;
+              // グループ未割当(7票未満)の参加者もグレーで描く。隠すと「N人が投票」との
+              // 数のギャップが不信感につながるため、表示したうえで下の凡例で意味を説明する
               const color = p.cluster !== null ? GROUP_COLORS[p.cluster % GROUP_COLORS.length] : "#a8a29e";
+              const dp = displayPos.get(p.id)!;
               return (
                 <circle
                   key={p.id}
-                  cx={sx(p.x)}
-                  cy={sy(p.y)}
+                  cx={dp.x}
+                  cy={dp.y}
                   r={4.5}
                   fill={color}
                   fillOpacity={0.55}
@@ -264,14 +337,20 @@ export function OpinionMap({
               );
             })}
 
-            {/* 自分の点とラベルは最前面に描き、なわばりやグループラベルに隠れないようにする */}
-            {myIndex !== null &&
+            {/* 自分の点とラベルは最前面に描き、なわばりやグループラベルに隠れないようにする。
+                位置はライブ投影があればそれを優先(投票のたびに動く)、無ければ公式位置 */}
+            {(liveSelf !== null || myIndex !== null) &&
               (() => {
-                const me = pts.find((p) => p.id === myIndex);
-                if (!me) return null;
-                const color = me.cluster !== null ? GROUP_COLORS[me.cluster % GROUP_COLORS.length] : "#a8a29e";
-                const mx = sx(me.x);
-                const my = sy(me.y);
+                const me = myIndex !== null ? pts.find((p) => p.id === myIndex) : undefined;
+                const color =
+                  me?.cluster != null ? GROUP_COLORS[me.cluster % GROUP_COLORS.length] : "#a8a29e";
+                const pos = liveSelf
+                  ? { x: sx(liveSelf.x), y: sy(liveSelf.y) }
+                  : me
+                    ? displayPos.get(me.id)!
+                    : null;
+                if (!pos) return null;
+                const { x: mx, y: my } = pos;
                 const TW = 34; // 「あなた」の概算幅
                 const HH = 8; // テキスト矩形の半高
                 // 点の右→左→上→下の順に、グループラベルと重ならず画面内に収まる位置を選ぶ
@@ -347,15 +426,22 @@ export function OpinionMap({
             </div>
           )}
         </div>
-        {/* 間引きの注意は「まだ人数が少ないマップ」でだけ意味があるので、
-            表示人数が少ないときのみ出す(大人数のマップでは冗長なため隠す)。 */}
-        {pts.length < 60 && (
-          <p className="mt-2 text-center text-xs leading-relaxed text-stone-500">
-            投票が少ないうちは、傾向がはっきりした一部の人だけが表示されます。
-            <br />
-            参加が増えるほど、より多くの立場が地図に現れます。
-          </p>
-        )}
+        {/* マップの読み方。常時見せるほどではない補足なので折りたたみにする */}
+        <details className="group mt-2">
+          <summary className="cursor-pointer list-none text-center text-xs font-medium text-stone-600 underline decoration-stone-400 underline-offset-2 marker:content-none hover:text-stone-800 [&::-webkit-details-marker]:hidden">
+            マップの見方
+          </summary>
+          <ul className="mx-auto mt-2 flex max-w-md list-disc flex-col gap-1 pl-5 text-left text-xs leading-relaxed text-stone-600">
+            <li>点はひとりの参加者です。投票の傾向が近い人ほど近くに置かれます</li>
+            <li>縦軸・横軸そのものに特定の意味はありません</li>
+            <li>
+              色のついた領域は投票傾向が似た人のグループです。グループをタップすると、
+              そのグループの特徴的な意見が見られます
+            </li>
+            <li>グレーの点は、投票がまだ少なくグループが決まっていない参加者です</li>
+            <li>投票すると、あなたの位置がすぐにマップへ反映されます(グループの判定は7件以上から)</li>
+          </ul>
+        </details>
       </div>
 
       {hasConsensus && (

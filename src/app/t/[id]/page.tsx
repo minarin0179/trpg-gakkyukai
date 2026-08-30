@@ -105,7 +105,11 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
           <p className="mb-3 text-xs leading-relaxed text-stone-600 dark:text-stone-400">
             投票を重ねると、あなたと考えの近い人がわかり、下の意見マップにあなたの立場が現れます。
           </p>
-          <VoteDeck themeId={theme.id} statements={items} />
+          <VoteDeck
+            themeId={theme.id}
+            statements={items}
+            priorities={publicResult?.statement_priorities ?? null}
+          />
         </section>
 
         <section id="post" className="scroll-mt-20">
