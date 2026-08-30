@@ -14,6 +14,8 @@ const LIMITS: Record<string, { max: number; windowMs: number }> = {
   // 投票(IP×テーマ単位)。上限はテーマの意見数に比例するため、
   // 呼び出し側が maxOverride で渡す。max: 0 は「渡し忘れたら常に拒否」の安全側の既定
   vote_ip_theme: { max: 0, windowMs: DAY },
+  // 類似テーマのライブチェック(入力デバウンスごとに1回)。埋め込み計算の乱用防止
+  similar_check: { max: 300, windowMs: DAY },
 };
 
 export async function checkAndRecordRate(
@@ -22,7 +24,8 @@ export async function checkAndRecordRate(
     | "statement_create"
     | "statement_create_ip"
     | "report_create"
-    | "vote_ip_theme",
+    | "vote_ip_theme"
+    | "similar_check",
   actor: string,
   maxOverride?: number,
   context?: string,

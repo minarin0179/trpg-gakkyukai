@@ -1,6 +1,6 @@
 "use server";
 
-import { and, count, eq } from "drizzle-orm";
+import { and, cosineDistance, count, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
@@ -14,6 +14,7 @@ import {
   dailyActorHash,
 } from "@/lib/participant";
 import { checkAndRecordRate } from "@/lib/rate-limit";
+import { embedTexts } from "@/lib/embedding";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { maybeRecompute } from "@/lib/recompute";
 import { findContentViolation } from "@/lib/content-filter";
@@ -26,13 +27,50 @@ import {
   SEED_STATEMENTS_MAX,
   VOTE_IP_THEME_PER_STATEMENT,
   VOTE_IP_THEME_MIN,
+  THEME_SIMILAR_THRESHOLD,
+  THEME_SIMILAR_MAX,
+  STATEMENT_GATE_VOTES,
 } from "@/lib/config";
 
-export type FormState = { error?: string; done?: boolean };
+export type FormState = {
+  error?: string;
+  done?: boolean;
+  // 類似テーマの確認表示(テーマ提案の1回目の送信で類似が見つかったとき)
+  similar?: { id: string; title: string }[];
+};
 
 async function clientIp(): Promise<string> {
   const h = await headers();
   return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+}
+
+// 埋め込みベクトルに意味の近いactiveテーマを返す(閾値以上のみ、上位N件)
+async function similarThemesByVec(vec: number[]): Promise<{ id: string; title: string }[]> {
+  const sim = sql<number>`1 - (${cosineDistance(themes.embedding, vec)})`;
+  const near = await db
+    .select({ id: themes.id, title: themes.title, sim })
+    .from(themes)
+    .where(and(eq(themes.status, "active"), isNotNull(themes.embedding)))
+    .orderBy(desc(sim))
+    .limit(THEME_SIMILAR_MAX);
+  return near
+    .filter((r) => Number(r.sim) >= THEME_SIMILAR_THRESHOLD)
+    .map(({ id, title }) => ({ id, title }));
+}
+
+// テーマ提案フォームの入力中に呼ばれるライブチェック。
+// 見つからない・チェックできない・レート超過はすべて空配列(UIは何も出さないだけ)
+export async function findSimilarThemesAction(
+  rawTitle: string,
+): Promise<{ id: string; title: string }[]> {
+  const title = String(rawTitle ?? "").trim();
+  if (title.length < 5 || title.length > THEME_TITLE_MAX) return [];
+  // 公開エンドポイント相当なので、埋め込み計算の乱用をIP単位で抑える
+  const rate = await checkAndRecordRate("similar_check", dailyActorHash(`ip:${await clientIp()}`));
+  if (!rate.ok) return [];
+  const vec = (await embedTexts([title]))?.[0] ?? null;
+  if (!vec) return [];
+  return similarThemesByVec(vec);
 }
 
 export async function createThemeAction(
@@ -69,6 +107,29 @@ export async function createThemeAction(
     if (violation) return { error: violation };
   }
 
+  // 同一タイトルの重複は常に拒否(実データで同名テーマの並立が起きたため)
+  const exact = await db
+    .select({ id: themes.id })
+    .from(themes)
+    .where(and(eq(themes.status, "active"), eq(themes.title, title)))
+    .limit(1);
+  if (exact.length > 0) {
+    return { error: "同じタイトルのテーマがすでにあります。検索して参加してみてください" };
+  }
+
+  // 類似テーマの確認(初回送信時のみ)。通常は入力中のライブチェック
+  // (findSimilarThemesAction)が先に知らせて confirmSimilar=1 になっているため、
+  // ここで差し戻るのはJS未動作やライブチェック失敗時のフォールバック。
+  // 埋め込みが取れないときはスキップして通す(補助機能が投稿を止めない)。
+  // Turnstile検証より前に置くのは、トークンを消費せずに差し戻すため
+  const titleVec = (await embedTexts([title]))?.[0] ?? null;
+  if (formData.get("confirmSimilar") !== "1" && titleVec) {
+    const similar = await similarThemesByVec(titleVec);
+    if (similar.length > 0) {
+      return { similar };
+    }
+  }
+
   if (!(await verifyTurnstile(typeof turnstileToken === "string" ? turnstileToken : null))) {
     return { error: "bot対策の確認に失敗しました。再読み込みして試してください" };
   }
@@ -89,6 +150,7 @@ export async function createThemeAction(
     title,
     description,
     proposerHash: actorHash(participantId),
+    embedding: titleVec, // 取得失敗時はnull(以後の類似検出の対象から外れるだけ)
   });
   for (const text of seeds) {
     await db.insert(statements).values({ themeId: id, text, participantId });
@@ -112,20 +174,7 @@ export async function createStatementAction(
   const violation = findContentViolation(text);
   if (violation) return { error: violation };
 
-  const participantId = await getOrCreateParticipantId();
-  const rate = await checkAndRecordRate("statement_create", actorHash(participantId));
-  if (!rate.ok) {
-    return { error: "意見の投稿は1日30件までです" };
-  }
-  // cookie再発行による回避を防ぐため、IP側(日替わりハッシュ)でも緩く計数する
-  const ipRate = await checkAndRecordRate(
-    "statement_create_ip",
-    dailyActorHash(`ip:${await clientIp()}`),
-  );
-  if (!ipRate.ok) {
-    return { error: "この回線からの投稿が多すぎます。時間を置いてください" };
-  }
-
+  // 完全一致の重複は常に拒否。レート制限より前に置き、差し戻しで枠を消費させない
   const dup = await db
     .select({ id: statements.id })
     .from(statements)
@@ -139,6 +188,41 @@ export async function createStatementAction(
     .limit(1);
   if (dup.length > 0) {
     return { error: "同じ内容の意見がすでに投稿されています" };
+  }
+
+  const participantId = await getOrCreateParticipantId();
+
+  // 投票ゲート: まずほかの意見に min(5, 意見数) 件投票してから投稿できる。
+  // UI側(StatementForm)が同じ条件で先に案内するので、ここに来るのは
+  // JS未動作か直接POSTのケース。レート制限より前に置き、枠を消費させない
+  const [stmtCount] = await db
+    .select({ n: count() })
+    .from(statements)
+    .where(and(eq(statements.themeId, themeId), eq(statements.status, "visible")));
+  const required = Math.min(STATEMENT_GATE_VOTES, stmtCount?.n ?? 0);
+  if (required > 0) {
+    const [voted] = await db
+      .select({ n: count() })
+      .from(votes)
+      .where(and(eq(votes.themeId, themeId), eq(votes.participantId, participantId)));
+    if ((voted?.n ?? 0) < required) {
+      return {
+        error: `まずほかの意見に投票してみてください(あと${required - (voted?.n ?? 0)}件で投稿できます)`,
+      };
+    }
+  }
+
+  const rate = await checkAndRecordRate("statement_create", actorHash(participantId));
+  if (!rate.ok) {
+    return { error: "意見の投稿は1日30件までです" };
+  }
+  // cookie再発行による回避を防ぐため、IP側(日替わりハッシュ)でも緩く計数する
+  const ipRate = await checkAndRecordRate(
+    "statement_create_ip",
+    dailyActorHash(`ip:${await clientIp()}`),
+  );
+  if (!ipRate.ok) {
+    return { error: "この回線からの投稿が多すぎます。時間を置いてください" };
   }
 
   await db.insert(statements).values({ themeId, text, participantId });

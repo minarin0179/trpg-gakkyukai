@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import Script from "next/script";
-import { createThemeAction, type FormState } from "@/app/actions";
+import { createThemeAction, findSimilarThemesAction, type FormState } from "@/app/actions";
 import { AiSeedAssist } from "@/components/AiSeedAssist";
 import { SEED_STATEMENTS_MAX } from "@/lib/config";
 
@@ -26,6 +26,50 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [seeds, setSeeds] = useState("");
+  // 類似テーマの確認状態。確認表示が出ている間だけ confirmSimilar=1 で再送信し、
+  // タイトルを書き換えたら解除して再チェックさせる
+  const [confirmArmed, setConfirmArmed] = useState(false);
+
+  // 入力中のライブ類似チェック(入力600ms停止またはフォーカスが外れたら実行)。
+  // 結果パネルを見せた時点で「確認済み」となり、送信は1回で通る。
+  // JS未動作・チェック失敗時はサーバー側の二段階確認がフォールバックする
+  const [liveSimilar, setLiveSimilar] = useState<{ id: string; title: string }[] | null>(null);
+  const [checking, setChecking] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const checkSeqRef = useRef(0); // 古いレスポンスで新しい入力の結果を上書きしない
+
+  async function runSimilarCheck(value: string) {
+    const seq = ++checkSeqRef.current;
+    setChecking(true);
+    try {
+      const found = await findSimilarThemesAction(value);
+      if (checkSeqRef.current === seq) setLiveSimilar(found);
+    } catch {
+      // ライブチェックは補助機能。失敗しても何も出さない
+    } finally {
+      if (checkSeqRef.current === seq) setChecking(false);
+    }
+  }
+
+  function onTitleChange(value: string) {
+    setTitle(value);
+    setConfirmArmed(false);
+    setLiveSimilar(null); // 書き換え中は古い候補を見せない
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const trimmed = value.trim();
+    if (trimmed.length < 5) return; // タイトルの最小長未満はチェックしない
+    debounceRef.current = setTimeout(() => runSimilarCheck(trimmed), 600);
+  }
+
+  function onTitleBlur() {
+    // 入力を終えて離れた瞬間は待たずに確認する
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+      const trimmed = title.trim();
+      if (trimmed.length >= 5) runSimilarCheck(trimmed);
+    }
+  }
   // 空行を除いた「意見の数」。ラベルに (3/10) のように表示する
   const seedCount = seeds
     .split("\n")
@@ -76,6 +120,14 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
     };
   }, [siteKey]);
 
+  // アクションの結果が変わったタイミングで確認状態を立てる。
+  // effectでのsetStateを避け、render中の前回値比較で行う(公式推奨パターン)
+  const [seenState, setSeenState] = useState<FormState>(state);
+  if (seenState !== state) {
+    setSeenState(state);
+    if (state.similar?.length) setConfirmArmed(true);
+  }
+
   // Turnstileのトークンは使い捨て+5分で失効するため、
   // エラーで差し戻されたら「そのウィジェットだけ」リセットして新しいトークンを取り直す
   useEffect(() => {
@@ -107,9 +159,34 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           maxLength={100}
           placeholder="賛否が分かれそうな問いを書く"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => onTitleChange(e.target.value)}
+          onBlur={onTitleBlur}
           className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
         />
+        <div aria-live="polite">
+          {checking && !liveSimilar?.length && (
+            <p className="mt-1 text-xs text-stone-500">似ているテーマがないか確認中...</p>
+          )}
+          {liveSimilar && liveSimilar.length > 0 && (
+            <div className="mt-2 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm">
+              <p className="font-medium">似ているテーマが見つかりました。一度のぞいてみませんか?</p>
+              <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-5">
+                {liveSimilar.map((s) => (
+                  <li key={s.id}>
+                    <a href={`/t/${s.id}`} target="_blank" rel="noreferrer" className="underline">
+                      {s.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-stone-600">
+                同じ話題なら、そちらで投票や意見投稿をすると議論が集まりやすくなります。
+                <br />
+                別の論点なら、このまま提案を続けてください。
+              </p>
+            </div>
+          )}
+        </div>
       </div>
       <div>
         <label htmlFor="description" className="mb-1 block text-sm font-medium">
@@ -159,6 +236,31 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
 </p>
       </div>
       <div ref={containerRef} />
+      {/* ライブチェックで候補を見せた場合も「確認済み」として1回の送信で通す */}
+      <input
+        type="hidden"
+        name="confirmSimilar"
+        value={confirmArmed || (liveSimilar?.length ?? 0) > 0 ? "1" : ""}
+      />
+      {confirmArmed && state.similar && (
+        <div className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm">
+          <p className="font-medium">似ているテーマが見つかりました。一度のぞいてみませんか?</p>
+          <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-5">
+            {state.similar.map((s) => (
+              <li key={s.id}>
+                <a href={`/t/${s.id}`} target="_blank" rel="noreferrer" className="underline">
+                  {s.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-stone-600">
+            同じ話題なら、そちらで投票や意見投稿をすると議論が集まりやすくなります。
+            <br />
+            別の論点として公開する場合は、もう一度「テーマを公開する」を押してください。
+          </p>
+        </div>
+      )}
       {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       <button
         type="submit"

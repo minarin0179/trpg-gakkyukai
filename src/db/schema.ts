@@ -7,6 +7,7 @@ import {
   jsonb,
   primaryKey,
   index,
+  vector,
 } from "drizzle-orm/pg-core";
 
 // テーマ(議題)。事前審査なしで即時公開、一定の参加を得ると人気タブにも並ぶ
@@ -19,6 +20,10 @@ export const themes = pgTable("themes", {
     .default("active"),
   removedReason: text("removed_reason"),
   proposerHash: text("proposer_hash").notNull(), // 提案者のcookie IDハッシュ(レート制限用)
+  // タイトルの埋め込み(類似テーマ検出用、ruri-v3-30mの256次元)。
+  // 要pgvector拡張(CREATE EXTENSION vector)。生成に失敗した行はnullのまま
+  // 検出対象から外れるだけで、機能は壊れない
+  embedding: vector("embedding", { dimensions: 256 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -106,6 +111,7 @@ export const rateEvents = pgTable(
         "statement_create_ip",
         "report_create",
         "vote_ip_theme",
+        "similar_check",
       ],
     }).notNull(),
     actorHash: text("actor_hash").notNull(),

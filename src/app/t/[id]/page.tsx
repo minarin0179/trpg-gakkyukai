@@ -112,7 +112,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
           <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">
             まだ出ていない視点が思い浮かんだら、あなたの意見を投稿してみましょう
           </h2>
-          <StatementComposer>
+          <StatementComposer statementCount={items.length}>
             <StatementGuidelines />
             <StatementForm themeId={theme.id} />
           </StatementComposer>
