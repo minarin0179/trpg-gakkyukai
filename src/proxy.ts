@@ -17,7 +17,7 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const key = req.nextUrl.searchParams.get("key");
   const configured = process.env.ADMIN_KEY;
   if (!key || !configured) return NextResponse.next();

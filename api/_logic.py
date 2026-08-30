@@ -5,6 +5,8 @@ red-dwarf (Polis準拠の再実装, MPL 2.0) をデフォルトパラメータ�
 将来の移設(別ホスティングへの切り出し)を容易にするため。
 """
 
+from collections import Counter
+
 import pandas as pd
 
 from reddwarf.implementations.polis import run_pipeline
@@ -13,6 +15,10 @@ from reddwarf.implementations.polis import run_pipeline
 # ただし意見が7件未満の小さな会話では誰も7票に到達できないため、
 # 「可視の意見数」まで閾値を下げる。意見が7件以上あれば本家標準のまま。
 POLIS_MIN_VOTE_THRESHOLD = 7
+
+# 本家Polis準拠: クラスタ対象がこの人数に満たなければ、投票数の多い参加者から
+# 順にここまで繰り上げる(少数しか閾値を満たさない会話でもグループ分けを成立させる)
+MIN_CLUSTERABLE_PARTICIPANTS = 15
 
 # 再現性の担保: 乱数シードを固定し、同じ投票データから常に同じマップを生成する
 RANDOM_STATE = 42
@@ -34,12 +40,36 @@ def compute_clusters(payload: dict) -> dict:
 
     threshold = min(POLIS_MIN_VOTE_THRESHOLD, statement_count)
 
-    result = run_pipeline(
-        votes=votes,
-        mod_out_statement_ids=mod_out,
-        min_user_vote_threshold=threshold,
-        random_state=RANDOM_STATE,
-    )
+    # 本家Polis準拠の下限ルール: 閾値を満たす参加者が15人未満なら、投票数の多い
+    # 参加者から順に15人まで繰り上げてクラスタ対象に含める(conversation.clj と同じ)。
+    # 意見が後から増えて「全件投票」を満たす人が激減したテーマなどで、
+    # クラスタリングが1〜2人になって失敗するのを防ぐ
+    vote_counts = Counter(v["participant_id"] for v in votes)
+    clusterable = [p for p, c in vote_counts.items() if c >= threshold]
+    keep_ids = []
+    if len(clusterable) < MIN_CLUSTERABLE_PARTICIPANTS:
+        keep_ids = [p for p, _ in vote_counts.most_common(MIN_CLUSTERABLE_PARTICIPANTS)]
+
+    # それでも投票パターンの種類が乏しくグループ数の自動探索が失敗する場合は、
+    # グループ数を固定して減らしながら再試行する
+    result = None
+    last_error: Exception | None = None
+    for force_k in (None, 3, 2):
+        try:
+            result = run_pipeline(
+                votes=votes,
+                mod_out_statement_ids=mod_out,
+                min_user_vote_threshold=threshold,
+                keep_participant_ids=keep_ids,
+                random_state=RANDOM_STATE,
+                **({} if force_k is None else {"force_group_count": force_k}),
+            )
+            break
+        except ValueError as e:
+            last_error = e
+            continue
+    if result is None:
+        raise RuntimeError(f"clustering failed even with reduced group counts: {last_error}")
 
     participants = []
     for pid, row in result.participants_df.iterrows():
