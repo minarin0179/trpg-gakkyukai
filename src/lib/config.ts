@@ -29,6 +29,12 @@ export const VOTE_IP_THEME_MIN = 100;
 export const THEME_SIMILAR_THRESHOLD = 0.9;
 export const THEME_SIMILAR_MAX = 3; // 確認表示に出す件数
 
+// テーマ検索の意味検索(埋め込み)。部分一致に加えて、コサイン類似度が閾値以上の
+// テーマを関連度順で補完する。実測: 「遅刻」→「キャラシの提出遅れ」が0.849、
+// 関連の薄い組は0.83前後に沈むため、0.80は再現率寄りの設定(検索は多少のノイズ許容)
+export const SEARCH_SIMILAR_THRESHOLD = 0.8;
+export const SEARCH_SEMANTIC_MAX = 20; // 意味検索で補完する最大件数
+
 // 投票ゲート: そのテーマで min(この値, 意見数) 件投票するまで意見を投稿できない。
 // 目的は「まず聞いてから話す」文化と投票数の底上げ(重複防止ではない —
 // ランダム提示n件で同旨の意見に当たる確率は実測でn=5:約25%、n=20でも約55%であり、

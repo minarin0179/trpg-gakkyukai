@@ -1,18 +1,30 @@
 import {
   and,
+  cosineDistance,
   countDistinct,
   desc,
   eq,
   count,
   inArray,
+  isNotNull,
   max,
   notInArray,
   sql,
   type SQL,
 } from "drizzle-orm";
 import { cache } from "react";
+import { headers } from "next/headers";
 import { db, themes, statements, votes, mathResults } from "@/db";
-import { PROMOTION_MIN_PARTICIPANTS, RANKING_GRAVITY, THEMES_PAGE_SIZE } from "./config";
+import { embedTexts } from "./embedding";
+import { checkAndRecordRate } from "./rate-limit";
+import { dailyActorHash } from "./participant";
+import {
+  PROMOTION_MIN_PARTICIPANTS,
+  RANKING_GRAVITY,
+  THEMES_PAGE_SIZE,
+  SEARCH_SIMILAR_THRESHOLD,
+  SEARCH_SEMANTIC_MAX,
+} from "./config";
 
 export type ThemesTab = "fresh" | "active" | "mine" | "unread";
 
@@ -106,17 +118,57 @@ function buildSearchCondition(query: string): SQL | undefined {
   return and(...conds);
 }
 
+// 意味検索: 検索語を埋め込み、類似度が閾値以上のテーマIDを関連度順で返す。
+// 埋め込み不可・レート超過・失敗時は空配列(部分一致のみに縮退し、検索は止めない)
+async function searchSemanticThemeIds(query: string): Promise<string[]> {
+  try {
+    const h = await headers();
+    const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rate = await checkAndRecordRate("search_embed", dailyActorHash(`ip:${ip}`));
+    if (!rate.ok) return [];
+    const vec = (await embedTexts([query]))?.[0];
+    if (!vec) return [];
+    const sim = sql<number>`1 - (${cosineDistance(themes.embedding, vec)})`;
+    const near = await db
+      .select({ id: themes.id, sim })
+      .from(themes)
+      .where(and(eq(themes.status, "active"), isNotNull(themes.embedding)))
+      .orderBy(desc(sim))
+      .limit(SEARCH_SEMANTIC_MAX);
+    return near.filter((r) => Number(r.sim) >= SEARCH_SIMILAR_THRESHOLD).map((r) => r.id);
+  } catch (e) {
+    console.error("semantic search failed:", e);
+    return [];
+  }
+}
+
+// 検索: タイトル・説明の部分一致(正確なヒット)を先頭に、埋め込みの意味検索
+// (表記が違っても内容が近いテーマ)を関連度順で後ろに補完するハイブリッド。
+// ページングは結合済みID列に対して行い、順序を保って集計を付け直す
 async function listSearchPage(
   query: string,
   offset: number,
   limit: number,
 ): Promise<ThemeWithCounts[]> {
   const cond = buildSearchCondition(query);
-  if (!cond) return [];
-  return themesWithCountsQuery(cond)
-    .orderBy(desc(themes.createdAt), desc(themes.id))
-    .limit(limit)
-    .offset(offset);
+  const [likeRows, semanticIds] = await Promise.all([
+    cond
+      ? db
+          .select({ id: themes.id })
+          .from(themes)
+          .where(and(eq(themes.status, "active"), cond))
+          .orderBy(desc(themes.createdAt), desc(themes.id))
+          .limit(100)
+      : Promise.resolve([] as { id: string }[]),
+    searchSemanticThemeIds(query),
+  ]);
+  const seen = new Set(likeRows.map((r) => r.id));
+  const ids = [...likeRows.map((r) => r.id), ...semanticIds.filter((id) => !seen.has(id))];
+  const pageIds = ids.slice(offset, offset + limit);
+  if (pageIds.length === 0) return [];
+  const rows = await themesWithCountsQuery(inArray(themes.id, pageIds));
+  const order = new Map(pageIds.map((id, i) => [id, i]));
+  return rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
 
 // 新着タブ: 全アクティブテーマを新着順。DBのoffset/limitでそのままページング

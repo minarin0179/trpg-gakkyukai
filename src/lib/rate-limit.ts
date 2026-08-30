@@ -16,6 +16,8 @@ const LIMITS: Record<string, { max: number; windowMs: number }> = {
   vote_ip_theme: { max: 0, windowMs: DAY },
   // 類似テーマのライブチェック(入力デバウンスごとに1回)。埋め込み計算の乱用防止
   similar_check: { max: 300, windowMs: DAY },
+  // テーマ検索の意味検索(検索1回につき1回)。超過時は部分一致のみに縮退する
+  search_embed: { max: 300, windowMs: DAY },
 };
 
 export async function checkAndRecordRate(
@@ -25,7 +27,8 @@ export async function checkAndRecordRate(
     | "statement_create_ip"
     | "report_create"
     | "vote_ip_theme"
-    | "similar_check",
+    | "similar_check"
+    | "search_embed",
   actor: string,
   maxOverride?: number,
   context?: string,

@@ -112,6 +112,7 @@ export const rateEvents = pgTable(
         "report_create",
         "vote_ip_theme",
         "similar_check",
+        "search_embed",
       ],
     }).notNull(),
     actorHash: text("actor_hash").notNull(),
