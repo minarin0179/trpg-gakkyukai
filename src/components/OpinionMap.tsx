@@ -16,6 +16,8 @@ const PREVIEW_COUNT = 2;
 
 export type PublicMathResult = {
   status: "ok" | "insufficient";
+  // マップ参加に必要な最低投票数(通常7。意見が少ないテーマでは下がる)
+  threshold_used?: number;
   group_count?: number;
   participants?: { id: number; x: number; y: number; cluster: number | null }[];
   consensus?: {
@@ -82,8 +84,8 @@ export function OpinionMap({
   }
 
   const pts = result.participants;
-  // 自分が属するグループ(クラスタ)のID。マップ上で7票未満などで未クラスタなら null。
-  const myCluster =
+  // 公式の計算結果における自分のグループ。7票未満などで未クラスタなら null。
+  const officialCluster =
     myIndex !== null ? (pts.find((p) => p.id === myIndex)?.cluster ?? null) : null;
 
   // 自分の点のライブ投影(本家Polisと同じ方式)。公開されているPCAの軸(意見ごとの
@@ -108,6 +110,34 @@ export function OpinionMap({
       liveSelf = { x: lx * scale, y: ly * scale };
     }
   }
+
+  // 自分のグループの暫定判定(ライブ)。本計算のグループ分けはk-means
+  // (=「最も近い重心」への割り当て)なので、公開されている各グループの
+  // 重心に対して同じ規則を適用すれば、公式の境界の引き方を再現できる。
+  // 公式ルールに合わせ、マップ参加基準(通常7票)に達するまでは判定しない。
+  // 30分ごとの本計算が来たら公式の割り当てで上書きされる暫定表示
+  const clusterThreshold = result.threshold_used ?? 7;
+  let liveCluster: number | null = null;
+  if (liveSelf !== null && Object.keys(myVotes).length >= clusterThreshold) {
+    const acc = new Map<number, { x: number; y: number; n: number }>();
+    for (const p of pts) {
+      if (p.cluster === null) continue;
+      const a = acc.get(p.cluster) ?? { x: 0, y: 0, n: 0 };
+      acc.set(p.cluster, { x: a.x + p.x, y: a.y + p.y, n: a.n + 1 });
+    }
+    let best = Infinity;
+    for (const [cid, a] of acc) {
+      const d = Math.hypot(liveSelf.x - a.x / a.n, liveSelf.y - a.y / a.n);
+      if (d < best) {
+        best = d;
+        liveCluster = cid;
+      }
+    }
+  }
+
+  // 表示に使う自分のグループ。点の表示位置と整合させる:
+  // ライブ投影で描いているときは暫定判定、公式位置で描いているときは公式の割り当て
+  const myCluster = liveSelf !== null ? liveCluster : officialCluster;
 
   // ライブ投影中の自分の点が描画範囲の外に出ないよう、範囲計算に含める
   const xs = [...pts.map((p) => p.x), ...(liveSelf ? [liveSelf.x] : [])];
@@ -342,8 +372,10 @@ export function OpinionMap({
             {(liveSelf !== null || myIndex !== null) &&
               (() => {
                 const me = myIndex !== null ? pts.find((p) => p.id === myIndex) : undefined;
+                // 色は myCluster(表示位置と整合するグループ判定)に従う。
+                // 閾値未満・判定不能の間はグレー
                 const color =
-                  me?.cluster != null ? GROUP_COLORS[me.cluster % GROUP_COLORS.length] : "#a8a29e";
+                  myCluster != null ? GROUP_COLORS[myCluster % GROUP_COLORS.length] : "#a8a29e";
                 const pos = liveSelf
                   ? { x: sx(liveSelf.x), y: sy(liveSelf.y) }
                   : me
@@ -439,7 +471,7 @@ export function OpinionMap({
               そのグループの特徴的な意見が見られます
             </li>
             <li>グレーの点は、投票がまだ少なくグループが決まっていない参加者です</li>
-            <li>投票すると、あなたの位置がすぐにマップへ反映されます(グループの判定は7件以上から)</li>
+            <li>投票すると、あなたの位置がすぐにマップへ反映されます(7件以上でグループも暫定表示され、定期の再計算で確定します)</li>
           </ul>
         </details>
       </div>
