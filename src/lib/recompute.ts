@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { db, statements, votes, mathResults } from "@/db";
 import { getThemeCounts, getMathResult } from "./queries";
 import { RECOMPUTE_MIN_INTERVAL_SEC } from "./config";
@@ -110,6 +111,15 @@ export async function recomputeTheme(themeId: string): Promise<void> {
       target: mathResults.themeId,
       set: { voteCount: payload.votes.length, result, computedAt: startedAt },
     });
+
+  // 新しいマップを30分のISRキャッシュを待たずページに反映する。
+  // after()やcronなど呼び出し文脈によっては失敗し得るため、失敗しても
+  // 計算結果自体は保存済みとし、ページ側の時間ベース再生成に委ねる
+  try {
+    revalidatePath(`/t/${themeId}`);
+  } catch {
+    // noop
+  }
 }
 
 // 投票のたびに呼ばれる。実際に再計算するのは「前回計算以降に投票の追加・変更があり、

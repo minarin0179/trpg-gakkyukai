@@ -11,13 +11,19 @@ import { ShareTheme } from "@/components/ShareTheme";
 import { StatementGuidelines } from "@/components/StatementGuidelines";
 import { StatementComposer } from "@/components/StatementComposer";
 import { ThemePersonalization } from "@/components/ThemePersonalization";
+import { LiveVoterCount } from "@/components/LiveVoterCount";
 import { formatRelativeDate } from "@/lib/format";
 
 // テーマページはエッジキャッシュ可能にして Origin Transfer を大幅削減する。
 // 共有部分(タイトル・意見・マップ・合意)だけをここで描画し、cookie依存の個人化
 // (自分の投票・マップ上の自分の位置)はクライアントから /api/t/[id]/me で取得する。
-// 新規意見の投稿時は createStatementAction が revalidatePath でこのページを更新する。
-export const revalidate = 30;
+// 時間ベースの再生成は30分と長めだが、内容が変わるイベントは全て即時無効化される:
+// - 意見の投稿: createStatementAction が revalidatePath
+// - マップの更新: recomputeTheme 成功時に revalidatePath
+// - 削除対応: admin の removeContentAction が revalidatePath
+// 唯一遅れるのは投票数・参加人数で、これはクライアントが /api/t/[id]/stats
+// (CDN 60秒キャッシュ)から取得して補う。
+export const revalidate = 1800;
 
 // 動的セグメント([id])をランタイムでISRキャッシュするには generateStaticParams が必須。
 // 空配列=ビルド時は生成せず、アクセスされたテーマだけをその場でISRキャッシュする
@@ -90,8 +96,8 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
           )}
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-stone-600 dark:text-stone-500">
             <span>
-              {counts.voterCount}人が投票 · 意見{allStatements.length}件 ·{" "}
-              {formatRelativeDate(theme.createdAt)}
+              <LiveVoterCount themeId={theme.id} initial={counts.voterCount} />
+              人が投票 · 意見{allStatements.length}件 · {formatRelativeDate(theme.createdAt)}
             </span>
             <ShareTheme themeId={theme.id} title={theme.title} />
             <ReportButton targetType="theme" targetId={theme.id} />

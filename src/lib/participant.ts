@@ -3,6 +3,22 @@ import { randomUUID, createHash } from "crypto";
 import { db, participants } from "@/db";
 
 const COOKIE_NAME = "gk_pid";
+// 「参加済み」の目印(値に意味はない)。本体のgk_pidはhttpOnlyでクライアントから
+// 見えないため、個人化API(/api/t/[id]/me)を呼ぶ必要があるかの判定に使う。
+// 未参加の閲覧者(大半)が空応答のためだけにAPIを叩くのを避ける
+const MARKER_COOKIE = "gk_p";
+
+type CookieStore = Awaited<ReturnType<typeof cookies>>;
+
+function setMarkerCookie(store: CookieStore): void {
+  store.set(MARKER_COOKIE, "1", {
+    httpOnly: false,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 400,
+    path: "/",
+  });
+}
 
 // 匿名参加者ID。cookieがなければ発行し、DBに登録する。
 // アカウントレス設計の唯一の識別子(本家Polisと同方式)。
@@ -10,6 +26,8 @@ export async function getOrCreateParticipantId(): Promise<string> {
   const store = await cookies();
   const existing = store.get(COOKIE_NAME)?.value;
   if (existing && /^[0-9a-f-]{36}$/.test(existing)) {
+    // 目印が無い既存参加者(目印導入前からの利用者)にもここで補う
+    if (!store.get(MARKER_COOKIE)) setMarkerCookie(store);
     return existing;
   }
   const id = randomUUID();
@@ -21,6 +39,7 @@ export async function getOrCreateParticipantId(): Promise<string> {
     maxAge: 60 * 60 * 24 * 400,
     path: "/",
   });
+  setMarkerCookie(store);
   return id;
 }
 

@@ -33,6 +33,20 @@ export function ThemePersonalization({
 
   const refresh = useCallback(async () => {
     try {
+      // 訪問者の大半は一度も参加していない「読むだけの人」で、その場合の
+      // /me は常に空応答になる。目印cookie(gk_p、参加時にサーバーが立てる)が
+      // 無く、過去に「未参加」を確認済みなら、APIを呼ばずに済ませる。
+      // 判定に失敗した場合は安全側(従来通り呼ぶ)に倒す。
+      let skip = false;
+      let hasMarker = false;
+      try {
+        hasMarker = document.cookie.split("; ").some((c) => c.startsWith("gk_p="));
+        skip = !hasMarker && localStorage.getItem("gk_np") === "1";
+      } catch {
+        // storageにアクセスできない環境では毎回取得する
+      }
+      if (skip) return;
+
       const res = await fetch(`/api/t/${themeId}/me`, { cache: "no-store" });
       if (res.ok) {
         const data = (await res.json()) as {
@@ -41,6 +55,22 @@ export function ThemePersonalization({
         };
         setVotes(data.votes ?? {});
         setMyIndex(typeof data.myIndex === "number" ? data.myIndex : null);
+
+        // 自己修復: 目印導入前からの参加者は目印を持っていないため、
+        // 参加実績が確認できたらクライアント側で目印を立てる。
+        // 未参加が確認できたら記録し、次回以降の呼び出しを省略する。
+        const participated =
+          Object.keys(data.votes ?? {}).length > 0 || typeof data.myIndex === "number";
+        try {
+          if (participated) {
+            document.cookie = "gk_p=1; max-age=34560000; path=/; samesite=lax";
+            localStorage.removeItem("gk_np");
+          } else if (!hasMarker) {
+            localStorage.setItem("gk_np", "1");
+          }
+        } catch {
+          // 記録できなくても動作には影響しない
+        }
       }
     } catch {
       // 取得に失敗しても本体は表示済み。個人化なしで続行する。

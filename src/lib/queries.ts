@@ -14,6 +14,7 @@ import {
 } from "drizzle-orm";
 import { cache } from "react";
 import { headers } from "next/headers";
+import { getCache } from "@vercel/functions";
 import { db, themes, statements, votes, mathResults } from "@/db";
 import { embedTexts } from "./embedding";
 import { checkAndRecordRate } from "./rate-limit";
@@ -171,18 +172,54 @@ async function listSearchPage(
   return rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
 
+// テーマ一覧の共有部分(全員に同じ内容)を Runtime Cache で60秒共有する。
+// 一覧ページは検索・タブがあり関数実行自体は避けられないが、重い集計クエリの
+// 結果を共有することでDB読み出し(Neon転送)とCPUを削減する。
+// 個人化(未参加フィルタ等)と検索(ヒット率が低い)はキャッシュしない。
+// JSON化で Date が文字列になるため、取り出し時に復元する。
+const THEMES_LIST_TTL_SEC = 60;
+
+async function withThemesListCache(
+  key: string,
+  fetcher: () => Promise<ThemeWithCounts[]>,
+): Promise<ThemeWithCounts[]> {
+  let listCache: ReturnType<typeof getCache> | null = null;
+  try {
+    listCache = getCache({ namespace: "themes" });
+    const hit = (await listCache.get(key)) as
+      | (Omit<ThemeWithCounts, "createdAt"> & { createdAt: string })[]
+      | null
+      | undefined;
+    if (hit) return hit.map((r) => ({ ...r, createdAt: new Date(r.createdAt) }));
+  } catch {
+    // ローカル開発などRuntime Cacheが使えない環境ではキャッシュなしで続行
+    listCache = null;
+  }
+  const rows = await fetcher();
+  if (listCache) {
+    await listCache
+      .set(key, rows, { ttl: THEMES_LIST_TTL_SEC, tags: ["themes-list"] })
+      .catch(() => {});
+  }
+  return rows;
+}
+
 // 新着タブ: 全アクティブテーマを新着順。DBのoffset/limitでそのままページング
 async function listFreshPage(offset: number, limit: number): Promise<ThemeWithCounts[]> {
-  return themesWithCountsQuery()
-    .orderBy(desc(themes.createdAt), desc(themes.id))
-    .limit(limit)
-    .offset(offset);
+  return withThemesListCache(`fresh:${offset}:${limit}`, () =>
+    themesWithCountsQuery()
+      .orderBy(desc(themes.createdAt), desc(themes.id))
+      .limit(limit)
+      .offset(offset),
+  );
 }
 
 // 人気タブ: 10票以上を勢い順(スコアはJS計算のため、全件取得してsort→slice)。
 // 人気は母集団が小さいため全件取得のコストは小さい。
 async function listActivePage(offset: number, limit: number): Promise<ThemeWithCounts[]> {
-  const rows = await themesWithCountsQuery().limit(1000);
+  const rows = await withThemesListCache("active:base", () =>
+    themesWithCountsQuery().limit(1000),
+  );
   const score = (r: (typeof rows)[number]) => {
     const ageDays = (Date.now() - r.createdAt.getTime()) / 86_400_000;
     return r.voterCount / Math.pow(ageDays + 2, RANKING_GRAVITY);

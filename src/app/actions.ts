@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { headers } from "next/headers";
+import { getCache } from "@vercel/functions";
 import { nanoid } from "nanoid";
 import { db, themes, statements, votes, reports } from "@/db";
 import {
@@ -155,6 +156,11 @@ export async function createThemeAction(
   for (const text of seeds) {
     await db.insert(statements).values({ themeId: id, text, participantId });
   }
+
+  // 新テーマをテーマ一覧のRuntime Cache(60秒)を待たず即時反映する
+  await getCache()
+    .expireTag("themes-list")
+    .catch(() => {});
 
   redirect(`/t/${id}`);
 }

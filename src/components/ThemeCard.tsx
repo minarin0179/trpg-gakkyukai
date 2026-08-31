@@ -19,7 +19,11 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
   const showMapPending = isParticipated && theme.hasMap === false;
 
   return (
+    // prefetch無効: 一覧では大量のカードが視界に入るため、先読みが
+    // Edgeリクエストの過半を占めていた(読まれない先読みが大半)。
+    // 遷移先はISRキャッシュ済みなのでクリック時取得でも十分速い
     <Link
+      prefetch={false}
       href={`/t/${theme.id}`}
       className="block rounded-lg border border-stone-400 bg-white p-4 transition hover:border-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-600"
     >

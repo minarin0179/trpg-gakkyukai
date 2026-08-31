@@ -5,8 +5,9 @@ export const PROMOTION_MIN_PARTICIPANTS = 10;
 
 // 再計算の最短間隔(秒)。投票のたびに叩かれても計算が暴走しないための抑制。
 // 再計算はテーマの全投票を読み込む(=転送量最大の源)ため、頻度を抑えて転送を削減する。
-// 大きくするほどマップ更新は遅くなる(60秒なら実害小)。
-export const RECOMPUTE_MIN_INTERVAL_SEC = 60;
+// 自分の点はクライアント側でライブ投影されるため、全体マップの更新は30分遅れでも
+// 体験への影響は小さい。初回計算(マップがまだ無いテーマ)は間隔に関係なく即時実行される
+export const RECOMPUTE_MIN_INTERVAL_SEC = 30 * 60;
 
 export const THEME_TITLE_MAX = 100;
 export const THEME_DESCRIPTION_MAX = 2000;

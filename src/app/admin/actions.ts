@@ -1,8 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { and, eq, isNull } from "drizzle-orm";
 import { after } from "next/server";
+import { getCache } from "@vercel/functions";
 import { db, themes, statements, reports } from "@/db";
 import { recomputeTheme } from "@/lib/recompute";
 import { isAdmin } from "@/lib/admin-auth";
@@ -47,6 +49,8 @@ export async function removeContentAction(formData: FormData) {
       .set({ status: "removed", removedReason: reason })
       .where(eq(statements.id, sid));
     if (stmt) {
+      // 削除はISRの30分キャッシュを待たず即時にページへ反映する(notice & takedownの実効性)
+      revalidatePath(`/t/${stmt.themeId}`);
       after(async () => {
         await recomputeTheme(stmt.themeId).catch(() => {});
       });
@@ -56,6 +60,11 @@ export async function removeContentAction(formData: FormData) {
       .update(themes)
       .set({ status: "removed", removedReason: reason })
       .where(eq(themes.id, targetId));
+    revalidatePath(`/t/${targetId}`);
+    // テーマ一覧のRuntime Cacheからも即時に消す
+    await getCache()
+      .expireTag("themes-list")
+      .catch(() => {});
   }
 
   // 同じ対象への未対応の通報をまとめて「対応済み(削除)」に
