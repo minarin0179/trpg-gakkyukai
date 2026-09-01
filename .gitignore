@@ -46,3 +46,9 @@ __pycache__/
 
 # WSLでのlighthouse実行時の残骸
 C:*
+
+# サードパーティ素材(再配布回避のためリポジトリ非同梱。scripts/fetch-illustrations.mjs が取得)
+/public/illustrations/
+
+# 告知用画像(リポジトリ管理外)
+/_launch-images/

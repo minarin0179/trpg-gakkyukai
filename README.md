@@ -22,6 +22,9 @@ TRPGにまつわる論点に「賛成 / 反対 / パス」で投票し、意見�
 npm install
 uv venv && uv pip install -r requirements.txt
 
+# イラスト素材の取得(Loose Drawing公式サイトから。リポジトリには非同梱)
+npm run setup:assets
+
 # 環境変数(Vercelから取得。COMPUTE_URL=http://localhost:8787 をローカル用に追記)
 vercel env pull .env.local
 
@@ -40,17 +43,25 @@ node --env-file=.env.local scripts/seed.mjs
 
 - `src/db/schema.ts` — themes / statements / votes / math_results / reports / rate_events
 - `src/app/actions.ts` — テーマ提案・意見投稿・投票・通報のServer Actions
-- `src/lib/recompute.ts` — 投票後の再計算オーケストレーション(20秒スロットル)
+- `src/lib/recompute.ts` — 投票後の再計算オーケストレーション(最短30分間隔。自分の点はクライアント側でライブ投影)
 - `api/_logic.py` — red-dwarf呼び出し本体(エンドポイントから分離、単体テスト可)
 - `src/app/api/cron/recompute/route.ts` — 日次バックストップ(vercel.json の crons)
 - 参加者は匿名cookie(`gk_pid`)のみで識別。個人情報は保存しない
 
 ## デプロイ
 
-```bash
-vercel deploy --prod --yes
-```
+GitHub連携により `main` へのpushで本番へ自動デプロイされる(ブランチ/PRはpreview URL)。
 
 環境変数(設定済み): `DATABASE_URL`(Neon統合) / `CRON_SECRET` / `HASH_SALT` /
 `VERCEL_SUPPORT_LARGE_FUNCTIONS=1`(Python関数が225MB超のため必須) /
-本番公開時に `TURNSTILE_SECRET_KEY` と `NEXT_PUBLIC_TURNSTILE_SITE_KEY` を追加する。
+`TURNSTILE_SECRET_KEY` と `NEXT_PUBLIC_TURNSTILE_SITE_KEY`(bot対策) /
+`DISCORD_WEBHOOK_URL`(通報・問い合わせの運営通知、任意)。
+
+## ライセンス
+
+コードは [MIT License](./LICENSE)。ただし以下はMITの対象外:
+
+- `api/_model/` の埋め込みモデル(Apache-2.0の派生物)
+- イラスト素材(Loose Drawing様の規約に従う。リポジトリ非同梱)
+
+詳細は [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) を参照。
