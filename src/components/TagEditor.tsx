@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addThemeTagAction } from "@/app/actions";
 import { TagSelector } from "@/components/TagSelector";
-import { INITIAL_TAGS, TAGS_PER_THEME } from "@/lib/config";
+import { TAGS_PER_THEME } from "@/lib/config";
 
 // 既存テーマへのタグ追加。提案フォームと同じTagSelector(語彙一覧+自由入力)を
 // 開閉式で出す。付与済みタグは押された表示になり解除は不可
@@ -66,7 +66,7 @@ export function TagEditor({
         </button>
       </div>
       <TagSelector
-        vocabulary={[...new Set([...INITIAL_TAGS, ...vocabulary])]}
+        vocabulary={vocabulary}
         selected={existingTags}
         onAdd={add}
         full={existingTags.length >= TAGS_PER_THEME}

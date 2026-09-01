@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { TagSelector } from "@/components/TagSelector";
-import { INITIAL_TAGS, TAGS_PER_THEME } from "@/lib/config";
+import { TAGS_PER_THEME } from "@/lib/config";
 
 // テーマ提案フォームのタグ選択(任意)。共通のTagSelectorで
-// 「初期タグ+使われている既存タグ」の一覧から選ぶ(自由入力も可)。
+// 使われている既存タグ(DBが唯一の真実、使用数順)の一覧から選ぶ(自由入力も可)。
 // 選択結果は hidden input "tags" にカンマ区切りで載せてServer Actionへ渡す
 export function TagPicker({ vocabulary }: { vocabulary: string[] }) {
   const [selected, setSelected] = useState<string[]>([]);
@@ -24,7 +24,7 @@ export function TagPicker({ vocabulary }: { vocabulary: string[] }) {
       </p>
       <input type="hidden" name="tags" value={selected.join(",")} />
       <TagSelector
-        vocabulary={[...new Set([...INITIAL_TAGS, ...vocabulary])]}
+        vocabulary={vocabulary}
         selected={selected}
         onAdd={(tag) => setSelected((prev) => (full ? prev : [...prev, tag]))}
         onRemove={(tag) => setSelected((prev) => prev.filter((t) => t !== tag))}
