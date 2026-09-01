@@ -13,9 +13,7 @@ import { StatementGuidelines } from "@/components/StatementGuidelines";
 import { StatementComposer } from "@/components/StatementComposer";
 import { ThemePersonalization } from "@/components/ThemePersonalization";
 import { LiveVoterCount } from "@/components/LiveVoterCount";
-import { TagChips } from "@/components/TagChips";
-import { TagEditor } from "@/components/TagEditor";
-import { TagReportButton } from "@/components/TagReportButton";
+import { ThemeTagsRow } from "@/components/ThemeTagsRow";
 import { formatRelativeDate } from "@/lib/format";
 
 // テーマページはエッジキャッシュ可能にして Origin Transfer を大幅削減する。
@@ -108,13 +106,9 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
             <ShareTheme themeId={theme.id} title={theme.title} />
             <ReportButton targetType="theme" targetId={theme.id} />
           </div>
-          {/* タグ: 誰でも追加可(削除は通報経由のみ)。ページはISRのため
-              追加時はアクション側の revalidatePath で即時反映される */}
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <TagChips tags={tags.map((t) => t.tag)} />
-            <TagEditor themeId={theme.id} existingTags={tags.map((t) => t.tag)} vocabulary={tagVocabulary} />
-            <TagReportButton tags={tags} />
-          </div>
+          {/* タグ: 誰でも追加可(削除は通報経由のみ)。追加時の表示は
+              クライアント側で即時更新される(ページ本体はISRキャッシュのため) */}
+          <ThemeTagsRow themeId={theme.id} initialTags={tags} vocabulary={tagVocabulary} />
         </div>
 
         <section id="vote" className="scroll-mt-20">

@@ -363,7 +363,7 @@ export async function submitContactAction(
 export async function addThemeTagAction(
   themeId: string,
   rawTag: string,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; id?: number; tag?: string; error?: string }> {
   const { tag, error } = normalizeTag(rawTag);
   if (!tag) return { ok: false, error };
 
@@ -400,7 +400,13 @@ export async function addThemeTagAction(
   );
   if (!ipRate.ok) return { ok: false, error: "この回線からのタグ追加が多すぎます。時間を置いてください" };
 
-  await db.insert(themeTags).values({ themeId, tag }).onConflictDoNothing();
+  const [row] = await db
+    .insert(themeTags)
+    .values({ themeId, tag })
+    .onConflictDoNothing()
+    .returning({ id: themeTags.id });
+  // ページはISRキャッシュのため、表示の即時更新はクライアント側で行う
+  // (revalidatePathは他の閲覧者向けのキャッシュ更新)
   revalidatePath(`/t/${themeId}`);
-  return { ok: true };
+  return { ok: true, id: row?.id, tag };
 }

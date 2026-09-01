@@ -17,7 +17,9 @@ export function TagSelector({
 }: {
   vocabulary: string[]; // 候補一覧(初期タグ+使われている既存タグ)
   selected: string[]; // 選択済み/付与済み。onRemove未指定なら解除不可(押された表示のみ)
-  onAdd: (tag: string) => void;
+  // falseを返すと「追加しなかった」扱い(確認ダイアログのキャンセル等)。
+  // その場合は入力欄をクリアしない
+  onAdd: (tag: string) => void | boolean;
   onRemove?: (tag: string) => void;
   full: boolean;
   pending?: boolean;
@@ -43,8 +45,8 @@ export function TagSelector({
     if (tag.length === 0 || full || pending) return;
     // 一覧に同名(大文字小文字違い含む)があればその表記に寄せる
     const canonical = chips.find((t) => t.toLowerCase() === tag.toLowerCase()) ?? tag;
-    if (!lowerSelected.includes(canonical.toLowerCase())) onAdd(canonical);
-    setFilter("");
+    if (lowerSelected.includes(canonical.toLowerCase())) return;
+    if (onAdd(canonical) !== false) setFilter("");
   }
 
   return (
