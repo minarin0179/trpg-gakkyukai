@@ -54,7 +54,7 @@ export const TAG_VOCABULARY_LIMIT = 40;
 // 実際に投稿された全テーマ(2026-09-01時点229件)のクラスタ分析に基づく構成
 export const INITIAL_TAGS = [
   // システム
-  "CoC",
+  "クトゥルフ神話",
   "D&D",
   "ソード・ワールド",
   // 大きな論点クラスタ
@@ -80,7 +80,6 @@ export const INITIAL_TAGS = [
   "二次創作",
   // 非争点テーマ
   "雑談",
-  "アンケート",
 ] as const;
 
 // 人気タブの並び順(Hacker News方式の時間減衰ランキング)
