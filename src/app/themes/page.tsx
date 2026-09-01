@@ -21,10 +21,9 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
   const tagMode: "and" | "or" = tagmode === "and" ? "and" : "or";
   const selectedTags = tagFilter.split(",").map((t) => t.trim()).filter(Boolean);
   // チップの切替リンク用: タグ集合とモードからURLを組み立てる
+  // タグ0個でもモード(tagmode)を持ち回る: 先に条件を選んでからタグを選べる
   const tagUrl = (tags: string[], mode: "and" | "or") =>
-    tags.length === 0
-      ? "/themes?tag="
-      : `/themes?tag=${encodeURIComponent(tags.join(","))}${mode === "and" ? "&tagmode=and" : ""}`;
+    `/themes?tag=${encodeURIComponent(tags.join(","))}${mode === "and" ? "&tagmode=and" : ""}`;
   const query = typeof q === "string" ? q.trim().slice(0, 100) : "";
   const searching = query.length > 0;
   const currentTab: ThemesTab =
