@@ -63,4 +63,4 @@ GitHub連携により `main` へのpushで本番へ自動デプロイされる(�
 - `api/_model/` の埋め込みモデル(Apache-2.0の派生物)
 - イラスト素材(Loose Drawing様の規約に従う。リポジトリ非同梱)
 
-詳細は [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) を参照。
+詳細は [docs/THIRD_PARTY_NOTICES.md](./docs/THIRD_PARTY_NOTICES.md) を参照。

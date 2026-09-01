@@ -55,3 +55,10 @@ C:*
 
 # スクリプトの出力先未指定バグで生成される残骸の混入防止
 /undefined/
+
+# AI開発ツールの生成物(next devやスキルインストーラが再生成する。リポジトリには含めない)
+/AGENTS.md
+/CLAUDE.md
+/skills-lock.json
+/.agents/
+/.claude/
