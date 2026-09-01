@@ -15,12 +15,15 @@ export const dynamic = "force-dynamic";
 export default async function ThemesPage({ searchParams }: PageProps<"/themes">) {
   const { tab, q, tag, tagmode } = await searchParams;
   const tagFilter = typeof tag === "string" ? tag.trim().slice(0, 200) : "";
+  // タグ絞り込みの折りたたみ開閉: パラメータの有無で判定する。
+  // 最後のタグを外しても ?tag= を残すことで、開いたまま選び直せる
+  const tagPanelOpen = typeof tag === "string";
   const tagMode: "and" | "or" = tagmode === "and" ? "and" : "or";
   const selectedTags = tagFilter.split(",").map((t) => t.trim()).filter(Boolean);
   // チップの切替リンク用: タグ集合とモードからURLを組み立てる
   const tagUrl = (tags: string[], mode: "and" | "or") =>
     tags.length === 0
-      ? "/themes"
+      ? "/themes?tag="
       : `/themes?tag=${encodeURIComponent(tags.join(","))}${mode === "and" ? "&tagmode=and" : ""}`;
   const query = typeof q === "string" ? q.trim().slice(0, 100) : "";
   const searching = query.length > 0;
@@ -69,7 +72,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
       {/* タグ絞り込み: 複数選択可(チップの再クリックで解除)。
           「いずれか(OR)/すべて(かつ)」はトグルで切り替える */}
       {tagVocabulary.length > 0 && (
-        <details className="mb-4" open={!!tagFilter}>
+        <details className="mb-4" open={tagPanelOpen}>
           <summary className="cursor-pointer text-sm text-stone-600 underline dark:text-stone-400">
             タグで絞り込み{selectedTags.length > 0 ? `: ${selectedTags.join("、")}` : ""}
           </summary>
