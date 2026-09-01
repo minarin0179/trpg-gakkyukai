@@ -95,9 +95,8 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
               );
             })}
           </div>
-          {selectedTags.length >= 2 && (
-            <p className="mt-2 flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-400">
-              複数タグの条件:
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-400">
+            複数タグの条件:
               {(["or", "and"] as const).map((m) => (
                 <Link
                   key={m}
@@ -112,8 +111,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
                   {m === "or" ? "いずれかを含む" : "すべて含む"}
                 </Link>
               ))}
-            </p>
-          )}
+          </p>
         </details>
       )}
 
