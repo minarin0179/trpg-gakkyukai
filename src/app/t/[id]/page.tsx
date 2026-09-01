@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getTheme, getThemeCounts, getVisibleStatements, getMathResult, getThemeTags } from "@/lib/queries";
+import { getTheme, getThemeCounts, getVisibleStatements, getMathResult, getThemeTags, getTagVocabulary } from "@/lib/queries";
 import type { MathResultJson } from "@/lib/recompute";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
@@ -69,11 +69,12 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
   const theme = await getTheme(id);
   if (!theme) notFound();
 
-  const [counts, allStatements, mathRow, tags] = await Promise.all([
+  const [counts, allStatements, mathRow, tags, tagVocabulary] = await Promise.all([
     getThemeCounts(id),
     getVisibleStatements(id),
     getMathResult(id),
     getThemeTags(id),
+    getTagVocabulary(),
   ]);
 
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない。
@@ -111,7 +112,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
               追加時はアクション側の revalidatePath で即時反映される */}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <TagChips tags={tags.map((t) => t.tag)} />
-            <TagEditor themeId={theme.id} existingTags={tags.map((t) => t.tag)} />
+            <TagEditor themeId={theme.id} existingTags={tags.map((t) => t.tag)} vocabulary={tagVocabulary} />
             <TagReportButton tags={tags} />
           </div>
         </div>

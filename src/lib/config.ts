@@ -43,10 +43,11 @@ export const SEARCH_SEMANTIC_MAX = 20; // 意味検索で補完する最大件�
 export const STATEMENT_GATE_VOTES = 5;
 
 // タグ(要望#4580)。誰でも追加可・削除は通報経由のみ。
-// 表記揺れはサジェスト(既存タグへの誘導)で抑える
+// 表記揺れは「語彙一覧から選ぶ」UIで抑える(候補の見逃しを構造的に防ぐ)
 export const TAG_MAX_LENGTH = 20;
 export const TAGS_PER_THEME = 8;
-export const TAG_SUGGEST_LIMIT = 8;
+// 候補一覧に出す既存タグの最大数(一覧できる量に抑える)
+export const TAG_VOCABULARY_LIMIT = 40;
 // 提案フォームで最初に提示する候補タグ(タップで選択)。
 // 特別扱いはせず、あくまで入力の出発点。ここに無いタグも自由に付けられる。
 // 1タグ=1話題になるよう「・」連結はしない(固有名詞のソード・ワールドを除く)。

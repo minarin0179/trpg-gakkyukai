@@ -134,7 +134,6 @@ export const rateEvents = pgTable(
         "search_embed",
         "tag_add",
         "tag_add_ip",
-        "tag_suggest",
       ],
     }).notNull(),
     actorHash: text("actor_hash").notNull(),

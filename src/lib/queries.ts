@@ -20,7 +20,7 @@ import { embedTexts } from "./embedding";
 import { checkAndRecordRate } from "./rate-limit";
 import { actorHash, dailyActorHash } from "./participant";
 import {
-  TAG_SUGGEST_LIMIT,
+  TAG_VOCABULARY_LIMIT,
   PROMOTION_MIN_PARTICIPANTS,
   RANKING_GRAVITY,
   THEMES_PAGE_SIZE,
@@ -353,25 +353,17 @@ async function listByTagPage(tag: string, offset: number, limit: number): Promis
     .offset(offset);
 }
 
-// タグのサジェスト(表記揺れ・ニュアンス違いの乱立防止)。
-// 空入力なら使用数の多い既存タグ(入力前から候補を見せる)、入力中は
-// 双方向の部分一致(「AI」→「生成AI」、「クトゥルフ神話TRPG」→「クトゥルフ神話」)。
-// アクティブテーマに付いているタグのみを候補にする
-export async function suggestExistingTags(prefix: string): Promise<string[]> {
-  const p = prefix.trim();
-  const cond =
-    p.length === 0
-      ? sql`true`
-      : sql`(${themeTags.tag} ILIKE ${`%${p.replace(/[\\%_]/g, (c) => `\\${c}`)}%`}
-          OR ${p} ILIKE '%' || ${themeTags.tag} || '%')`;
+// タグの語彙(使われている既存タグを使用数順に)。提案フォーム・タグ追加UIに
+// 「一覧から選ぶ」候補として渡す。サジェスト(検索型)だと既存タグを見逃して
+// 似た表記が乱立するため、一覧できる量に絞って最初から全部見せる方針
+export async function getTagVocabulary(limit = TAG_VOCABULARY_LIMIT): Promise<string[]> {
   const rows = await db
     .select({ tag: themeTags.tag, n: count() })
     .from(themeTags)
     .innerJoin(themes, and(eq(themes.id, themeTags.themeId), eq(themes.status, "active")))
-    .where(cond)
     .groupBy(themeTags.tag)
     .orderBy(desc(count()), themeTags.tag)
-    .limit(TAG_SUGGEST_LIMIT);
+    .limit(limit);
   return rows.map((r) => r.tag);
 }
 

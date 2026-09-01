@@ -17,7 +17,7 @@ declare global {
   }
 }
 
-export function ThemeForm({ siteKey }: { siteKey: string }) {
+export function ThemeForm({ siteKey, tagVocabulary }: { siteKey: string; tagVocabulary: string[] }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     createThemeAction,
     {},
@@ -237,7 +237,7 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           賛成/反対が分かれそうな意見を並べておくと、参加者が投票しやすくなります。
 </p>
       </div>
-      <TagPicker />
+      <TagPicker vocabulary={tagVocabulary} />
       <div ref={containerRef} />
       {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       <button

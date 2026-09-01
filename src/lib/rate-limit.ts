@@ -18,10 +18,9 @@ const LIMITS: Record<string, { max: number; windowMs: number }> = {
   similar_check: { max: 300, windowMs: DAY },
   // テーマ検索の意味検索(検索1回につき1回)。超過時は部分一致のみに縮退する
   search_embed: { max: 300, windowMs: DAY },
-  // タグ付与(cookie/IPの二重計数)とサジェスト(IPのみ、入力補助なので緩め)
+  // タグ付与(cookie/IPの二重計数)
   tag_add: { max: 30, windowMs: DAY },
   tag_add_ip: { max: 100, windowMs: DAY },
-  tag_suggest: { max: 500, windowMs: DAY },
 };
 
 export async function checkAndRecordRate(
@@ -34,8 +33,7 @@ export async function checkAndRecordRate(
     | "similar_check"
     | "search_embed"
     | "tag_add"
-    | "tag_add_ip"
-    | "tag_suggest",
+    | "tag_add_ip",
   actor: string,
   maxOverride?: number,
   context?: string,

@@ -18,7 +18,6 @@ import { checkAndRecordRate } from "@/lib/rate-limit";
 import { embedTexts } from "@/lib/embedding";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { maybeRecompute } from "@/lib/recompute";
-import { suggestExistingTags } from "@/lib/queries";
 import { findContentViolation } from "@/lib/content-filter";
 import { CONTACT_CATEGORIES } from "@/lib/contact";
 import { notifyAdmin } from "@/lib/notify";
@@ -414,18 +413,4 @@ export async function addThemeTagAction(
   await db.insert(themeTags).values({ themeId, tag }).onConflictDoNothing();
   revalidatePath(`/t/${themeId}`);
   return { ok: true };
-}
-
-// タグ入力のサジェスト(前方一致・使用数順)。表記揺れの抑制が目的。
-// 失敗・レート超過時は空配列(入力補助が本体を止めない)
-export async function suggestTagsAction(prefix: string): Promise<string[]> {
-  try {
-    const p = String(prefix ?? "").trim();
-    if (p.length > TAG_MAX_LENGTH) return [];
-    const rate = await checkAndRecordRate("tag_suggest", dailyActorHash(`ip:${await clientIp()}`));
-    if (!rate.ok) return [];
-    return await suggestExistingTags(p);
-  } catch {
-    return [];
-  }
 }

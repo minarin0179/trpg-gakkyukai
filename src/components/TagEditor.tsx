@@ -1,40 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { addThemeTagAction, suggestTagsAction } from "@/app/actions";
-import { TAG_MAX_LENGTH, TAGS_PER_THEME } from "@/lib/config";
+import { addThemeTagAction } from "@/app/actions";
+import { TagSelector } from "@/components/TagSelector";
+import { INITIAL_TAGS, TAGS_PER_THEME } from "@/lib/config";
 
-// テーマページからのタグ追加。表記揺れ・ニュアンス違いの乱立を防ぐため、
-// 入力欄を開いた瞬間から既存タグの候補チップを見せ(使用数順)、入力中は
-// 双方向部分一致で絞り込む。候補のクリックが最も楽な操作になるようにして、
-// 定着した表記へ収束させる。削除UIは意図的に無い(削除は通報経由のみ)
+// 既存テーマへのタグ追加。提案フォームと同じTagSelector(語彙一覧+自由入力)を
+// 開閉式で出す。付与済みタグは押された表示になり解除は不可
+// (削除は通報経由のみ、要望テーマの方針)
 export function TagEditor({
   themeId,
   existingTags,
+  vocabulary,
 }: {
   themeId: string;
   existingTags: string[];
+  vocabulary: string[];
 }) {
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
-
-  // 開いた瞬間に人気タグを取得(空入力=使用数順の候補)
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    suggestTagsAction("").then((s) => {
-      if (!cancelled) setSuggestions(s);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
 
   if (existingTags.length >= TAGS_PER_THEME) return null;
 
@@ -49,27 +36,12 @@ export function TagEditor({
     );
   }
 
-  const lowerExisting = existingTags.map((t) => t.toLowerCase());
-  const candidates = suggestions.filter((s) => !lowerExisting.includes(s.toLowerCase()));
-
-  function onChange(v: string) {
-    setValue(v);
-    setError(null);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setSuggestions(await suggestTagsAction(v.trim()));
-    }, 300);
-  }
-
   function add(tag: string) {
-    const t = tag.trim();
-    if (t.length === 0 || pending) return;
+    if (pending) return;
+    setError(null);
     startTransition(async () => {
-      const res = await addThemeTagAction(themeId, t);
+      const res = await addThemeTagAction(themeId, tag);
       if (res.ok) {
-        setValue("");
-        setSuggestions([]);
-        setOpen(false);
         router.refresh();
       } else {
         setError(res.error ?? "追加できませんでした");
@@ -78,30 +50,11 @@ export function TagEditor({
   }
 
   return (
-    <span className="flex w-full flex-col gap-1.5">
-      <span className="inline-flex flex-wrap items-center gap-1.5">
-        <input
-          autoFocus
-          value={value}
-          maxLength={TAG_MAX_LENGTH}
-          placeholder="タグ名を入力"
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              add(value);
-            }
-            if (e.key === "Escape") setOpen(false);
-          }}
-          className="w-36 rounded-md border border-stone-400 bg-white px-2 py-0.5 text-xs dark:border-stone-700 dark:bg-stone-900"
-        />
-        <button
-          onClick={() => add(value)}
-          disabled={pending || value.trim().length === 0}
-          className="rounded-md bg-stone-900 px-2 py-0.5 text-xs font-medium text-white disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900"
-        >
-          {pending ? "追加中..." : "追加"}
-        </button>
+    <div className="mt-1 w-full rounded-md border border-stone-300 bg-stone-50 p-3 dark:border-stone-700 dark:bg-stone-800">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs text-stone-600 dark:text-stone-400">
+          一覧から選ぶか、新しいタグを入力してください({existingTags.length}/{TAGS_PER_THEME})
+        </p>
         <button
           onClick={() => {
             setOpen(false);
@@ -111,23 +64,15 @@ export function TagEditor({
         >
           閉じる
         </button>
-        {error && <span className="text-xs text-red-600 dark:text-red-400">{error}</span>}
-      </span>
-      {candidates.length > 0 && (
-        <span className="inline-flex flex-wrap items-center gap-1">
-          <span className="text-xs text-stone-500">候補:</span>
-          {candidates.map((s) => (
-            <button
-              key={s}
-              onClick={() => add(s)}
-              disabled={pending}
-              className="rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs text-stone-600 hover:border-stone-500 hover:text-stone-800 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
-            >
-              {s}
-            </button>
-          ))}
-        </span>
-      )}
-    </span>
+      </div>
+      <TagSelector
+        vocabulary={[...new Set([...INITIAL_TAGS, ...vocabulary])]}
+        selected={existingTags}
+        onAdd={add}
+        full={existingTags.length >= TAGS_PER_THEME}
+        pending={pending}
+      />
+      {error && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{error}</p>}
+    </div>
   );
 }
