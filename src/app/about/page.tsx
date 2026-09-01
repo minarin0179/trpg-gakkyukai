@@ -94,6 +94,17 @@ export default function AboutPage() {
             ここは多数決ではなく意見の「地形」を描く場です。同じ投票パターンを水増ししても
             地形はほぼ変わらず、「グループを越えた合意」は1つのグループの水増しでは作れません
           </li>
+          <li>
+            このサイトのソースコードは
+            <a
+              href="https://github.com/minarin0179/trpg-gakkyukai"
+              className="underline"
+              rel="noopener"
+            >
+              GitHubで公開
+            </a>
+            しています。投票の集計や意見マップの計算の実装を、誰でも直接確認できます
+          </li>
           <li>パラメータや基準を変更した場合は、このページの記載を更新します</li>
         </ul>
       </section>

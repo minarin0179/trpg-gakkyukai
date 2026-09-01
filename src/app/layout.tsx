@@ -68,25 +68,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </header>
         <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">{children}</main>
         <footer className="border-t border-stone-400 bg-white py-6 text-center text-xs text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-500">
+          {/* 訪問者にとっての関連度順: サイト内の案内 → 運営とソース → 外部クレジット */}
           <p>
-            Inspired by{" "}
-            <a href="https://pol.is" className="underline" rel="noopener">
-              Polis
-            </a>{" "}
-            · Powered by{" "}
-            <a
-              href="https://github.com/polis-community/red-dwarf"
-              className="underline"
-              rel="noopener"
-            >
-              red-dwarf
-            </a>{" "}
-            · Illustrations by{" "}
-            <a href="https://loosedrawing.com/" className="underline" rel="noopener">
-              Loose Drawing
-            </a>
-          </p>
-          <p className="mt-2">
             <Link href="/about" className="underline">
               ルールと仕組み
             </Link>
@@ -107,6 +90,32 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             開発・運営:{" "}
             <a href="https://x.com/minarin0179" className="underline" rel="noopener">
               @minarin0179
+            </a>
+            {" · "}
+            <a
+              href="https://github.com/minarin0179/trpg-gakkyukai"
+              className="underline"
+              rel="noopener"
+            >
+              GitHub
+            </a>
+          </p>
+          <p className="mt-2">
+            Inspired by{" "}
+            <a href="https://pol.is" className="underline" rel="noopener">
+              Polis
+            </a>{" "}
+            · Powered by{" "}
+            <a
+              href="https://github.com/polis-community/red-dwarf"
+              className="underline"
+              rel="noopener"
+            >
+              red-dwarf
+            </a>{" "}
+            · Illustrations by{" "}
+            <a href="https://loosedrawing.com/" className="underline" rel="noopener">
+              Loose Drawing
             </a>
           </p>
         </footer>
