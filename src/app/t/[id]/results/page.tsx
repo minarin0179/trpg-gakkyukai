@@ -58,36 +58,51 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/results
       </p>
 
       <ul className="flex flex-col gap-3">
-        {stats.map((s) => {
-          const total = s.agree + s.disagree + s.pass;
-          const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
-          return (
-            <li
-              key={s.id}
-              className="rounded-md border border-stone-400 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900"
-            >
-              <p>{s.text}</p>
-              {total > 0 ? (
-                <>
-                  <div
-                    className="mt-2 flex h-2 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-800"
-                    role="img"
-                    aria-label={`賛成${s.agree}票、反対${s.disagree}票、パス${s.pass}票`}
-                  >
-                    <div className="bg-emerald-600" style={{ width: `${pct(s.agree)}%` }} />
-                    <div className="bg-rose-600" style={{ width: `${pct(s.disagree)}%` }} />
-                    <div className="bg-stone-400" style={{ width: `${pct(s.pass)}%` }} />
-                  </div>
-                  <p className="mt-1 text-xs text-stone-600 dark:text-stone-500">
-                    賛成 {s.agree} · 反対 {s.disagree} · パス {s.pass}(計{total}票)
-                  </p>
-                </>
-              ) : (
-                <p className="mt-1 text-xs text-stone-500">まだ投票がありません</p>
-              )}
-            </li>
-          );
-        })}
+        {(() => {
+          // バーの長さで投票数の多寡も読めるよう、最多得票の意見を100%として相対表示する
+          const maxTotal = Math.max(1, ...stats.map((s) => s.agree + s.disagree + s.pass));
+          return stats.map((s) => {
+            const total = s.agree + s.disagree + s.pass;
+            const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
+            return (
+              <li
+                key={s.id}
+                className="rounded-md border border-stone-400 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900"
+              >
+                <p>{s.text}</p>
+                {total > 0 ? (
+                  <>
+                    <div className="mt-2 h-2 rounded-full bg-stone-100 dark:bg-stone-800">
+                      <div
+                        className="flex h-2 overflow-hidden rounded-full"
+                        role="img"
+                        aria-label={`賛成${pct(s.agree)}パーセント、反対${pct(s.disagree)}パーセント、パス${pct(s.pass)}パーセント、計${total}票`}
+                        style={{ width: `${(total / maxTotal) * 100}%` }}
+                      >
+                        <div className="bg-emerald-600" style={{ width: `${(s.agree / total) * 100}%` }} />
+                        <div className="bg-rose-600" style={{ width: `${(s.disagree / total) * 100}%` }} />
+                        <div className="bg-stone-400" style={{ width: `${(s.pass / total) * 100}%` }} />
+                      </div>
+                    </div>
+                    <p className="mt-1 text-xs text-stone-600 dark:text-stone-500">
+                      <span className="font-medium text-emerald-700 dark:text-emerald-500">
+                        賛成 {pct(s.agree)}%
+                      </span>
+                      {" · "}
+                      <span className="font-medium text-rose-700 dark:text-rose-500">
+                        反対 {pct(s.disagree)}%
+                      </span>
+                      {" · "}
+                      <span>パス {pct(s.pass)}%</span>(計{total}票)
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-xs text-stone-500">まだ投票がありません</p>
+                )}
+              </li>
+            );
+          });
+        })()}
       </ul>
     </div>
   );
