@@ -2,10 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { after } from "next/server";
 import { getCache } from "@vercel/functions";
 import { db, themes, statements, reports, themeTags } from "@/db";
+import { normalizeTag } from "@/lib/tags";
+import { TAGS_PER_THEME } from "@/lib/config";
 import { recomputeTheme } from "@/lib/recompute";
 import { isAdmin } from "@/lib/admin-auth";
 import { notFound } from "next/navigation";
@@ -98,4 +100,31 @@ export async function dismissReportAction(formData: FormData) {
     .set({ resolvedAt: new Date(), resolution: "dismissed" })
     .where(eq(reports.id, reportId));
   redirect("/admin");
+}
+
+// 管理ツール(/admin/tags)用: タグの付け外し。レート制限なし・認証必須。
+// 一般ユーザー向けの addThemeTagAction と違い削除もできる
+export async function adminSetTagAction(
+  themeId: string,
+  rawTag: string,
+  op: "add" | "remove",
+): Promise<{ ok: boolean; error?: string }> {
+  if (!(await isAdmin())) notFound();
+  const { tag, error } = normalizeTag(rawTag);
+  if (!tag) return { ok: false, error };
+
+  if (op === "remove") {
+    await db
+      .delete(themeTags)
+      .where(and(eq(themeTags.themeId, themeId), eq(themeTags.tag, tag)));
+  } else {
+    const [{ n }] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(themeTags)
+      .where(eq(themeTags.themeId, themeId));
+    if (n >= TAGS_PER_THEME) return { ok: false, error: `タグは${TAGS_PER_THEME}個までです` };
+    await db.insert(themeTags).values({ themeId, tag }).onConflictDoNothing();
+  }
+  revalidatePath(`/t/${themeId}`);
+  return { ok: true };
 }

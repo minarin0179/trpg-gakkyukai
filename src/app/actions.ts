@@ -19,6 +19,7 @@ import { embedTexts } from "@/lib/embedding";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { maybeRecompute } from "@/lib/recompute";
 import { findContentViolation } from "@/lib/content-filter";
+import { normalizeTag } from "@/lib/tags";
 import { CONTACT_CATEGORIES } from "@/lib/contact";
 import { notifyAdmin } from "@/lib/notify";
 import {
@@ -45,17 +46,6 @@ async function clientIp(): Promise<string> {
   return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 }
 
-// タグの正規化と検証。NFKC正規化+trimで全角半角などの揺れを吸収し、
-// 不正なら理由(エラー文言)を返す
-function normalizeTag(raw: string): { tag?: string; error?: string } {
-  const tag = raw.normalize("NFKC").trim();
-  if (tag.length === 0) return { error: "タグを入力してください" };
-  if (tag.length > TAG_MAX_LENGTH) return { error: `タグは${TAG_MAX_LENGTH}文字以内です` };
-  if (/[,\n]/.test(tag)) return { error: "タグにカンマと改行は使えません" };
-  const violation = findContentViolation(tag);
-  if (violation) return { error: violation };
-  return { tag };
-}
 
 // 埋め込みベクトルに意味の近いactiveテーマを返す(閾値以上のみ、上位N件)
 async function similarThemesByVec(vec: number[]): Promise<{ id: string; title: string }[]> {
