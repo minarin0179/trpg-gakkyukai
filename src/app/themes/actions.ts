@@ -12,9 +12,11 @@ export async function loadMoreThemes(
   offset: number,
   query?: string,
   tag?: string,
+  tagMode?: "and" | "or",
 ): Promise<ThemeWithCounts[]> {
   const safeOffset = Number.isFinite(offset) && offset > 0 ? Math.floor(offset) : 0;
   const q = typeof query === "string" ? query.slice(0, 100) : undefined;
-  const t = typeof tag === "string" ? tag.slice(0, 100) : undefined;
-  return listThemesForTab(tab, await getParticipantId(), safeOffset, undefined, q, t);
+  const t = typeof tag === "string" ? tag.slice(0, 200) : undefined;
+  const m = tagMode === "and" ? "and" : "or";
+  return listThemesForTab(tab, await getParticipantId(), safeOffset, undefined, q, t, m);
 }

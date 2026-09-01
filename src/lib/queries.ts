@@ -21,6 +21,7 @@ import { checkAndRecordRate } from "./rate-limit";
 import { actorHash, dailyActorHash } from "./participant";
 import {
   TAG_VOCABULARY_LIMIT,
+  TAGS_PER_THEME,
   PROMOTION_MIN_PARTICIPANTS,
   RANKING_GRAVITY,
   THEMES_PAGE_SIZE,
@@ -326,12 +327,18 @@ export async function listThemesForTab(
   limit: number = THEMES_PAGE_SIZE,
   query?: string,
   tagFilter?: string,
+  tagMode: "and" | "or" = "or",
 ): Promise<ThemeWithCounts[]> {
-  // タグ・検索語があればタブに関係なく全アクティブテーマから探す
-  const tagQ = tagFilter?.trim();
+  // タグ・検索語があればタブに関係なく全アクティブテーマから探す。
+  // タグはカンマ区切りで複数指定できる(タグ名にカンマは使えない)
+  const tagList = (tagFilter ?? "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .slice(0, TAGS_PER_THEME);
   const q = query?.trim();
-  const raw = tagQ
-    ? await listByTagPage(tagQ, offset, limit)
+  const raw = tagList.length
+    ? await listByTagPage(tagList, tagMode, offset, limit)
     : q
     ? await listSearchPage(q, offset, limit)
     : tab === "mine"
@@ -344,9 +351,23 @@ export async function listThemesForTab(
   return enrichThemesForParticipant(raw, participantId);
 }
 
-// タグ絞り込み: 指定タグが付いたアクティブテーマを新着順
-async function listByTagPage(tag: string, offset: number, limit: number): Promise<ThemeWithCounts[]> {
-  const tagged = db.select({ id: themeTags.themeId }).from(themeTags).where(eq(themeTags.tag, tag));
+// タグ絞り込み: 指定タグ群が付いたアクティブテーマを新着順。
+// mode "or"=いずれかを含む / "and"=すべて含む(グループ集計で判定)
+async function listByTagPage(
+  tags: string[],
+  mode: "and" | "or",
+  offset: number,
+  limit: number,
+): Promise<ThemeWithCounts[]> {
+  const base = db
+    .select({ id: themeTags.themeId })
+    .from(themeTags)
+    .where(inArray(themeTags.tag, tags))
+    .groupBy(themeTags.themeId);
+  const tagged =
+    mode === "and"
+      ? base.having(sql`count(distinct ${themeTags.tag}) = ${tags.length}`)
+      : base;
   return themesWithCountsQuery(inArray(themes.id, tagged))
     .orderBy(desc(themes.createdAt), desc(themes.id))
     .limit(limit)

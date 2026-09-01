@@ -13,8 +13,15 @@ export const dynamic = "force-dynamic";
 // 検索語(q)があればタブに関係なく、タイトル・説明文の部分一致で新着順に表示。
 // どのタブ・検索もスクロール到達で無限に追加読み込みする。新着をデフォルトにする。
 export default async function ThemesPage({ searchParams }: PageProps<"/themes">) {
-  const { tab, q, tag } = await searchParams;
-  const tagFilter = typeof tag === "string" ? tag.trim().slice(0, 100) : "";
+  const { tab, q, tag, tagmode } = await searchParams;
+  const tagFilter = typeof tag === "string" ? tag.trim().slice(0, 200) : "";
+  const tagMode: "and" | "or" = tagmode === "and" ? "and" : "or";
+  const selectedTags = tagFilter.split(",").map((t) => t.trim()).filter(Boolean);
+  // チップの切替リンク用: タグ集合とモードからURLを組み立てる
+  const tagUrl = (tags: string[], mode: "and" | "or") =>
+    tags.length === 0
+      ? "/themes"
+      : `/themes?tag=${encodeURIComponent(tags.join(","))}${mode === "and" ? "&tagmode=and" : ""}`;
   const query = typeof q === "string" ? q.trim().slice(0, 100) : "";
   const searching = query.length > 0;
   const currentTab: ThemesTab =
@@ -31,7 +38,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
   const participantId = await getParticipantId();
   const tagVocabulary = await getTagVocabulary();
   const initialItems = tagFilter
-    ? await listThemesForTab("fresh", participantId, 0, undefined, undefined, tagFilter)
+    ? await listThemesForTab("fresh", participantId, 0, undefined, undefined, tagFilter, tagMode)
     : searching
       ? await listThemesForTab("fresh", participantId, 0, undefined, query)
       : await listThemesForTab(currentTab, participantId, 0);
@@ -59,21 +66,24 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         </button>
       </form>
 
-      {/* タグ絞り込み: 単一選択(クリックで切替、選択中をもう一度押すと解除)。
-          複数タグのOR/ANDは語彙が育ってから検討する */}
+      {/* タグ絞り込み: 複数選択可(チップの再クリックで解除)。
+          「いずれか(OR)/すべて(かつ)」はトグルで切り替える */}
       {tagVocabulary.length > 0 && (
         <details className="mb-4" open={!!tagFilter}>
           <summary className="cursor-pointer text-sm text-stone-600 underline dark:text-stone-400">
-            タグで絞り込み{tagFilter ? `: ${tagFilter}` : ""}
+            タグで絞り込み{selectedTags.length > 0 ? `: ${selectedTags.join("、")}` : ""}
           </summary>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {tagVocabulary.map((tag) => {
-              const active = tag === tagFilter;
+              const active = selectedTags.includes(tag);
+              const next = active
+                ? selectedTags.filter((t) => t !== tag)
+                : [...selectedTags, tag];
               return (
                 <Link
                   key={tag}
                   prefetch={false}
-                  href={active ? "/themes" : `/themes?tag=${encodeURIComponent(tag)}`}
+                  href={tagUrl(next, tagMode)}
                   className={`rounded-full border px-2.5 py-0.5 text-xs transition ${
                     active
                       ? "border-stone-900 bg-stone-900 text-white dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900"
@@ -85,6 +95,25 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
               );
             })}
           </div>
+          {selectedTags.length >= 2 && (
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-400">
+              複数タグの条件:
+              {(["or", "and"] as const).map((m) => (
+                <Link
+                  key={m}
+                  prefetch={false}
+                  href={tagUrl(selectedTags, m)}
+                  className={`rounded-md border px-2 py-0.5 transition ${
+                    tagMode === m
+                      ? "border-stone-900 bg-stone-900 text-white dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900"
+                      : "border-stone-300 text-stone-600 hover:border-stone-500 dark:border-stone-700 dark:text-stone-400"
+                  }`}
+                >
+                  {m === "or" ? "いずれかを含む" : "すべて含む"}
+                </Link>
+              ))}
+            </p>
+          )}
         </details>
       )}
 
@@ -92,7 +121,9 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         <>
           <p className="mb-3 flex flex-wrap items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
             <span>
-              タグ「{tagFilter}」のテーマ
+              タグ「{selectedTags.join("」「")}」
+              {selectedTags.length >= 2 ? (tagMode === "and" ? "をすべて含む" : "のいずれかを含む") : "の"}
+              テーマ
             </span>
             <Link href="/themes" className="text-xs text-stone-600 underline dark:text-stone-400">
               絞り込みを解除
@@ -104,9 +135,10 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
             </div>
           ) : (
             <ThemeInfiniteList
-              key={`tag:${tagFilter}`}
+              key={`tag:${tagMode}:${tagFilter}`}
               tab="fresh"
               tag={tagFilter}
+              tagMode={tagMode}
               initialItems={initialItems}
               pageSize={THEMES_PAGE_SIZE}
             />
