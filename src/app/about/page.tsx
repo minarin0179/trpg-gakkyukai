@@ -49,8 +49,8 @@ export default function AboutPage() {
         <ul className="list-disc pl-5 text-sm leading-relaxed text-stone-700">
           <li>賛成・反対は直感で答えてかまいません。深く考え込む必要はありません</li>
           <li>
-            <strong>前提に賛成できない意見や、答えるのが難しい意見は「パス」で大丈夫です。</strong>
-            パスも意見の地形を描く材料になる、立派な回答です
+            <strong>前提に賛成できない意見や、答えるのが難しい意見は「パス」で構いません。</strong>
+            パスも意見の地形を描く材料になる、意味のある回答です
           </li>
           <li>
             前提そのものに異議があるときは、その視点を新しい意見として投稿すると、

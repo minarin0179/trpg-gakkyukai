@@ -29,10 +29,6 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
   // 類似テーマの確認状態。確認表示が出ている間だけ confirmSimilar=1 で再送信し、
   // タイトルを書き換えたら解除して再チェックさせる
   const [confirmArmed, setConfirmArmed] = useState(false);
-  // 公開は編集・削除できないため、送信前にワンクッション置く(要望テーマの方針)。
-  // 1回目のクリックで確認表示に切り替わり、2回目で実際に送信される
-  const [publishConfirming, setPublishConfirming] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
 
   // 入力中のライブ類似チェック(入力600ms停止またはフォーカスが外れたら実行)。
   // 結果パネルを見せた時点で「確認済み」となり、送信は1回で通る。
@@ -145,7 +141,23 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
   }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-4">
+    // 公開は編集・削除できないため、送信前にブラウザの確認ダイアログを挟む
+    // (要望テーマの方針)。類似テーマ確認からの再送信(confirmArmed)では、
+    // 直前に一度確認済みなので二重にダイアログを出さない
+    <form
+      action={formAction}
+      onSubmit={(e) => {
+        if (
+          !confirmArmed &&
+          !window.confirm(
+            "公開後のテーマと最初の意見は編集・削除できません。この内容で公開しますか?",
+          )
+        ) {
+          e.preventDefault();
+        }
+      }}
+      className="flex flex-col gap-4"
+    >
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         async
@@ -261,29 +273,17 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           <p className="mt-2 text-xs text-stone-600">
             同じ話題なら、そちらで投票や意見投稿をすると議論が集まりやすくなります。
             <br />
-            別の論点として公開する場合は、もう一度公開ボタンを押してください。
+            別の論点として公開する場合は、もう一度「テーマを公開する」を押してください。
           </p>
         </div>
       )}
       {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
-      {publishConfirming && (
-        <p className="text-xs text-stone-600 dark:text-stone-400">
-          公開後のテーマと最初の意見は編集・削除できません。内容を読み直してから公開してください。
-        </p>
-      )}
-      {/* typeは常にbuttonのまま、確認済みのときだけ明示的に送信する。
-          クリックハンドラ内でtypeをsubmitへ切り替えると、その同じクリックの
-          デフォルト動作として即座に送信されてしまう(確認が機能しない)ため */}
       <button
-        type="button"
-        onClick={() => {
-          if (publishConfirming) formRef.current?.requestSubmit();
-          else setPublishConfirming(true);
-        }}
+        type="submit"
         disabled={pending}
         className="self-start rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300"
       >
-        {pending ? "作成中..." : publishConfirming ? "この内容で公開する" : "テーマを公開する"}
+        {pending ? "作成中..." : "テーマを公開する"}
       </button>
       <p className="text-xs text-stone-600 dark:text-stone-500">
         テーマは審査なしで即時公開されます。まず新着タブに載り、

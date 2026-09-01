@@ -98,7 +98,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
               参加済み
             </Link>
             <Link href="/themes?tab=proposed" className={tabClass(currentTab === "proposed")}>
-              提案した
+              提案済み
             </Link>
             {/* ランダムに1テーマ開く(要望#4575)。リダイレクト先が毎回変わるため
                 Linkのプリフェッチを避けて素のアンカーにする */}

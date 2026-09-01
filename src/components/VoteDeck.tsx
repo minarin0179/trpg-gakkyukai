@@ -171,7 +171,7 @@ export function VoteDeck({
         </p>
       )}
       <p className="mt-3 text-center text-xs text-stone-500">
-        {votedCount}件に投票済み · 直感でOK。前提に賛成できない意見や答えにくい意見はパスで大丈夫。
+        {votedCount}件に投票済み · 直感で答えてOK。前提に賛成できない意見や答えにくい意見はパスで構いません。
         <button
           onClick={() => document.getElementById("map")?.scrollIntoView({ behavior: "smooth" })}
           className="underline"
