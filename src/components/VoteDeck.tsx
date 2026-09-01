@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { castVoteAction } from "@/app/actions";
+import { ReportButton } from "./ReportButton";
 import { usePersonalization } from "./ThemePersonalization";
 
 type Statement = { id: number; text: string };
@@ -127,9 +128,19 @@ export function VoteDeck({
 
   return (
     <div className="rounded-lg border border-stone-400 bg-white p-6 dark:border-stone-800 dark:bg-stone-900">
-      <p className="mb-2 text-xs text-stone-500 dark:text-stone-500">
-        意見 {index + 1} / {deck.length}
-      </p>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs text-stone-500 dark:text-stone-500">
+          意見 {index + 1} / {deck.length}
+        </p>
+        {/* 通報が完了したらこの意見はパス扱いで次へ(要望#4738)。
+            key で意見ごとにフォーム状態をリセットする */}
+        <ReportButton
+          key={current.id}
+          targetType="statement"
+          targetId={String(current.id)}
+          onDone={() => vote(0)}
+        />
+      </div>
       <p className="min-h-16 text-base leading-relaxed">{current.text}</p>
       <div className="mt-4 grid grid-cols-3 gap-2">
         <button
@@ -160,7 +171,7 @@ export function VoteDeck({
         </p>
       )}
       <p className="mt-3 text-center text-xs text-stone-500">
-        {votedCount}件に投票済み · 直感でどんどん答えてOK。
+        {votedCount}件に投票済み · 直感でOK。前提に賛成できない意見や答えにくい意見はパスで大丈夫。
         <button
           onClick={() => document.getElementById("map")?.scrollIntoView({ behavior: "smooth" })}
           className="underline"

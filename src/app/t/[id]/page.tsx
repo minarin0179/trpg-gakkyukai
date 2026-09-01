@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTheme, getThemeCounts, getVisibleStatements, getMathResult } from "@/lib/queries";
 import type { MathResultJson } from "@/lib/recompute";
@@ -143,6 +144,15 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
           </h3>
           <p className="mb-3 text-xs text-stone-600 dark:text-stone-400">
             自分の投票がハイライトされます。押し直せば訂正できます。
+            みんなの投票の内訳は
+            <Link
+              href={`/t/${theme.id}/results`}
+              prefetch={false}
+              className="underline"
+            >
+              結果ページ
+            </Link>
+            で見られます。
           </p>
           <StatementList themeId={theme.id} statements={items} />
         </section>

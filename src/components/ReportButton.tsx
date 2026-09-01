@@ -1,15 +1,18 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { submitReportAction, type FormState } from "@/app/actions";
 import { REMOVAL_CRITERIA_SHORT } from "@/lib/rules";
 
 export function ReportButton({
   targetType,
   targetId,
+  onDone,
 }: {
   targetType: "theme" | "statement";
   targetId: string;
+  // 通報の送信完了時に呼ばれる(投票デッキでは「パスして次へ」に使う)
+  onDone?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -17,6 +20,12 @@ export function ReportButton({
     submitReportAction,
     {},
   );
+
+  useEffect(() => {
+    if (state.done) onDone?.();
+    // onDoneは描画ごとに変わり得るため、完了の一度だけ発火させる
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.done]);
 
   if (!open) {
     return (

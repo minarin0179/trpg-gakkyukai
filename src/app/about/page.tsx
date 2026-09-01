@@ -45,6 +45,22 @@ export default function AboutPage() {
       </section>
 
       <section>
+        <h2 className="mb-2 text-base font-semibold">投票のしかた</h2>
+        <ul className="list-disc pl-5 text-sm leading-relaxed text-stone-700">
+          <li>賛成・反対は直感で答えてかまいません。深く考え込む必要はありません</li>
+          <li>
+            <strong>前提に賛成できない意見や、答えるのが難しい意見は「パス」で大丈夫です。</strong>
+            パスも意見の地形を描く材料になる、立派な回答です
+          </li>
+          <li>
+            前提そのものに異議があるときは、その視点を新しい意見として投稿すると、
+            みんなが投票できる形で議論に加わります
+          </li>
+          <li>投稿した意見とテーマは、あとから編集・削除できません。投稿前に読み直してください</li>
+        </ul>
+      </section>
+
+      <section>
         <h2 className="mb-2 text-base font-semibold">意見マップの見かた</h2>
         <ul className="list-disc pl-5 text-sm leading-relaxed text-stone-700">
           <li>マップの点は参加者です。近くにいる人ほど投票のパターンが似ています</li>

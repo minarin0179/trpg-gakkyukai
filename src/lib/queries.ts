@@ -18,7 +18,7 @@ import { getCache } from "@vercel/functions";
 import { db, themes, statements, votes, mathResults } from "@/db";
 import { embedTexts } from "./embedding";
 import { checkAndRecordRate } from "./rate-limit";
-import { dailyActorHash } from "./participant";
+import { actorHash, dailyActorHash } from "./participant";
 import {
   PROMOTION_MIN_PARTICIPANTS,
   RANKING_GRAVITY,
@@ -27,7 +27,7 @@ import {
   SEARCH_SEMANTIC_MAX,
 } from "./config";
 
-export type ThemesTab = "fresh" | "active" | "mine" | "unread";
+export type ThemesTab = "fresh" | "active" | "mine" | "unread" | "proposed";
 
 export type ThemeWithCounts = {
   id: string;
@@ -317,8 +317,25 @@ export async function listThemesForTab(
       ? await listParticipatedPage(participantId, offset, limit)
       : tab === "unread"
         ? await listUnreadPage(participantId, offset, limit)
-        : await listThemesPage(tab, offset, limit);
+        : tab === "proposed"
+          ? await listProposedPage(participantId, offset, limit)
+          : await listThemesPage(tab, offset, limit);
   return enrichThemesForParticipant(raw, participantId);
+}
+
+// 提案したタブ: 自分(cookie)が提案したテーマを新着順。
+// proposerHashは提案時のcookie IDのハッシュなので、cookieが変わると辿れなくなる
+// (アカウントレス設計の制約として許容)
+export async function listProposedPage(
+  participantId: string | null,
+  offset: number,
+  limit: number = THEMES_PAGE_SIZE,
+): Promise<ThemeWithCounts[]> {
+  if (!participantId) return [];
+  return themesWithCountsQuery(eq(themes.proposerHash, actorHash(participantId)))
+    .orderBy(desc(themes.createdAt), desc(themes.id))
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function listThemesPage(
@@ -422,6 +439,23 @@ export async function getThemeCounts(themeId: string) {
     .from(votes)
     .where(eq(votes.themeId, themeId));
   return row ?? { voterCount: 0, voteCount: 0, lastVoteAt: null };
+}
+
+// 結果ページ用: 意見ごとの投票内訳(賛成/反対/パス)。全員に同じ内容の公開集計
+export async function getStatementVoteStats(themeId: string) {
+  return db
+    .select({
+      id: statements.id,
+      text: statements.text,
+      agree: sql<number>`count(*) filter (where ${votes.value} = 1)::int`,
+      disagree: sql<number>`count(*) filter (where ${votes.value} = -1)::int`,
+      pass: sql<number>`count(*) filter (where ${votes.value} = 0)::int`,
+    })
+    .from(statements)
+    .leftJoin(votes, eq(votes.statementId, statements.id))
+    .where(and(eq(statements.themeId, themeId), eq(statements.status, "visible")))
+    .groupBy(statements.id, statements.text)
+    .orderBy(statements.id);
 }
 
 export async function getMathResult(themeId: string) {

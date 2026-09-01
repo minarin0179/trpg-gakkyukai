@@ -17,7 +17,15 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
   const query = typeof q === "string" ? q.trim().slice(0, 100) : "";
   const searching = query.length > 0;
   const currentTab: ThemesTab =
-    tab === "active" ? "active" : tab === "mine" ? "mine" : tab === "unread" ? "unread" : "fresh";
+    tab === "active"
+      ? "active"
+      : tab === "mine"
+        ? "mine"
+        : tab === "unread"
+          ? "unread"
+          : tab === "proposed"
+            ? "proposed"
+            : "fresh";
 
   const participantId = await getParticipantId();
   const initialItems = searching
@@ -76,7 +84,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         </>
       ) : (
         <>
-          <div className="mb-4 flex gap-1 border-b border-stone-400">
+          <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-stone-400">
             <Link href="/themes" className={tabClass(currentTab === "fresh")}>
               新着
             </Link>
@@ -89,6 +97,17 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
             <Link href="/themes?tab=mine" className={tabClass(currentTab === "mine")}>
               参加済み
             </Link>
+            <Link href="/themes?tab=proposed" className={tabClass(currentTab === "proposed")}>
+              提案した
+            </Link>
+            {/* ランダムに1テーマ開く(要望#4575)。リダイレクト先が毎回変わるため
+                Linkのプリフェッチを避けて素のアンカーにする */}
+            <a
+              href="/themes/random"
+              className="ml-auto shrink-0 whitespace-nowrap px-2 py-2 text-xs text-stone-600 underline hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
+            >
+              ランダムに開く
+            </a>
           </div>
 
           {initialItems.length === 0 ? (
@@ -111,6 +130,13 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
                 </>
               ) : currentTab === "unread" ? (
                 <>未参加のテーマはありません。公開中のテーマにはすべて参加済みです。</>
+              ) : currentTab === "proposed" ? (
+                <>
+                  このブラウザから提案したテーマはまだありません。
+                  <Link href="/new" className="ml-1 underline">
+                    テーマを提案してみませんか?
+                  </Link>
+                </>
               ) : (
                 <>
                   まだ新着テーマがありません。
