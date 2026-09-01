@@ -20,6 +20,13 @@ const nextConfig: NextConfig = {
         destination: "https://trpg-gakkyukai.com/:path*",
         permanent: true,
       },
+      // 旧「結果ページ」のパス。/report へ改名(本家Polisの用語 Report に合わせた)。
+      // 告知済みで外部にURLが出ているため恒久リダイレクトで受ける
+      {
+        source: "/t/:id/results",
+        destination: "/t/:id/report",
+        permanent: true,
+      },
     ];
   },
 };

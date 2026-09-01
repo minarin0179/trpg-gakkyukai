@@ -18,6 +18,11 @@ export function usePersonalization(): PersonalizationState {
   return ctx;
 }
 
+// Provider の外(結果ページの客観表示など)でも使える版。無ければ null を返す
+export function usePersonalizationOptional(): PersonalizationState | null {
+  return useContext(Ctx);
+}
+
 // テーマページ本体をエッジキャッシュ可能にするため、cookie 依存の個人化だけを
 // ここでクライアントから取得して配る。/api/t/[id]/me は pidMap を返さず index だけ返す。
 export function ThemePersonalization({

@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { usePersonalization } from "./ThemePersonalization";
+import { usePersonalizationOptional } from "./ThemePersonalization";
 
 // red-dwarfの計算結果を2D散布図として描画する。
 // 点は匿名参加者。クラスタ(意見グループ)は凸包の「なわばり」で囲み、
 // ホバー(タッチ端末はタップ)でそのグループの特徴的な意見を表示する。
 
-const GROUP_COLORS = ["#2563eb", "#dc2626", "#059669", "#d97706", "#7c3aed"];
-const GROUP_NAMES = ["A", "B", "C", "D", "E"];
+import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
 
 // ホバー吹き出し・合意・グループカードで共通の「既定で見せる件数」。
 // 絞り込みのルールを全体で揃え、続きは「すべて見る」で展開する。
@@ -66,12 +65,24 @@ function expandHull(hull: Pt[], padding: number): Pt[] {
 export function OpinionMap({
   result,
   statementTexts,
+  variant = "theme",
+  afterMap,
 }: {
   result: PublicMathResult | null;
   statementTexts: Record<number, string>;
+  // "report" は結果ページ用の客観表示: 自分の点を出さず、合意・グループのカード
+  // (結果ページでは独立したセクションが担う)も出さない
+  variant?: "theme" | "report";
+  // マップの直後(合意・グループカードの前)に差し込む内容
+  afterMap?: React.ReactNode;
 }) {
   // 自分の点の位置(myIndex)と投票状況は cookie 依存の個人化なので context から受け取る。
-  const { myIndex, votes: myVotes } = usePersonalization();
+  // report では Provider なしで描画されるため、個人化は常に空として扱う
+  const personalization = usePersonalizationOptional();
+  const { myIndex, votes: myVotes } =
+    variant === "report" || !personalization
+      ? { myIndex: null, votes: {} as Record<number, number> }
+      : personalization;
   const [activeGroup, setActiveGroup] = useState<number | null>(null);
   const [showAllConsensus, setShowAllConsensus] = useState(false);
 
@@ -471,12 +482,18 @@ export function OpinionMap({
               そのグループの特徴的な意見が見られます
             </li>
             <li>グレーの点は、投票がまだ少なくグループが決まっていない参加者です</li>
-            <li>投票すると、あなたの位置がすぐにマップへ反映されます(7件以上でグループも暫定表示され、定期の再計算で確定します)</li>
+            {variant !== "report" && (
+              <li>投票すると、あなたの位置がすぐにマップへ反映されます(7件以上でグループも暫定表示され、定期の再計算で確定します)</li>
+            )}
           </ul>
         </details>
       </div>
 
-      {hasConsensus && (
+      {/* マップ直後・カード群の前の差し込み枠(テーマページでは意見コンパスが入る。
+          マップと同一の座標空間なので、連続して見せると向きの読みが転移する) */}
+      {afterMap}
+
+      {variant !== "report" && hasConsensus && (
         <div className="rounded-lg border border-emerald-300 bg-white p-4">
           <h3 className="mb-2 text-sm font-semibold text-emerald-900">
             グループを越えて意見が一致したもの
@@ -515,7 +532,7 @@ export function OpinionMap({
         </div>
       )}
 
-      {clusters.length > 0 && (
+      {variant !== "report" && clusters.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2">
           {/* 全グループを表示する。特徴的な意見が無いグループもカードを残し、
               「まだ検出されていません」と出す(吹き出しの表示と揃える) */}
