@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listThemesForTab, type ThemesTab } from "@/lib/queries";
+import { getTagVocabulary, listThemesForTab, type ThemesTab } from "@/lib/queries";
 import { getParticipantId } from "@/lib/participant";
 import { PROMOTION_MIN_PARTICIPANTS, THEMES_PAGE_SIZE } from "@/lib/config";
 import { ThemeInfiniteList } from "@/components/ThemeInfiniteList";
@@ -29,6 +29,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
             : "fresh";
 
   const participantId = await getParticipantId();
+  const tagVocabulary = await getTagVocabulary();
   const initialItems = tagFilter
     ? await listThemesForTab("fresh", participantId, 0, undefined, undefined, tagFilter)
     : searching
@@ -57,6 +58,35 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
           検索
         </button>
       </form>
+
+      {/* タグ絞り込み: 単一選択(クリックで切替、選択中をもう一度押すと解除)。
+          複数タグのOR/ANDは語彙が育ってから検討する */}
+      {tagVocabulary.length > 0 && (
+        <details className="mb-4" open={!!tagFilter}>
+          <summary className="cursor-pointer text-sm text-stone-600 underline dark:text-stone-400">
+            タグで絞り込み{tagFilter ? `: ${tagFilter}` : ""}
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {tagVocabulary.map((tag) => {
+              const active = tag === tagFilter;
+              return (
+                <Link
+                  key={tag}
+                  prefetch={false}
+                  href={active ? "/themes" : `/themes?tag=${encodeURIComponent(tag)}`}
+                  className={`rounded-full border px-2.5 py-0.5 text-xs transition ${
+                    active
+                      ? "border-stone-900 bg-stone-900 text-white dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900"
+                      : "border-stone-300 bg-white text-stone-600 hover:border-stone-500 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-400"
+                  }`}
+                >
+                  {tag}
+                </Link>
+              );
+            })}
+          </div>
+        </details>
+      )}
 
       {tagFilter ? (
         <>
