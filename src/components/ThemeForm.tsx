@@ -26,13 +26,9 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [seeds, setSeeds] = useState("");
-  // 類似テーマの確認状態。確認表示が出ている間だけ confirmSimilar=1 で再送信し、
-  // タイトルを書き換えたら解除して再チェックさせる
-  const [confirmArmed, setConfirmArmed] = useState(false);
 
   // 入力中のライブ類似チェック(入力600ms停止またはフォーカスが外れたら実行)。
-  // 結果パネルを見せた時点で「確認済み」となり、送信は1回で通る。
-  // JS未動作・チェック失敗時はサーバー側の二段階確認がフォールバックする
+  // 類似テーマは「表示して合流を促す」のみで、送信を差し止めるゲートは設けない
   const [liveSimilar, setLiveSimilar] = useState<{ id: string; title: string }[] | null>(null);
   const [checking, setChecking] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,7 +49,6 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
 
   function onTitleChange(value: string) {
     setTitle(value);
-    setConfirmArmed(false);
     setLiveSimilar(null); // 書き換え中は古い候補を見せない
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const trimmed = value.trim();
@@ -120,14 +115,6 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
     };
   }, [siteKey]);
 
-  // アクションの結果が変わったタイミングで確認状態を立てる。
-  // effectでのsetStateを避け、render中の前回値比較で行う(公式推奨パターン)
-  const [seenState, setSeenState] = useState<FormState>(state);
-  if (seenState !== state) {
-    setSeenState(state);
-    if (state.similar?.length) setConfirmArmed(true);
-  }
-
   // Turnstileのトークンは使い捨て+5分で失効するため、
   // エラーで差し戻されたら「そのウィジェットだけ」リセットして新しいトークンを取り直す
   useEffect(() => {
@@ -142,13 +129,11 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
 
   return (
     // 公開は編集・削除できないため、送信前にブラウザの確認ダイアログを挟む
-    // (要望テーマの方針)。類似テーマ確認からの再送信(confirmArmed)では、
-    // 直前に一度確認済みなので二重にダイアログを出さない
+    // (要望テーマの方針)
     <form
       action={formAction}
       onSubmit={(e) => {
         if (
-          !confirmArmed &&
           !window.confirm(
             "公開後のテーマと最初の意見は編集・削除できません。この内容で公開しますか?",
           )
@@ -252,31 +237,6 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
 </p>
       </div>
       <div ref={containerRef} />
-      {/* ライブチェックで候補を見せた場合も「確認済み」として1回の送信で通す */}
-      <input
-        type="hidden"
-        name="confirmSimilar"
-        value={confirmArmed || (liveSimilar?.length ?? 0) > 0 ? "1" : ""}
-      />
-      {confirmArmed && state.similar && (
-        <div className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm">
-          <p className="font-medium">似ているテーマが見つかりました。一度のぞいてみませんか?</p>
-          <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-5">
-            {state.similar.map((s) => (
-              <li key={s.id}>
-                <a href={`/t/${s.id}`} target="_blank" rel="noreferrer" className="underline">
-                  {s.title}
-                </a>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs text-stone-600">
-            同じ話題なら、そちらで投票や意見投稿をすると議論が集まりやすくなります。
-            <br />
-            別の論点として公開する場合は、もう一度「テーマを公開する」を押してください。
-          </p>
-        </div>
-      )}
       {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       <button
         type="submit"

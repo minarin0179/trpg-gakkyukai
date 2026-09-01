@@ -36,8 +36,6 @@ import {
 export type FormState = {
   error?: string;
   done?: boolean;
-  // 類似テーマの確認表示(テーマ提案の1回目の送信で類似が見つかったとき)
-  similar?: { id: string; title: string }[];
 };
 
 async function clientIp(): Promise<string> {
@@ -118,18 +116,11 @@ export async function createThemeAction(
     return { error: "同じタイトルのテーマがすでにあります。検索して参加してみてください" };
   }
 
-  // 類似テーマの確認(初回送信時のみ)。通常は入力中のライブチェック
-  // (findSimilarThemesAction)が先に知らせて confirmSimilar=1 になっているため、
-  // ここで差し戻るのはJS未動作やライブチェック失敗時のフォールバック。
-  // 埋め込みが取れないときはスキップして通す(補助機能が投稿を止めない)。
-  // Turnstile検証より前に置くのは、トークンを消費せずに差し戻すため
+  // 類似テーマは入力中のライブチェック(findSimilarThemesAction)で「表示」するのみ。
+  // 送信時のゲート(差し戻して再送信させる)は設けない方針
+  // (そこまで入力した時点で投稿意思は固まっており、止める意味が薄いため)。
+  // 埋め込みは類似検出・意味検索用にテーマへ保存する
   const titleVec = (await embedTexts([title]))?.[0] ?? null;
-  if (formData.get("confirmSimilar") !== "1" && titleVec) {
-    const similar = await similarThemesByVec(titleVec);
-    if (similar.length > 0) {
-      return { similar };
-    }
-  }
 
   if (!(await verifyTurnstile(typeof turnstileToken === "string" ? turnstileToken : null))) {
     return { error: "bot対策の確認に失敗しました。再読み込みして試してください" };
