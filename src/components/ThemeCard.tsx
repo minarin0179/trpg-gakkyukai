@@ -27,6 +27,7 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
       href={`/t/${theme.id}`}
       className="block rounded-lg border border-stone-400 bg-white p-4 transition hover:border-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-600"
     >
+      {/* カード全体がリンクのため、タグはリンクなしの表示のみ(絞り込みはテーマページから) */}
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold">{theme.title}</h3>
         {showNew ? (
@@ -46,6 +47,21 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
       {theme.description && (
         <p className="mt-1 line-clamp-2 text-sm text-stone-700 dark:text-stone-500">
           {theme.description}
+        </p>
+      )}
+      {theme.tags && theme.tags.length > 0 && (
+        <p className="mt-1.5 flex flex-wrap gap-1">
+          {theme.tags.slice(0, 4).map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs text-stone-600 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400"
+            >
+              {tag}
+            </span>
+          ))}
+          {theme.tags.length > 4 && (
+            <span className="text-xs text-stone-500">+{theme.tags.length - 4}</span>
+          )}
         </p>
       )}
       <p className="mt-2 text-xs text-stone-600 dark:text-stone-500">

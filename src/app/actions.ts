@@ -7,7 +7,7 @@ import { after } from "next/server";
 import { headers } from "next/headers";
 import { getCache } from "@vercel/functions";
 import { nanoid } from "nanoid";
-import { db, themes, statements, votes, reports } from "@/db";
+import { db, themes, statements, votes, reports, themeTags } from "@/db";
 import {
   getOrCreateParticipantId,
   ensureParticipant,
@@ -18,6 +18,7 @@ import { checkAndRecordRate } from "@/lib/rate-limit";
 import { embedTexts } from "@/lib/embedding";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { maybeRecompute } from "@/lib/recompute";
+import { suggestExistingTags } from "@/lib/queries";
 import { findContentViolation } from "@/lib/content-filter";
 import { CONTACT_CATEGORIES } from "@/lib/contact";
 import { notifyAdmin } from "@/lib/notify";
@@ -31,6 +32,8 @@ import {
   THEME_SIMILAR_THRESHOLD,
   THEME_SIMILAR_MAX,
   STATEMENT_GATE_VOTES,
+  TAG_MAX_LENGTH,
+  TAGS_PER_THEME,
 } from "@/lib/config";
 
 export type FormState = {
@@ -41,6 +44,18 @@ export type FormState = {
 async function clientIp(): Promise<string> {
   const h = await headers();
   return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+}
+
+// タグの正規化と検証。NFKC正規化+trimで全角半角などの揺れを吸収し、
+// 不正なら理由(エラー文言)を返す
+function normalizeTag(raw: string): { tag?: string; error?: string } {
+  const tag = raw.normalize("NFKC").trim();
+  if (tag.length === 0) return { error: "タグを入力してください" };
+  if (tag.length > TAG_MAX_LENGTH) return { error: `タグは${TAG_MAX_LENGTH}文字以内です` };
+  if (/[,\n]/.test(tag)) return { error: "タグにカンマと改行は使えません" };
+  const violation = findContentViolation(tag);
+  if (violation) return { error: violation };
+  return { tag };
 }
 
 // 埋め込みベクトルに意味の近いactiveテーマを返す(閾値以上のみ、上位N件)
@@ -146,6 +161,19 @@ export async function createThemeAction(
   });
   for (const text of seeds) {
     await db.insert(statements).values({ themeId: id, text, participantId });
+  }
+
+  // タグ(任意)。カンマ区切りで受け取り、正規化して上限まで保存。
+  // 不正なタグは黙って捨てる(テーマ公開自体は止めない)
+  const tagsRaw = String(formData.get("tags") ?? "");
+  const themeTagList = [...new Set(
+    tagsRaw
+      .split(",")
+      .map((t) => normalizeTag(t).tag)
+      .filter((t): t is string => !!t),
+  )].slice(0, TAGS_PER_THEME);
+  for (const tag of themeTagList) {
+    await db.insert(themeTags).values({ themeId: id, tag }).onConflictDoNothing();
   }
 
   // 新テーマをテーマ一覧のRuntime Cache(60秒)を待たず即時反映する
@@ -275,7 +303,7 @@ export async function submitReportAction(
   const targetId = String(formData.get("targetId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
 
-  if (targetType !== "theme" && targetType !== "statement") {
+  if (targetType !== "theme" && targetType !== "statement" && targetType !== "tag") {
     return { error: "不正なリクエストです" };
   }
   if (reason.length < 5 || reason.length > 500) {
@@ -298,7 +326,7 @@ export async function submitReportAction(
   });
   after(async () => {
     await notifyAdmin(
-      `🔔 新しい通報が届きました(対象: ${targetType === "statement" ? "意見" : "テーマ"})。管理ページを確認してください`,
+      `🔔 新しい通報が届きました(対象: ${targetType === "statement" ? "意見" : targetType === "tag" ? "タグ" : "テーマ"})。管理ページを確認してください`,
     );
   });
   return { done: true };
@@ -340,4 +368,64 @@ export async function submitContactAction(
     await notifyAdmin(`📮 新しいお問い合わせが届きました(${category})。管理ページを確認してください`);
   });
   return { done: true };
+}
+
+// テーマにタグを追加する(要望#4580)。誰でも追加可・削除は通報経由のみ。
+export async function addThemeTagAction(
+  themeId: string,
+  rawTag: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { tag, error } = normalizeTag(rawTag);
+  if (!tag) return { ok: false, error };
+
+  const [theme] = await db
+    .select({ status: themes.status })
+    .from(themes)
+    .where(eq(themes.id, themeId));
+  if (!theme || theme.status !== "active") return { ok: false, error: "テーマが見つかりません" };
+
+  const [{ n: tagCount }] = await db
+    .select({ n: count() })
+    .from(themeTags)
+    .where(eq(themeTags.themeId, themeId));
+  if (tagCount >= TAGS_PER_THEME) {
+    return { ok: false, error: `タグは1テーマに${TAGS_PER_THEME}個までです` };
+  }
+
+  // 表記だけ違う同名タグ(大文字小文字)を弾く
+  const [dup] = await db
+    .select({ id: themeTags.id })
+    .from(themeTags)
+    .where(and(eq(themeTags.themeId, themeId), sql`lower(${themeTags.tag}) = lower(${tag})`))
+    .limit(1);
+  if (dup) return { ok: false, error: "同じタグがすでに付いています" };
+
+  const participantId = await getOrCreateParticipantId();
+  const rate = await checkAndRecordRate("tag_add", actorHash(participantId), undefined, themeId);
+  if (!rate.ok) return { ok: false, error: "タグの追加は1日30回までです" };
+  const ipRate = await checkAndRecordRate(
+    "tag_add_ip",
+    dailyActorHash(`ip:${await clientIp()}`),
+    undefined,
+    themeId,
+  );
+  if (!ipRate.ok) return { ok: false, error: "この回線からのタグ追加が多すぎます。時間を置いてください" };
+
+  await db.insert(themeTags).values({ themeId, tag }).onConflictDoNothing();
+  revalidatePath(`/t/${themeId}`);
+  return { ok: true };
+}
+
+// タグ入力のサジェスト(前方一致・使用数順)。表記揺れの抑制が目的。
+// 失敗・レート超過時は空配列(入力補助が本体を止めない)
+export async function suggestTagsAction(prefix: string): Promise<string[]> {
+  try {
+    const p = String(prefix ?? "").trim();
+    if (p.length === 0 || p.length > TAG_MAX_LENGTH) return [];
+    const rate = await checkAndRecordRate("tag_suggest", dailyActorHash(`ip:${await clientIp()}`));
+    if (!rate.ok) return [];
+    return await suggestExistingTags(p);
+  } catch {
+    return [];
+  }
 }

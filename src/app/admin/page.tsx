@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { desc, inArray, isNull, isNotNull, count } from "drizzle-orm";
-import { db, reports, statements, themes } from "@/db";
+import { db, reports, statements, themes, themeTags } from "@/db";
 import { removeContentAction, dismissTargetAction, dismissReportAction } from "./actions";
 import { REMOVAL_CRITERIA } from "@/lib/rules";
 import { requireAdmin } from "@/lib/admin-auth";
@@ -71,10 +71,24 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
     : [];
   const stmtMap = new Map(stmts.map((s) => [String(s.id), s]));
 
+  // タグ通報の対象引き当て(削除済みならmapに載らず「対象が見つかりません」になる)
+  const tagIds = groups
+    .filter((g) => g.targetType === "tag")
+    .map((g) => Number(g.targetId))
+    .filter((n) => Number.isFinite(n));
+  const tagRows = tagIds.length
+    ? await db
+        .select({ id: themeTags.id, tag: themeTags.tag, themeId: themeTags.themeId })
+        .from(themeTags)
+        .where(inArray(themeTags.id, tagIds))
+    : [];
+  const tagMap = new Map(tagRows.map((t) => [String(t.id), t]));
+
   // テーマタイトルは「通報されたテーマ」と「通報された意見が属するテーマ」の両方が必要
   const themeIdSet = new Set<string>();
   for (const g of groups) if (g.targetType === "theme") themeIdSet.add(g.targetId);
   for (const s of stmts) themeIdSet.add(s.themeId);
+  for (const t of tagRows) themeIdSet.add(t.themeId);
   const themeIds = [...themeIdSet];
   const themeRows = themeIds.length
     ? await db.select().from(themes).where(inArray(themes.id, themeIds))
@@ -106,19 +120,33 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
       {groups.map((g) => {
         const isContact = g.targetType === "contact";
         const isStatement = g.targetType === "statement";
+        const isTag = g.targetType === "tag";
         const stmt = isStatement ? stmtMap.get(g.targetId) : null;
+        const tagRow = isTag ? tagMap.get(g.targetId) : null;
         const theme = g.targetType === "theme" ? themeMap.get(g.targetId) : null;
-        // 意見が属するテーマ(意見通報のコンテキスト表示用)
-        const parentTheme = stmt ? themeMap.get(stmt.themeId) : null;
+        // 意見・タグが属するテーマ(コンテキスト表示用)
+        const parentTheme = stmt
+          ? themeMap.get(stmt.themeId)
+          : tagRow
+            ? themeMap.get(tagRow.themeId)
+            : null;
 
         const targetText = isStatement
           ? (stmt?.text ?? "(対象が見つかりません)")
-          : isContact
-            ? ""
-            : (theme?.title ?? "(対象が見つかりません)");
+          : isTag
+            ? (tagRow ? `タグ「${tagRow.tag}」` : "(対象が見つかりません・削除済みの可能性)")
+            : isContact
+              ? ""
+              : (theme?.title ?? "(対象が見つかりません)");
         const targetStatus = stmt?.status ?? theme?.status ?? null;
-        const themeTitle = isStatement ? parentTheme?.title : theme?.title;
-        const themeLink = isStatement ? stmt?.themeId : g.targetType === "theme" ? g.targetId : null;
+        const themeTitle = isStatement || isTag ? parentTheme?.title : theme?.title;
+        const themeLink = isStatement
+          ? stmt?.themeId
+          : isTag
+            ? tagRow?.themeId
+            : g.targetType === "theme"
+              ? g.targetId
+              : null;
 
         return (
           <div key={g.key} className="rounded-lg border border-stone-400 bg-white p-4">
@@ -126,7 +154,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
               <p className="text-xs text-stone-600">
                 {isContact
                   ? "お問い合わせ"
-                  : `対象: ${isStatement ? "意見" : "テーマ"}`}
+                  : `対象: ${isStatement ? "意見" : isTag ? "タグ" : "テーマ"}`}
                 {targetStatus && (
                   <>
                     {" · 現在の状態: "}
@@ -217,7 +245,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                       disabled={targetStatus === "removed"}
                       className="rounded-md bg-rose-700 px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
                     >
-                      対象を削除
+                      {isTag ? "タグを削除" : "対象を削除"}
                     </button>
                   </form>
                 )}

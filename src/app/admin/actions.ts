@@ -5,12 +5,12 @@ import { revalidatePath } from "next/cache";
 import { and, eq, isNull } from "drizzle-orm";
 import { after } from "next/server";
 import { getCache } from "@vercel/functions";
-import { db, themes, statements, reports } from "@/db";
+import { db, themes, statements, reports, themeTags } from "@/db";
 import { recomputeTheme } from "@/lib/recompute";
 import { isAdmin } from "@/lib/admin-auth";
 import { notFound } from "next/navigation";
 
-type TargetType = "theme" | "statement" | "contact";
+type TargetType = "theme" | "statement" | "contact" | "tag";
 
 // 同じ対象(theme/statement)への未対応の通報をまとめて解決する。
 // これにより、対象を消した後に他の通報が未対応のまま残る問題を防ぐ。
@@ -55,6 +55,14 @@ export async function removeContentAction(formData: FormData) {
         await recomputeTheme(stmt.themeId).catch(() => {});
       });
     }
+  } else if (targetType === "tag") {
+    const tid = Number(targetId);
+    const [row] = await db
+      .select({ themeId: themeTags.themeId })
+      .from(themeTags)
+      .where(eq(themeTags.id, tid));
+    await db.delete(themeTags).where(eq(themeTags.id, tid));
+    if (row) revalidatePath(`/t/${row.themeId}`);
   } else if (targetType === "theme") {
     await db
       .update(themes)

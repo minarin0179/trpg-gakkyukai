@@ -15,11 +15,12 @@ import {
 import { cache } from "react";
 import { headers } from "next/headers";
 import { getCache } from "@vercel/functions";
-import { db, themes, statements, votes, mathResults } from "@/db";
+import { db, themes, statements, votes, mathResults, themeTags } from "@/db";
 import { embedTexts } from "./embedding";
 import { checkAndRecordRate } from "./rate-limit";
 import { actorHash, dailyActorHash } from "./participant";
 import {
+  TAG_SUGGEST_LIMIT,
   PROMOTION_MIN_PARTICIPANTS,
   RANKING_GRAVITY,
   THEMES_PAGE_SIZE,
@@ -36,6 +37,7 @@ export type ThemeWithCounts = {
   createdAt: Date;
   voterCount: number;
   statementCount: number;
+  tags?: string[]; // テーマのタグ(全員共通)
   // 以下は参加者(cookie)ごとに算出する任意の付加情報
   unansweredCount?: number; // 自分がまだ投票していない意見の数
   participated?: boolean; // 自分がこのテーマで1件以上投票したか
@@ -114,7 +116,8 @@ function buildSearchCondition(query: string): SQL | undefined {
   if (terms.length === 0) return undefined;
   const conds = terms.map((t) => {
     const like = `%${escapeLike(t)}%`;
-    return sql`(themes.title ILIKE ${like} OR themes.description ILIKE ${like})`;
+    return sql`(themes.title ILIKE ${like} OR themes.description ILIKE ${like}
+      OR exists (select 1 from theme_tags tt where tt.theme_id = themes.id and tt.tag ILIKE ${like}))`;
   });
   return and(...conds);
 }
@@ -271,6 +274,18 @@ async function enrichThemesForParticipant(
     .where(inArray(mathResults.themeId, ids));
   const mapReady = new Set(maps.filter((m) => m.status === "ok").map((m) => m.themeId));
 
+  // タグ(全員共通)。一覧カードのチップ表示用にまとめて引く
+  const tagRows = await db
+    .select({ themeId: themeTags.themeId, tag: themeTags.tag })
+    .from(themeTags)
+    .where(inArray(themeTags.themeId, ids))
+    .orderBy(themeTags.id);
+  const tagMap = new Map<string, string[]>();
+  for (const r of tagRows) {
+    if (!tagMap.has(r.themeId)) tagMap.set(r.themeId, []);
+    tagMap.get(r.themeId)!.push(r.tag);
+  }
+
   // 参加者依存の情報(未回答数・参加有無)は cookie があるときだけ算出する
   const answeredMap = new Map<string, number>();
   if (participantId) {
@@ -288,13 +303,15 @@ async function enrichThemesForParticipant(
 
   return list.map((t) => {
     const hasMap = mapReady.has(t.id);
+    const tags = tagMap.get(t.id) ?? [];
     // cookieが無い(未参加の匿名)訪問者は、識別子を新規発行せずに
     // 表示上「未参加」として扱う。1票入れれば cookie が発行され参加済みになる。
-    if (!participantId) return { ...t, hasMap, participated: false };
+    if (!participantId) return { ...t, hasMap, tags, participated: false };
     const myAnswered = answeredMap.get(t.id) ?? 0;
     return {
       ...t,
       hasMap,
+      tags,
       unansweredCount: Math.max(t.statementCount - myAnswered, 0),
       participated: myAnswered > 0,
     };
@@ -308,10 +325,14 @@ export async function listThemesForTab(
   offset: number,
   limit: number = THEMES_PAGE_SIZE,
   query?: string,
+  tagFilter?: string,
 ): Promise<ThemeWithCounts[]> {
-  // 検索語があればタブに関係なく全アクティブテーマから部分一致で探す
+  // タグ・検索語があればタブに関係なく全アクティブテーマから探す
+  const tagQ = tagFilter?.trim();
   const q = query?.trim();
-  const raw = q
+  const raw = tagQ
+    ? await listByTagPage(tagQ, offset, limit)
+    : q
     ? await listSearchPage(q, offset, limit)
     : tab === "mine"
       ? await listParticipatedPage(participantId, offset, limit)
@@ -321,6 +342,43 @@ export async function listThemesForTab(
           ? await listProposedPage(participantId, offset, limit)
           : await listThemesPage(tab, offset, limit);
   return enrichThemesForParticipant(raw, participantId);
+}
+
+// タグ絞り込み: 指定タグが付いたアクティブテーマを新着順
+async function listByTagPage(tag: string, offset: number, limit: number): Promise<ThemeWithCounts[]> {
+  const tagged = db.select({ id: themeTags.themeId }).from(themeTags).where(eq(themeTags.tag, tag));
+  return themesWithCountsQuery(inArray(themes.id, tagged))
+    .orderBy(desc(themes.createdAt), desc(themes.id))
+    .limit(limit)
+    .offset(offset);
+}
+
+// タグのサジェスト: 前方一致する既存タグを使用数の多い順に返す(表記揺れの抑制)。
+// アクティブテーマに付いているタグのみを候補にする
+export async function suggestExistingTags(prefix: string): Promise<string[]> {
+  const p = prefix.trim();
+  if (p.length === 0) return [];
+  const like = `${p.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const rows = await db
+    .select({ tag: themeTags.tag, n: count() })
+    .from(themeTags)
+    .innerJoin(themes, and(eq(themes.id, themeTags.themeId), eq(themes.status, "active")))
+    .where(sql`${themeTags.tag} ILIKE ${like}`)
+    .groupBy(themeTags.tag)
+    .orderBy(desc(count()), themeTags.tag)
+    .limit(TAG_SUGGEST_LIMIT);
+  return rows.map((r) => r.tag);
+}
+
+// テーマのタグ一覧(テーマページ表示用)。idは通報の対象指定に使う
+export async function getThemeTags(
+  themeId: string,
+): Promise<{ id: number; tag: string }[]> {
+  return db
+    .select({ id: themeTags.id, tag: themeTags.tag })
+    .from(themeTags)
+    .where(eq(themeTags.themeId, themeId))
+    .orderBy(themeTags.id);
 }
 
 // 提案したタブ: 自分(cookie)が提案したテーマを新着順。

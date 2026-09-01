@@ -7,6 +7,7 @@ import {
   jsonb,
   primaryKey,
   index,
+  uniqueIndex,
   vector,
 } from "drizzle-orm/pg-core";
 
@@ -88,7 +89,7 @@ export const mathResults = pgTable("math_results", {
 // 通報。事後モデレーション(notice & takedown)の入口
 export const reports = pgTable("reports", {
   id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
-  targetType: text("target_type", { enum: ["theme", "statement", "contact"] }).notNull(),
+  targetType: text("target_type", { enum: ["theme", "statement", "contact", "tag"] }).notNull(),
   targetId: text("target_id").notNull(),
   reason: text("reason").notNull(),
   ipHash: text("ip_hash"),
@@ -98,6 +99,24 @@ export const reports = pgTable("reports", {
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   resolution: text("resolution", { enum: ["removed", "dismissed"] }),
 });
+
+// テーマのタグ(要望#4580)。誰でも追加できる(削除は通報→運営のみ)。
+// 表記揺れの抑制は入力時のサジェスト(既存タグへの誘導)で行う
+export const themeTags = pgTable(
+  "theme_tags",
+  {
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    themeId: text("theme_id")
+      .notNull()
+      .references(() => themes.id),
+    tag: text("tag").notNull(), // NFKC正規化・trim済みの表示形をそのまま保存
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("theme_tags_unique").on(t.themeId, t.tag),
+    index("theme_tags_tag_idx").on(t.tag),
+  ],
+);
 
 // レート制限イベント(テーマ提案・意見投稿の流量制御)
 export const rateEvents = pgTable(
@@ -113,6 +132,9 @@ export const rateEvents = pgTable(
         "vote_ip_theme",
         "similar_check",
         "search_embed",
+        "tag_add",
+        "tag_add_ip",
+        "tag_suggest",
       ],
     }).notNull(),
     actorHash: text("actor_hash").notNull(),

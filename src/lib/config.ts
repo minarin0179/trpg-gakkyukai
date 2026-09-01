@@ -42,6 +42,28 @@ export const SEARCH_SEMANTIC_MAX = 20; // 意味検索で補完する最大件�
 // Nを増やしても重複防止はほぼ伸びない。議論の主要な立場を見るにはn=5で十分)
 export const STATEMENT_GATE_VOTES = 5;
 
+// タグ(要望#4580)。誰でも追加可・削除は通報経由のみ。
+// 表記揺れはサジェスト(既存タグへの誘導)で抑える
+export const TAG_MAX_LENGTH = 20;
+export const TAGS_PER_THEME = 8;
+export const TAG_SUGGEST_LIMIT = 8;
+// 提案フォームで最初に提示する候補タグ(タップで選択)。
+// 特別扱いはせず、あくまで入力の出発点。ここに無いタグも自由に付けられる
+export const INITIAL_TAGS = [
+  "CoC",
+  "D&D",
+  "ソード・ワールド",
+  "GM論",
+  "PL論",
+  "マナー",
+  "セッション運営",
+  "シナリオ",
+  "オンセ",
+  "オフセ",
+  "同人・二次創作",
+  "配信・動画",
+] as const;
+
 // 人気タブの並び順(Hacker News方式の時間減衰ランキング)
 // score = 投票者数 / (経過日数 + 2)^GRAVITY
 // 新しいテーマほど有利になり、古いテーマは参加者が多くても自然に沈む

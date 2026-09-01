@@ -11,8 +11,10 @@ export async function loadMoreThemes(
   tab: ThemesTab,
   offset: number,
   query?: string,
+  tag?: string,
 ): Promise<ThemeWithCounts[]> {
   const safeOffset = Number.isFinite(offset) && offset > 0 ? Math.floor(offset) : 0;
   const q = typeof query === "string" ? query.slice(0, 100) : undefined;
-  return listThemesForTab(tab, await getParticipantId(), safeOffset, undefined, q);
+  const t = typeof tag === "string" ? tag.slice(0, 100) : undefined;
+  return listThemesForTab(tab, await getParticipantId(), safeOffset, undefined, q, t);
 }

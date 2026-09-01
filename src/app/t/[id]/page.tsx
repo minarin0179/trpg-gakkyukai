@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getTheme, getThemeCounts, getVisibleStatements, getMathResult } from "@/lib/queries";
+import { getTheme, getThemeCounts, getVisibleStatements, getMathResult, getThemeTags } from "@/lib/queries";
 import type { MathResultJson } from "@/lib/recompute";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
@@ -13,6 +13,9 @@ import { StatementGuidelines } from "@/components/StatementGuidelines";
 import { StatementComposer } from "@/components/StatementComposer";
 import { ThemePersonalization } from "@/components/ThemePersonalization";
 import { LiveVoterCount } from "@/components/LiveVoterCount";
+import { TagChips } from "@/components/TagChips";
+import { TagEditor } from "@/components/TagEditor";
+import { TagReportButton } from "@/components/TagReportButton";
 import { formatRelativeDate } from "@/lib/format";
 
 // テーマページはエッジキャッシュ可能にして Origin Transfer を大幅削減する。
@@ -66,10 +69,11 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
   const theme = await getTheme(id);
   if (!theme) notFound();
 
-  const [counts, allStatements, mathRow] = await Promise.all([
+  const [counts, allStatements, mathRow, tags] = await Promise.all([
     getThemeCounts(id),
     getVisibleStatements(id),
     getMathResult(id),
+    getThemeTags(id),
   ]);
 
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない。
@@ -102,6 +106,13 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
             </span>
             <ShareTheme themeId={theme.id} title={theme.title} />
             <ReportButton targetType="theme" targetId={theme.id} />
+          </div>
+          {/* タグ: 誰でも追加可(削除は通報経由のみ)。ページはISRのため
+              追加時はアクション側の revalidatePath で即時反映される */}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <TagChips tags={tags.map((t) => t.tag)} />
+            <TagEditor themeId={theme.id} tagCount={tags.length} />
+            <TagReportButton tags={tags} />
           </div>
         </div>
 

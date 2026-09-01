@@ -12,11 +12,13 @@ export function ThemeInfiniteList({
   initialItems,
   pageSize,
   query,
+  tag,
 }: {
   tab: ThemesTab;
   initialItems: ThemeWithCounts[];
   pageSize: number;
   query?: string;
+  tag?: string;
 }) {
   const [items, setItems] = useState<ThemeWithCounts[]>(initialItems);
   const [hasMore, setHasMore] = useState(initialItems.length === pageSize);
@@ -30,7 +32,7 @@ export function ThemeInfiniteList({
     if (loading || !hasMore) return;
     setLoading(true);
     try {
-      const next = await loadMoreThemes(tab, offsetRef.current, query);
+      const next = await loadMoreThemes(tab, offsetRef.current, query, tag);
       offsetRef.current += next.length;
       // 取得の合間に先頭へ新テーマが増えると offset がずれて境界の項目が
       // 重複し得るため、id で重複除去してから追記する(key重複・二重表示を防ぐ)。
@@ -44,7 +46,7 @@ export function ThemeInfiniteList({
     } finally {
       setLoading(false);
     }
-  }, [loading, hasMore, tab, pageSize, query]);
+  }, [loading, hasMore, tab, pageSize, query, tag]);
 
   useEffect(() => {
     const el = sentinelRef.current;

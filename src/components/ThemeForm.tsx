@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import { createThemeAction, findSimilarThemesAction, type FormState } from "@/app/actions";
 import { AiSeedAssist } from "@/components/AiSeedAssist";
+import { TagPicker } from "@/components/TagPicker";
 import { SEED_STATEMENTS_MAX } from "@/lib/config";
 
 declare global {
@@ -236,6 +237,7 @@ export function ThemeForm({ siteKey }: { siteKey: string }) {
           賛成/反対が分かれそうな意見を並べておくと、参加者が投票しやすくなります。
 </p>
       </div>
+      <TagPicker />
       <div ref={containerRef} />
       {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       <button

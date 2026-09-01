@@ -13,7 +13,8 @@ export const dynamic = "force-dynamic";
 // 検索語(q)があればタブに関係なく、タイトル・説明文の部分一致で新着順に表示。
 // どのタブ・検索もスクロール到達で無限に追加読み込みする。新着をデフォルトにする。
 export default async function ThemesPage({ searchParams }: PageProps<"/themes">) {
-  const { tab, q } = await searchParams;
+  const { tab, q, tag } = await searchParams;
+  const tagFilter = typeof tag === "string" ? tag.trim().slice(0, 100) : "";
   const query = typeof q === "string" ? q.trim().slice(0, 100) : "";
   const searching = query.length > 0;
   const currentTab: ThemesTab =
@@ -28,9 +29,11 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
             : "fresh";
 
   const participantId = await getParticipantId();
-  const initialItems = searching
-    ? await listThemesForTab("fresh", participantId, 0, undefined, query)
-    : await listThemesForTab(currentTab, participantId, 0);
+  const initialItems = tagFilter
+    ? await listThemesForTab("fresh", participantId, 0, undefined, undefined, tagFilter)
+    : searching
+      ? await listThemesForTab("fresh", participantId, 0, undefined, query)
+      : await listThemesForTab(currentTab, participantId, 0);
 
   const tabClass = (active: boolean) =>
     `px-4 py-2 text-sm font-medium ${active ? "border-b-2 border-stone-900" : "text-stone-600"}`;
@@ -55,7 +58,31 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         </button>
       </form>
 
-      {searching ? (
+      {tagFilter ? (
+        <>
+          <p className="mb-3 flex flex-wrap items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
+            <span>
+              タグ「{tagFilter}」のテーマ
+            </span>
+            <Link href="/themes" className="text-xs text-stone-600 underline dark:text-stone-400">
+              絞り込みを解除
+            </Link>
+          </p>
+          {initialItems.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-stone-400 p-8 text-center text-sm text-stone-600">
+              このタグが付いたテーマはまだありません。
+            </div>
+          ) : (
+            <ThemeInfiniteList
+              key={`tag:${tagFilter}`}
+              tab="fresh"
+              tag={tagFilter}
+              initialItems={initialItems}
+              pageSize={THEMES_PAGE_SIZE}
+            />
+          )}
+        </>
+      ) : searching ? (
         <>
           <p className="mb-3 flex flex-wrap items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
             <span>
