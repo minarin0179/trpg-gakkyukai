@@ -353,17 +353,22 @@ async function listByTagPage(tag: string, offset: number, limit: number): Promis
     .offset(offset);
 }
 
-// タグのサジェスト: 前方一致する既存タグを使用数の多い順に返す(表記揺れの抑制)。
+// タグのサジェスト(表記揺れ・ニュアンス違いの乱立防止)。
+// 空入力なら使用数の多い既存タグ(入力前から候補を見せる)、入力中は
+// 双方向の部分一致(「AI」→「生成AI」、「クトゥルフ神話TRPG」→「クトゥルフ神話」)。
 // アクティブテーマに付いているタグのみを候補にする
 export async function suggestExistingTags(prefix: string): Promise<string[]> {
   const p = prefix.trim();
-  if (p.length === 0) return [];
-  const like = `${p.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const cond =
+    p.length === 0
+      ? sql`true`
+      : sql`(${themeTags.tag} ILIKE ${`%${p.replace(/[\\%_]/g, (c) => `\\${c}`)}%`}
+          OR ${p} ILIKE '%' || ${themeTags.tag} || '%')`;
   const rows = await db
     .select({ tag: themeTags.tag, n: count() })
     .from(themeTags)
     .innerJoin(themes, and(eq(themes.id, themeTags.themeId), eq(themes.status, "active")))
-    .where(sql`${themeTags.tag} ILIKE ${like}`)
+    .where(cond)
     .groupBy(themeTags.tag)
     .orderBy(desc(count()), themeTags.tag)
     .limit(TAG_SUGGEST_LIMIT);

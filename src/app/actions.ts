@@ -421,7 +421,7 @@ export async function addThemeTagAction(
 export async function suggestTagsAction(prefix: string): Promise<string[]> {
   try {
     const p = String(prefix ?? "").trim();
-    if (p.length === 0 || p.length > TAG_MAX_LENGTH) return [];
+    if (p.length > TAG_MAX_LENGTH) return [];
     const rate = await checkAndRecordRate("tag_suggest", dailyActorHash(`ip:${await clientIp()}`));
     if (!rate.ok) return [];
     return await suggestExistingTags(p);

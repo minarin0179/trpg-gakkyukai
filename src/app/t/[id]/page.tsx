@@ -111,7 +111,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
               追加時はアクション側の revalidatePath で即時反映される */}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <TagChips tags={tags.map((t) => t.tag)} />
-            <TagEditor themeId={theme.id} tagCount={tags.length} />
+            <TagEditor themeId={theme.id} existingTags={tags.map((t) => t.tag)} />
             <TagReportButton tags={tags} />
           </div>
         </div>

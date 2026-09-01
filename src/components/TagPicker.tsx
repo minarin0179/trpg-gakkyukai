@@ -33,14 +33,27 @@ export function TagPicker() {
   function onInputChange(v: string) {
     setInput(v);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    const trimmed = v.trim();
-    if (trimmed.length === 0) {
-      setSuggestions([]);
-      return;
-    }
     debounceRef.current = setTimeout(async () => {
-      setSuggestions(await suggestTagsAction(trimmed));
+      setSuggestions(await suggestTagsAction(v.trim()));
     }, 300);
+  }
+
+  // フォーカス時に人気の既存タグを出す(入力前から候補が見える)
+  async function onInputFocus() {
+    if (suggestions.length === 0) setSuggestions(await suggestTagsAction(input.trim()));
+  }
+
+  // 初期候補・選択済みと重複しない既存タグだけを「候補」として出す
+  const lowerShown = [...INITIAL_TAGS, ...selected].map((t) => t.toLowerCase());
+  const extraCandidates = suggestions.filter((s) => !lowerShown.includes(s.toLowerCase()));
+
+  function pick(tag: string) {
+    if (full) return;
+    if (!selected.some((t) => t.toLowerCase() === tag.toLowerCase())) {
+      setSelected((prev) => [...prev, tag]);
+    }
+    setInput("");
+    setSuggestions([]);
   }
 
   return (
@@ -78,12 +91,12 @@ export function TagPicker() {
       <div className="mt-2 flex items-center gap-1.5">
         <input
           id="tag-input"
-          list="tag-picker-suggestions"
           value={input}
           maxLength={TAG_MAX_LENGTH}
           disabled={full}
           placeholder={full ? `タグは${TAGS_PER_THEME}個までです` : "候補にないタグを入力"}
           onChange={(e) => onInputChange(e.target.value)}
+          onFocus={onInputFocus}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -92,11 +105,6 @@ export function TagPicker() {
           }}
           className="w-48 rounded-md border border-stone-400 bg-white px-2 py-1 text-xs disabled:bg-stone-100 dark:border-stone-700 dark:bg-stone-900"
         />
-        <datalist id="tag-picker-suggestions">
-          {suggestions.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
         <button
           type="button"
           onClick={addFromInput}
@@ -106,6 +114,21 @@ export function TagPicker() {
           追加
         </button>
       </div>
+      {extraCandidates.length > 0 && !full && (
+        <p className="mt-1.5 flex flex-wrap items-center gap-1">
+          <span className="text-xs text-stone-500">使われているタグ:</span>
+          {extraCandidates.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => pick(s)}
+              className="rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs text-stone-600 hover:border-stone-500 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400"
+            >
+              {s}
+            </button>
+          ))}
+        </p>
+      )}
     </div>
   );
 }
