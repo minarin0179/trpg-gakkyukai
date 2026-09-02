@@ -2,7 +2,7 @@
 
 import { and, cosineDistance, count, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidateTheme } from "@/lib/revalidate";
 import { after } from "next/server";
 import { headers } from "next/headers";
 import { getCache } from "@vercel/functions";
@@ -243,7 +243,7 @@ export async function createStatementAction(
   }
 
   await db.insert(statements).values({ themeId, text, participantId });
-  revalidatePath(`/t/${themeId}`);
+  revalidateTheme(themeId);
   return { done: true };
 }
 
@@ -431,7 +431,7 @@ export async function addThemeTagAction(
     .onConflictDoNothing()
     .returning({ id: themeTags.id });
   // ページはISRキャッシュのため、表示の即時更新はクライアント側で行う
-  // (revalidatePathは他の閲覧者向けのキャッシュ更新)
-  revalidatePath(`/t/${themeId}`);
+  // (revalidateThemeは他の閲覧者向けのキャッシュ更新)
+  revalidateTheme(themeId);
   return { ok: true, id: row?.id, tag };
 }

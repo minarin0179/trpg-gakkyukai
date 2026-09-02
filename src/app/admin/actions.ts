@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidateTheme } from "@/lib/revalidate";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { after } from "next/server";
 import { getCache } from "@vercel/functions";
@@ -52,7 +52,7 @@ export async function removeContentAction(formData: FormData) {
       .where(eq(statements.id, sid));
     if (stmt) {
       // 削除はISRの30分キャッシュを待たず即時にページへ反映する(notice & takedownの実効性)
-      revalidatePath(`/t/${stmt.themeId}`);
+      revalidateTheme(stmt.themeId);
       after(async () => {
         await recomputeTheme(stmt.themeId).catch(() => {});
       });
@@ -64,13 +64,13 @@ export async function removeContentAction(formData: FormData) {
       .from(themeTags)
       .where(eq(themeTags.id, tid));
     await db.delete(themeTags).where(eq(themeTags.id, tid));
-    if (row) revalidatePath(`/t/${row.themeId}`);
+    if (row) revalidateTheme(row.themeId);
   } else if (targetType === "theme") {
     await db
       .update(themes)
       .set({ status: "removed", removedReason: reason })
       .where(eq(themes.id, targetId));
-    revalidatePath(`/t/${targetId}`);
+    revalidateTheme(targetId);
     // テーマ一覧のRuntime Cacheからも即時に消す
     await getCache()
       .expireTag("themes-list")
@@ -125,6 +125,6 @@ export async function adminSetTagAction(
     if (n >= TAGS_PER_THEME) return { ok: false, error: `タグは${TAGS_PER_THEME}個までです` };
     await db.insert(themeTags).values({ themeId, tag }).onConflictDoNothing();
   }
-  revalidatePath(`/t/${themeId}`);
+  revalidateTheme(themeId);
   return { ok: true };
 }

@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidateTheme } from "./revalidate";
 import { db, statements, votes, mathResults } from "@/db";
 import { getThemeCounts, getMathResultMeta } from "./queries";
 import { RECOMPUTE_MIN_INTERVAL_SEC } from "./config";
@@ -116,7 +116,7 @@ export async function recomputeTheme(themeId: string): Promise<void> {
   // after()やcronなど呼び出し文脈によっては失敗し得るため、失敗しても
   // 計算結果自体は保存済みとし、ページ側の時間ベース再生成に委ねる
   try {
-    revalidatePath(`/t/${themeId}`);
+    revalidateTheme(themeId);
   } catch {
     // noop
   }
