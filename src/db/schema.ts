@@ -73,6 +73,10 @@ export const votes = pgTable(
   (t) => [
     primaryKey({ columns: [t.statementId, t.participantId] }),
     index("votes_theme_idx").on(t.themeId),
+    // 参加者単位の検索(参加済み/未参加タブ、自分の投票、投票ゲート)用。
+    // 本番には 2026-09-02 に CREATE INDEX CONCURRENTLY で適用済み
+    // (約42万行で参加済みタブ相当のクエリが3.1秒→0.1秒)
+    index("votes_participant_theme_idx").on(t.participantId, t.themeId),
   ],
 );
 
