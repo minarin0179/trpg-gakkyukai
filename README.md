@@ -61,7 +61,8 @@ node --env-file=.env.local scripts/seed.mjs
 
 ## 構成メモ
 
-- `src/db/schema.ts` — themes / statements / votes / math_results / reports / rate_events
+- `src/db/schema.ts` — themes / participants / statements / votes / theme_tags /
+  math_results / reports / rate_events
 - `src/app/actions.ts` — テーマ提案・意見投稿・投票・通報のServer Actions
 - `src/lib/recompute.ts` — 投票後の再計算オーケストレーション(最短30分間隔。自分の点はクライアント側でライブ投影)
 - `api/_logic.py` — red-dwarf呼び出し本体(エンドポイントから分離、単体テスト可)
@@ -72,10 +73,25 @@ node --env-file=.env.local scripts/seed.mjs
 
 GitHub連携により `main` へのpushで本番へ自動デプロイされる(ブランチ/PRはpreview URL)。
 
-環境変数(設定済み): `DATABASE_URL`(Neon統合) / `CRON_SECRET` / `HASH_SALT` /
-`VERCEL_SUPPORT_LARGE_FUNCTIONS=1`(Python関数が225MB超のため必須) /
-`TURNSTILE_SECRET_KEY` と `NEXT_PUBLIC_TURNSTILE_SITE_KEY`(bot対策) /
-`DISCORD_WEBHOOK_URL`(通報・問い合わせの運営通知、任意)。
+## 環境変数
+
+キーの一覧は [.env.example](./.env.example) にある。ローカルは `vercel env pull .env.local` で取得し、
+`COMPUTE_URL` / `EMBED_URL` を手で足す。
+
+| 変数 | 必須 | 用途 | 備考 |
+| --- | --- | --- | --- |
+| `DATABASE_URL` | Vercel/ローカル | Neon Postgres の接続文字列 | Neon統合が自動設定。`POSTGRES_*` / `PG*` のエイリアスは使わない |
+| `HASH_SALT` | Vercel | cookie ID・IP のハッシュ化ソルト | 変更すると既存ハッシュと不整合 |
+| `CRON_SECRET` | Vercel | Vercel Cron の Authorization ヘッダ | Vercelが自動生成 |
+| `INTERNAL_API_KEY` | 任意 | Python Function を呼ぶ `X-Internal-Key` | 未設定なら `CRON_SECRET` を流用 |
+| `ADMIN_KEY` | Vercel | `/admin` のアクセスキー | 未設定なら管理画面は無効 |
+| `TURNSTILE_SECRET_KEY` | Vercel | Turnstile の検証 | ローカルは未設定で公式テストキーに落ちる |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Vercel | Turnstile のサイトキー | ローカルは `1x00000000000000000000AA` |
+| `NEXT_PUBLIC_SITE_URL` | 任意 | canonical・OGP・sitemap の生成 | 未設定なら本番ドメイン |
+| `DISCORD_WEBHOOK_URL` | 任意 | 通報・問い合わせの運営通知 | 未設定なら通知しない |
+| `COMPUTE_URL` | ローカルのみ | クラスタリング計算の呼び出し先 | 本番は同一デプロイの `/api/compute` |
+| `EMBED_URL` | ローカルのみ | 埋め込み生成の呼び出し先 | 本番は同一デプロイの `/api/embed` |
+| `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` | Vercel | Python関数が225MB超のため必須 | Vercelプロジェクト設定側 |
 
 `HASH_SALT` / `TURNSTILE_SECRET_KEY` / `CRON_SECRET` / `ADMIN_KEY` の4つは、
 Vercel上(production/preview)では必須。未設定のまま開発用の既定値で動き続けないよう、
