@@ -100,8 +100,8 @@ function VoteNumbers({ s }: { s: { agree: number; disagree: number; pass: number
 
 // 本家レポート式の横並び比較: 全体 + 各グループの内訳を1行に並べる。
 // highlightGroup はそのグループのセクション内で自分の列を目立たせるのに使う
-// 「すべての意見」で全体の棒の長さを票数比にするための最大票数
-type BarMaxima = { overall: number };
+// 「すべての意見」で棒の長さを票数比にするための最大票数(全体・各グループ)
+type BarMaxima = { overall: number; groups: number[] };
 
 function CompareBars({
   s,
@@ -114,14 +114,16 @@ function CompareBars({
   highlightGroup?: number;
   maxima?: BarMaxima;
 }) {
-  // 全体の棒だけ、最多得票の意見を1として票数比の長さにする(maxima があるとき)。
-  // 票の少ない意見は棒が短く潰れるが、それ自体が「まだ判断材料が薄い」という情報なので
-  // 圧縮(平方根など)はしない。数値は横に出ているので読める。
-  // グループの棒は割合のみ(全幅)。人数比を長さに出すと多数派の枠組みを毎カードで
-  // 繰り返し提示することになり、少数派の意見を読む前に重み付けを済ませてしまうため
-  const overallTotal = total(s);
-  const overallScale =
-    maxima && maxima.overall > 0 ? Math.min(1, overallTotal / maxima.overall) : 1;
+  // 棒の長さを票数比にする(maxima があるとき)。基準は列ごとに独立で、
+  // 全体の列は全体の最多票、グループの列はそのグループの最多票(意見をまたいだ最大)。
+  // つまり長さは「その列でどれだけ票が集まった意見か」を表し、グループ同士の
+  // 人数比は表さない(人数比を長さに出すと多数派の枠組みを毎カードで繰り返し
+  // 提示することになり、少数派の意見を読む前に重み付けを済ませてしまうため)。
+  // 票の少ない意見は棒が短く潰れるが、それ自体が「まだ判断材料が薄い」という
+  // 情報なので圧縮(平方根など)はしない。数値は横に出ているので読める
+  const scaleOf = (counts: GroupVoteCounts, max?: number) =>
+    maxima && max && max > 0 ? Math.min(1, total(counts) / max) : 1;
+  const overallScale = scaleOf(s, maxima?.overall);
   const cols: {
     label: string;
     color?: string;
@@ -136,7 +138,7 @@ function CompareBars({
         color: GROUP_COLORS[g % GROUP_COLORS.length],
         counts,
         highlight: highlightGroup === g,
-        scale: 1,
+        scale: scaleOf(counts, maxima?.groups[g]),
       });
     }
   }
@@ -212,8 +214,17 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
     </li>
   );
 
-  // 「すべての意見」用: 最多得票の意見を1として全体の棒の長さを票数比にする
-  const allMaxima: BarMaxima = { overall: Math.max(0, ...stats.map((s) => total(s))) };
+  // 「すべての意見」用: 列ごとの最多票数。最多得票の意見を1として棒の長さを票数比にする
+  const groupCount = groupsFor(stats[0]?.id ?? -1)?.length ?? 0;
+  const allMaxima: BarMaxima = {
+    overall: Math.max(0, ...stats.map((s) => total(s))),
+    groups: Array.from({ length: groupCount }, (_, g) =>
+      Math.max(
+        0,
+        ...stats.map((s) => total(groupsFor(s.id)?.[g]?.counts ?? { agree: 0, disagree: 0, pass: 0 })),
+      ),
+    ),
+  };
 
   // 先頭数件+残りは折りたたみ
   const previewList = (items: Stat[]) => (
