@@ -84,7 +84,11 @@ export function ThemePersonalization({
     }
   }, [themeId]);
 
+  // 初回マウント時の取得。外部(API)からの取り込みなのでeffectが正当な置き場で、
+  // setStateも取得完了後にしか呼ばない。唯一の同期パスは「未参加が既知でAPIを省略」
+  // したときのloaded確定だけなので、ルールの指摘はここでは受け入れない。
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 

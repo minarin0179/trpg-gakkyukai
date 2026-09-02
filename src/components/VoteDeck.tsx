@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { castVoteAction } from "@/app/actions";
 import { ReportButton } from "./ReportButton";
 import { usePersonalization } from "./ThemePersonalization";
@@ -61,18 +61,26 @@ export function VoteDeck({
   const { votes, loaded, setVote } = usePersonalization();
   const total = statements.length;
 
-  const [deck, setDeck] = useState<Statement[] | null>(null);
   const [index, setIndex] = useState(0);
   const [passStreak, setPassStreak] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   // 個人化の読み込み完了時に、未投票の意見をスナップショット＋シャッフルして固定する。
-  useEffect(() => {
-    if (loaded && deck === null) {
-      setDeck(weightedShuffle(statements.filter((s) => !(s.id in votes)), priorities));
-    }
-  }, [loaded, deck, statements, votes, priorities]);
+  // 依存は loaded だけにする。以後 votes(自分の投票)が増えても並べ直さず、
+  // 表示中のカードが入れ替わらないようにするため(意図的な依存の省略)。
+  // weightedShuffle は Math.random を使うが、サーバー側では loaded=false なので走らない。
+  const deck = useMemo(
+    () =>
+      loaded
+        ? weightedShuffle(
+            statements.filter((s) => !(s.id in votes)),
+            priorities,
+          )
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loaded],
+  );
 
   function scrollToPost() {
     document.getElementById("post")?.scrollIntoView({ behavior: "smooth" });

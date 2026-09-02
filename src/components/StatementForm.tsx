@@ -1,28 +1,29 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createStatementAction, type FormState } from "@/app/actions";
 
 export function StatementForm({ themeId }: { themeId: string }) {
-  const [state, formAction, pending] = useActionState<FormState, FormData>(
-    createStatementAction,
-    {},
-  );
   const [text, setText] = useState("");
   const [justPosted, setJustPosted] = useState(false);
   const router = useRouter();
-
   // 投稿成功時のみ入力をクリア(エラー時は保持)し、投票への誘導を出す。
   // あわせてサーバーコンポーネントを再取得し、投稿した意見がリロードなしで
-  // 投票デッキ・意見一覧に現れるようにする
-  useEffect(() => {
-    if (state.done) {
-      setText("");
-      setJustPosted(true);
-      router.refresh();
-    }
-  }, [state, router]);
+  // 投票デッキ・意見一覧に現れるようにする。
+  // 副作用はeffectではなくアクション側に置く(成功したときだけ・1回だけ走らせたいため)
+  const [state, formAction, pending] = useActionState<FormState, FormData>(
+    async (prev, formData) => {
+      const result = await createStatementAction(prev, formData);
+      if (result.done) {
+        setText("");
+        setJustPosted(true);
+        router.refresh();
+      }
+      return result;
+    },
+    {},
+  );
 
   return (
     // 投稿は編集・削除できないため、送信前にブラウザの確認ダイアログを挟む
