@@ -535,9 +535,39 @@ export async function getStatementVoteStats(themeId: string) {
     .orderBy(statements.id);
 }
 
+// result には全参加者の座標とpidMapが入っていて、参加者が増えるほど肥大する。
+// 中身を実際に使うページ(テーマ・レポート)だけがこれを呼ぶこと
 export async function getMathResult(themeId: string) {
   const [row] = await db.select().from(mathResults).where(eq(mathResults.themeId, themeId));
   return row ?? null;
+}
+
+// 再計算の要否判定など、メタ情報しか要らないホットパス用。
+// 大きな result を転送せずに済ませる
+export async function getMathResultMeta(
+  themeId: string,
+): Promise<{ computedAt: Date; voteCount: number } | null> {
+  const [row] = await db
+    .select({ computedAt: mathResults.computedAt, voteCount: mathResults.voteCount })
+    .from(mathResults)
+    .where(eq(mathResults.themeId, themeId));
+  return row ?? null;
+}
+
+// 自分の意見マップ上の位置(行列インデックス)だけをDB側で引く。
+// pidMap は result の一部だが、必要なのは自分の1要素だけなので
+// JSONB全体をアプリに転送しない(participantId は必ずバインド変数で渡す)
+export async function getMyMapIndex(
+  themeId: string,
+  participantId: string,
+): Promise<number | null> {
+  const [row] = await db
+    .select({
+      idx: sql<number | null>`(${mathResults.result}->'pidMap'->>${participantId})::int`,
+    })
+    .from(mathResults)
+    .where(eq(mathResults.themeId, themeId));
+  return row?.idx ?? null;
 }
 
 // 結果ページ用のグループ別集計(本家Polisレポートの機械集計に相当)。

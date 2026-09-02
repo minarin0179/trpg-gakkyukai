@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, statements, votes, mathResults } from "@/db";
-import { getThemeCounts, getMathResult } from "./queries";
+import { getThemeCounts, getMathResultMeta } from "./queries";
 import { RECOMPUTE_MIN_INTERVAL_SEC } from "./config";
 
 // 保存するJSONの形。pidMap(参加者UUID→行列インデックス)はサーバー内部専用で、
@@ -123,19 +123,20 @@ export async function recomputeTheme(themeId: string): Promise<void> {
 }
 
 // 投票のたびに呼ばれる。実際に再計算するのは「前回計算以降に投票の追加・変更があり、
-// 前回計算から一定時間経過している」場合のみ
+// 前回計算から一定時間経過している」場合のみ。
+// 判定は安い順に行う: まず前回計算のメタ情報(小さな1行)だけを見て、
+// 間隔が空いていなければ即スキップする。大多数の投票はここで終わるので、
+// 1票あたりのコストは軽いクエリ1本で済み、票の集計(全票走査)まで行かない
 export async function maybeRecompute(themeId: string): Promise<boolean> {
-  const [counts, existing] = await Promise.all([
-    getThemeCounts(themeId),
-    getMathResult(themeId),
-  ]);
+  const existing = await getMathResultMeta(themeId);
   if (existing) {
     const ageSec = (Date.now() - existing.computedAt.getTime()) / 1000;
+    if (ageSec < RECOMPUTE_MIN_INTERVAL_SEC) return false;
     // 前回計算以降に投票の追加・変更(訂正)が無ければスキップ。
     // 票数だけでなく最終更新時刻で見るので、値の訂正でも再計算される。
+    const counts = await getThemeCounts(themeId);
     const lastVoteAt = counts.lastVoteAt ? new Date(counts.lastVoteAt) : null;
     if (!lastVoteAt || lastVoteAt <= existing.computedAt) return false;
-    if (ageSec < RECOMPUTE_MIN_INTERVAL_SEC) return false;
   }
   try {
     await recomputeTheme(themeId);
