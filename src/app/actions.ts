@@ -151,9 +151,8 @@ export async function createThemeAction(
     proposerHash: actorHash(participantId),
     embedding: titleVec, // 取得失敗時はnull(以後の類似検出の対象から外れるだけ)
   });
-  for (const text of seeds) {
-    await db.insert(statements).values({ themeId: id, text, participantId });
-  }
+  // 1行ずつではなく一括INSERTにする。往復回数を減らす(neon-httpは1クエリ=1往復)
+  await db.insert(statements).values(seeds.map((text) => ({ themeId: id, text, participantId })));
 
   // タグ(任意)。カンマ区切りで受け取り、正規化して上限まで保存。
   // 不正なタグは黙って捨てる(テーマ公開自体は止めない)
@@ -164,8 +163,12 @@ export async function createThemeAction(
       .map((t) => normalizeTag(t).tag)
       .filter((t): t is string => !!t),
   )].slice(0, TAGS_PER_THEME);
-  for (const tag of themeTagList) {
-    await db.insert(themeTags).values({ themeId: id, tag }).onConflictDoNothing();
+  // こちらも一括INSERT。往復回数を減らす(neon-httpは1クエリ=1往復)
+  if (themeTagList.length > 0) {
+    await db
+      .insert(themeTags)
+      .values(themeTagList.map((tag) => ({ themeId: id, tag })))
+      .onConflictDoNothing();
   }
 
   // 新テーマをテーマ一覧のRuntime Cache(60秒)を待たず即時反映する
