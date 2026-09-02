@@ -25,7 +25,12 @@ export function turnstileSecret(): string {
   return secret("TURNSTILE_SECRET_KEY", TURNSTILE_TEST_SECRET) as string;
 }
 
+// Python Function(compute/embed)呼び出し用の内部API鍵。
+// cron用シークレットと内部API鍵を分離できるようにする。移行中は CRON_SECRET を流用。
+// STRICT環境ではどちらも未設定なら例外(secret() が CRON_SECRET 側で投げる)
 export function internalApiKey(): string {
+  const dedicated = process.env.INTERNAL_API_KEY;
+  if (dedicated) return dedicated;
   return secret("CRON_SECRET", "") as string;
 }
 
