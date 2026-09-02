@@ -27,8 +27,8 @@ npm run setup:assets
 # 環境変数(Vercelから取得。COMPUTE_URL=http://localhost:8787 をローカル用に追記)
 vercel env pull .env.local
 
-# スキーマ反映
-npm run db:push
+# スキーマ反映(初回。既存DBに対しては下の「マイグレーション」を参照)
+DATABASE_URL=<開発用のNeonブランチ> npm run db:migrate
 
 # 2プロセスで起動
 npm run compute:dev   # クラスタリング計算サーバー (localhost:8787)
@@ -37,6 +37,27 @@ npm run dev           # Next.js (localhost:3000)
 # テストデータ投入(任意)
 node --env-file=.env.local scripts/seed.mjs
 ```
+
+## マイグレーション
+
+スキーマの変更は `drizzle-kit` の generate/migrate で運用する(SQLをリポジトリで管理する)。
+
+1. `src/db/schema.ts` を編集し、`npm run db:generate` を実行する。
+   `drizzle/` 配下に連番のSQLとスナップショット(`drizzle/meta/`)が生成されるので、
+   SQLを目視で確認したうえでコードと一緒にコミットする。
+2. まずNeonのブランチに当てて確認する。
+   `DATABASE_URL=<ブランチの接続文字列> npm run db:migrate`
+   問題なければ本番の `DATABASE_URL` で同じコマンドを実行する。
+
+補足:
+
+- `drizzle-kit push` は使わない。Neonでは `pg_stat_statements` ビューの
+  読み取りで失敗するため(introspectが通らない)。
+- pgvector拡張(類似テーマ検出に使う `vector(256)` 列)は
+  マイグレーション0000の `CREATE EXTENSION IF NOT EXISTS vector;` で有効化される。
+- 本番DBは 2026-09-02 にベースライン化済み。マイグレーション0000は
+  `drizzle.__drizzle_migrations` に「適用済み」として登録してあるため、
+  `npm run db:migrate` は0001以降だけを適用する。
 
 ## 構成メモ
 
