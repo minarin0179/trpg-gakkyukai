@@ -91,6 +91,19 @@ def test_two_groups_are_separated(result: dict):
     assert second_purity >= 0.8
 
 
+def test_votes_t_matches_votes(result: dict):
+    """タプル形式(votes_t)でも辞書形式と同じ結果になること。
+
+    呼び出し側は転送量を抑えるため既定で votes_t を送る。
+    変換で票の並び・値がずれると結果ごと変わるので、丸ごと突き合わせる。
+    """
+    tuples = [
+        [v["participant_id"], v["statement_id"], v["vote"], v["modified"]]
+        for v in build_votes()
+    ]
+    assert compute_clusters({"votes_t": tuples, "statement_count": N_STATEMENTS}) == result
+
+
 def test_insufficient_when_below_thresholds():
     """データ不足のときは例外ではなく status=insufficient を返すこと。
 
@@ -129,6 +142,14 @@ def test_three_participants_still_computes():
         {"votes": [{"participant_id": 1, "statement_id": 1, "vote": 1}]},
         {"votes": [], "statement_count": -1},
         {"votes": [], "statement_count": 2, "mod_out_statement_ids": ["1"]},
+        # タプル形式(votes_t)の不正な形
+        {"votes_t": "not a list", "statement_count": 2},
+        {"votes_t": [[1, 2, 1]], "statement_count": 2},  # 要素が4つでない
+        {"votes_t": [[1, 2, 1, 0, 0]], "statement_count": 2},
+        {"votes_t": [{"participant_id": 1}], "statement_count": 2},  # 辞書は不可
+        {"votes_t": [[1, 2, 2, 0]], "statement_count": 2},  # voteが-1/0/1でない
+        {"votes_t": [[1, 2, 1, "0"]], "statement_count": 2},  # intでない
+        {"votes_t": [[1, 2, True, 0]], "statement_count": 2},  # boolは弾く
     ],
 )
 def test_invalid_payload_raises_value_error(payload):

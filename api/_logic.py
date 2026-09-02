@@ -40,6 +40,37 @@ class ComputePayload(TypedDict):
     mod_out_statement_ids: NotRequired[list[int]]  # 削除済み意見(計算から除外)
 
 
+def _rows_from_tuples(raw: Any) -> list[VoteRow]:
+    """votes_t(タプル形式の票)を VoteRow の並びに直す。
+
+    [[participant_id, statement_id, vote, modified], ...]
+    キー名が票数ぶん反復するとリクエストが数MB規模になるため、
+    呼び出し側は既定でこちらを送る(旧形式の votes も引き続き受ける)。
+    """
+    if not isinstance(raw, list):
+        raise ValueError("votes_t must be a list")
+    rows: list[VoteRow] = []
+    for i, v in enumerate(raw):
+        if not isinstance(v, (list, tuple)) or len(v) != 4:
+            raise ValueError(
+                f"votes_t[{i}] must be [participant_id, statement_id, vote, modified]"
+            )
+        # bool は int のサブクラスなので明示的に除く
+        if not all(isinstance(x, int) and not isinstance(x, bool) for x in v):
+            raise ValueError(f"votes_t[{i}] must contain ints")
+        if v[2] not in (-1, 0, 1):
+            raise ValueError(f"votes_t[{i}] vote must be -1, 0 or 1")
+        rows.append(
+            {
+                "participant_id": v[0],
+                "statement_id": v[1],
+                "vote": v[2],
+                "modified": v[3],
+            }
+        )
+    return rows
+
+
 def _validate(payload: Any) -> ComputePayload:
     """入口で形を検証する。
 
@@ -50,19 +81,23 @@ def _validate(payload: Any) -> ComputePayload:
     if not isinstance(payload, dict):
         raise ValueError("payload must be an object")
 
-    votes = payload.get("votes")
-    if not isinstance(votes, list):
-        raise ValueError("votes must be a list")
-    for i, v in enumerate(votes):
-        if not isinstance(v, dict):
-            raise ValueError(f"votes[{i}] must be an object")
-        # bool は int のサブクラスなので明示的に除く
-        for key in ("participant_id", "statement_id", "modified"):
-            value = v.get(key)
-            if not isinstance(value, int) or isinstance(value, bool):
-                raise ValueError(f"votes[{i}].{key} must be an int")
-        if v.get("vote") not in (-1, 0, 1) or isinstance(v.get("vote"), bool):
-            raise ValueError(f"votes[{i}].vote must be -1, 0 or 1")
+    raw_tuples = payload.get("votes_t")
+    if raw_tuples is not None:
+        votes = _rows_from_tuples(raw_tuples)
+    else:
+        votes = payload.get("votes")
+        if not isinstance(votes, list):
+            raise ValueError("votes must be a list")
+        for i, v in enumerate(votes):
+            if not isinstance(v, dict):
+                raise ValueError(f"votes[{i}] must be an object")
+            # bool は int のサブクラスなので明示的に除く
+            for key in ("participant_id", "statement_id", "modified"):
+                value = v.get(key)
+                if not isinstance(value, int) or isinstance(value, bool):
+                    raise ValueError(f"votes[{i}].{key} must be an int")
+            if v.get("vote") not in (-1, 0, 1) or isinstance(v.get("vote"), bool):
+                raise ValueError(f"votes[{i}].vote must be -1, 0 or 1")
 
     statement_count = payload.get("statement_count", 0)
     if (
@@ -87,7 +122,10 @@ def _validate(payload: Any) -> ComputePayload:
 
 def compute_clusters(payload: Any) -> dict[str, Any]:
     """payload:
-      votes: [{participant_id:int, statement_id:int, vote:int(-1|0|1), modified:int}]
+      votes_t: [[participant_id:int, statement_id:int, vote:int(-1|0|1), modified:int]]
+               (推奨。キー名の反復を避けたタプル形式)
+      votes:   [{participant_id:int, statement_id:int, vote:int(-1|0|1), modified:int}]
+               (旧形式。votes_t が無いときだけ見る)
       statement_count: int  可視の意見数
       mod_out_statement_ids: [int]  削除済み意見(計算から除外)
     """
