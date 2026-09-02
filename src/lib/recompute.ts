@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { revalidateTheme } from "./revalidate";
+import { internalApiKey } from "./env";
 import { db, statements, votes, mathResults } from "@/db";
 import { getThemeCounts, getMathResultMeta } from "./queries";
 import { RECOMPUTE_MIN_INTERVAL_SEC } from "./config";
@@ -85,7 +86,7 @@ export async function recomputeTheme(themeId: string): Promise<void> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Internal-Key": process.env.CRON_SECRET ?? "",
+        "X-Internal-Key": internalApiKey(),
       },
       body: JSON.stringify(payload),
       signal: controller.signal,

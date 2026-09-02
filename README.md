@@ -56,6 +56,10 @@ GitHub連携により `main` へのpushで本番へ自動デプロイされる(�
 `TURNSTILE_SECRET_KEY` と `NEXT_PUBLIC_TURNSTILE_SITE_KEY`(bot対策) /
 `DISCORD_WEBHOOK_URL`(通報・問い合わせの運営通知、任意)。
 
+`HASH_SALT` / `TURNSTILE_SECRET_KEY` / `CRON_SECRET` / `ADMIN_KEY` の4つは、
+Vercel上(production/preview)では必須。未設定のまま開発用の既定値で動き続けないよう、
+`src/lib/env.ts` がリクエスト時に例外を投げる(ローカルでは従来どおり既定値に落ちる)。
+
 ## ライセンス
 
 コードは [MIT License](./LICENSE)。ただし以下はMITの対象外:

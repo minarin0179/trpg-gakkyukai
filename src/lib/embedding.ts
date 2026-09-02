@@ -4,6 +4,7 @@
 //
 // 失敗時はnullを返し、呼び出し側は類似チェックをスキップして投稿を通す
 // (チェックは確認を促すだけの補助機能なので、これが投稿を止めてはいけない)。
+import { internalApiKey } from "./env";
 
 function embedEndpoint(): string {
   if (process.env.EMBED_URL) return process.env.EMBED_URL; // ローカル開発用
@@ -23,7 +24,7 @@ export async function embedTexts(texts: string[]): Promise<number[][] | null> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Internal-Key": process.env.CRON_SECRET ?? "",
+        "X-Internal-Key": internalApiKey(),
       },
       body: JSON.stringify({ texts }),
       signal: controller.signal,

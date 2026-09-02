@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { randomUUID, createHash } from "crypto";
 import { db, participants } from "@/db";
+import { hashSalt } from "./env";
 
 const COOKIE_NAME = "gk_pid";
 // 「参加済み」の目印(値に意味はない)。本体のgk_pidはhttpOnlyでクライアントから
@@ -56,7 +57,7 @@ export async function ensureParticipant(id: string): Promise<void> {
 
 // レート制限・通報記録用のハッシュ。生IPや生cookie IDは保存しない
 export function actorHash(value: string): string {
-  const salt = process.env.HASH_SALT ?? "trpg-gakkyukai";
+  const salt = hashSalt();
   return createHash("sha256").update(`${salt}:${value}`).digest("hex").slice(0, 32);
 }
 
@@ -65,6 +66,6 @@ export function actorHash(value: string): string {
 // レート制限の窓(24時間)の用途には十分
 export function dailyActorHash(value: string): string {
   const day = new Date().toISOString().slice(0, 10);
-  const salt = process.env.HASH_SALT ?? "trpg-gakkyukai";
+  const salt = hashSalt();
   return createHash("sha256").update(`${salt}:${day}:${value}`).digest("hex").slice(0, 32);
 }

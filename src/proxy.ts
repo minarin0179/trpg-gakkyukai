@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { adminKey } from "@/lib/env";
 
 const ADMIN_COOKIE = "gk_admin";
 
@@ -19,7 +20,7 @@ async function sha256Hex(input: string): Promise<string> {
 
 export async function proxy(req: NextRequest) {
   const key = req.nextUrl.searchParams.get("key");
-  const configured = process.env.ADMIN_KEY;
+  const configured = adminKey();
   if (!key || !configured) return NextResponse.next();
 
   // ハッシュ同士の比較(生の鍵長の露出やタイミング差を抑える)

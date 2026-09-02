@@ -1,9 +1,10 @@
-// Cloudflare Turnstile 検証。
-// 開発中は公式テストキー(常に成功)を使い、本番でsecretを差し替える。
-const TEST_SECRET = "1x0000000000000000000000000000000AA";
+import { turnstileSecret } from "./env";
 
+// Cloudflare Turnstile 検証。
+// 開発中は公式テストキー(常に成功)を使い、本番でsecretを差し替える
+// (Vercel上で未設定なら env.ts が例外を投げる)。
 export async function verifyTurnstile(token: string | null): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY ?? TEST_SECRET;
+  const secret = turnstileSecret();
   if (!token) return false;
   const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
     method: "POST",
