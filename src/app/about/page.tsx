@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TopicGuidelines } from "@/components/TopicGuidelines";
 import { REMOVAL_CRITERIA } from "@/lib/rules";
+import { MAP_MIN_VOTES } from "@/lib/config";
 
 export const metadata: Metadata = { title: "ルールと仕組み" };
 
@@ -64,7 +65,7 @@ export default function AboutPage() {
         <h2 className="mb-2 text-base font-semibold">意見マップの見かた</h2>
         <ul className="list-disc pl-5 text-sm leading-relaxed text-stone-700">
           <li>マップの点は参加者です。近くにいる人ほど投票のパターンが似ています</li>
-          <li>マップに表示されるには一定数(標準で7票、意見が少ないテーマではその意見数)の投票が必要です。加えて、投票の傾向がはっきりした参加者から順に表示されるため、参加が少ないうちは一部の人だけが現れます</li>
+          <li>マップに表示されるには一定数(標準で{MAP_MIN_VOTES}票、意見が少ないテーマではその意見数)の投票が必要です。加えて、投票の傾向がはっきりした参加者から順に表示されるため、参加が少ないうちは一部の人だけが現れます</li>
           <li>投票の傾向が似た参加者は、自動で意見グループ(最大5つ)にまとまります</li>
           <li>立場の違うグループのどれもが賛成した意見は「グループを越えた合意」として表示されます</li>
         </ul>

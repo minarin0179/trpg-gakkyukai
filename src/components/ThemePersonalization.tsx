@@ -1,6 +1,15 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { PARTICIPANT_COOKIE_MAX_AGE_SEC } from "@/lib/config";
 
 type PersonalizationState = {
   votes: Record<number, number>; // 意見ID→自分の投票値(1/0/-1)
@@ -68,7 +77,7 @@ export function ThemePersonalization({
           Object.keys(data.votes ?? {}).length > 0 || typeof data.myIndex === "number";
         try {
           if (participated) {
-            document.cookie = "gk_p=1; max-age=34560000; path=/; samesite=lax";
+            document.cookie = `gk_p=1; max-age=${PARTICIPANT_COOKIE_MAX_AGE_SEC}; path=/; samesite=lax`;
             localStorage.removeItem("gk_np");
           } else if (!hasMarker) {
             localStorage.setItem("gk_np", "1");
@@ -84,7 +93,11 @@ export function ThemePersonalization({
     }
   }, [themeId]);
 
+  // 初回マウント時の取得。外部(API)からの取り込みなのでeffectが正当な置き場で、
+  // setStateも取得完了後にしか呼ばない。唯一の同期パスは「未参加が既知でAPIを省略」
+  // したときのloaded確定だけなので、ルールの指摘はここでは受け入れない。
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 
@@ -92,7 +105,15 @@ export function ThemePersonalization({
     setVotes((v) => ({ ...v, [statementId]: value }));
   }, []);
 
-  return (
-    <Ctx.Provider value={{ votes, myIndex, loaded, setVote, refresh }}>{children}</Ctx.Provider>
+  // value を毎描画で作り直すと、中身が同じでも全consumerが再描画される。
+  // votes/myIndex/loaded が実際に変わったときだけ配り直す。
+  // 文脈を votes と identity に分ける案は取らない: 3つのconsumer
+  // (VoteDeck・StatementList・OpinionMap)がいずれも votes を読むため、
+  // 分けても再描画は減らない
+  const value = useMemo(
+    () => ({ votes, myIndex, loaded, setVote, refresh }),
+    [votes, myIndex, loaded, setVote, refresh],
   );
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -10,6 +10,7 @@ import {
   uniqueIndex,
   vector,
 } from "drizzle-orm/pg-core";
+import { RATE_LIMITS, type RateKind } from "@/lib/config";
 
 // テーマ(議題)。事前審査なしで即時公開、一定の参加を得ると人気タブにも並ぶ
 export const themes = pgTable("themes", {
@@ -73,6 +74,10 @@ export const votes = pgTable(
   (t) => [
     primaryKey({ columns: [t.statementId, t.participantId] }),
     index("votes_theme_idx").on(t.themeId),
+    // 参加者単位の検索(参加済み/未参加タブ、自分の投票、投票ゲート)用。
+    // 本番には 2026-09-02 に CREATE INDEX CONCURRENTLY で適用済み
+    // (約42万行で参加済みタブ相当のクエリが3.1秒→0.1秒)
+    index("votes_participant_theme_idx").on(t.participantId, t.themeId),
   ],
 );
 
@@ -92,6 +97,9 @@ export const reports = pgTable("reports", {
   targetType: text("target_type", { enum: ["theme", "statement", "contact", "tag"] }).notNull(),
   targetId: text("target_id").notNull(),
   reason: text("reason").notNull(),
+  // 問い合わせの連絡先(任意入力)。本文と混ぜず専用列に置き、
+  // 対応後 CONTACT_REPLY_TO_RETENTION_DAYS を過ぎたものは日次cronで消す
+  replyTo: text("reply_to"),
   ipHash: text("ip_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   // 対応済みの記録。resolvedAt が null なら未対応。
@@ -123,18 +131,9 @@ export const rateEvents = pgTable(
   "rate_events",
   {
     id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    // 種別は config の RATE_LIMITS から導出する(上限表と列の定義がずれないように)
     kind: text("kind", {
-      enum: [
-        "theme_create",
-        "statement_create",
-        "statement_create_ip",
-        "report_create",
-        "vote_ip_theme",
-        "similar_check",
-        "search_embed",
-        "tag_add",
-        "tag_add_ip",
-      ],
+      enum: Object.keys(RATE_LIMITS) as [RateKind, ...RateKind[]],
     }).notNull(),
     actorHash: text("actor_hash").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

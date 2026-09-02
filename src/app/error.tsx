@@ -1,6 +1,13 @@
 "use client";
 
-export default function ErrorPage({ reset }: { error: Error; reset: () => void }) {
+import { useEffect } from "react";
+
+export default function ErrorPage({ error, reset }: { error: Error; reset: () => void }) {
+  // Vercelのランタイムログに残す。表示はしない(内部情報を閲覧者に見せないため)
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+
   return (
     <div className="py-16 text-center">
       <h1 className="text-2xl font-bold">エラーが発生しました</h1>

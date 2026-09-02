@@ -3,10 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTheme, getThemeCounts, getVisibleStatements, getMathResult, getGroupVoteBreakdown, getThemeTags, getTagVocabulary } from "@/lib/queries";
 import { StatementMap } from "@/components/StatementMap";
-import type { MathResultJson } from "@/lib/recompute";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
-import { OpinionMap, type PublicMathResult } from "@/components/OpinionMap";
+import { OpinionMap } from "@/components/OpinionMap";
+import { toMapPayload, toPublicMathResult } from "@/lib/math-result";
+import { MAP_MIN_VOTES, CHART_MIN_ITEMS } from "@/lib/config";
 import { StatementList } from "@/components/StatementList";
 import { ReportButton } from "@/components/ReportButton";
 import { ShareTheme } from "@/components/ShareTheme";
@@ -80,12 +81,10 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
 
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない。
   // 自分の点の位置(myIndex)は /api/t/[id]/me 側で pidMap を使って解決する。
-  const raw = (mathRow?.result ?? null) as MathResultJson | null;
-  let publicResult: PublicMathResult | null = null;
-  if (raw) {
-    const { pidMap: _pidMap, ...rest } = raw;
-    publicResult = rest as PublicMathResult;
-  }
+  const publicResult = toPublicMathResult(mathRow?.result ?? null);
+  // クライアントへは意見マップが実際に読む項目だけを渡す。参加者の点は
+  // タプル化してキー名の反復を落とす(参加者1000人規模ではここが転送量の最大要因)
+  const mapPayload = publicResult ? toMapPayload(publicResult) : null;
 
   const items = allStatements.map((s) => ({ id: s.id, text: s.text }));
   const statementTexts: Record<number, string> = {};
@@ -103,7 +102,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         const rows = compassBreakdown.byStatement[s.id];
         if (!xy || !rows) return [];
         const t = rows.reduce((sum, c) => sum + c.agree + c.disagree + c.pass, 0);
-        if (t < 7) return [];
+        if (t < MAP_MIN_VOTES) return [];
         return [
           { id: s.id, text: s.text, agree: 0, disagree: 0, pass: 0, x: xy[0], y: xy[1], byGroup: null },
         ];
@@ -112,10 +111,10 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
 
   // 「特に賛成する意見」が相対的に少ないグループ。投稿欄の上で代弁を呼びかける
   const lackingAgreeGroups =
-    publicResult?.repness && (publicResult.group_count ?? 0) >= 2
+    mapPayload?.repness && mapPayload.groupCount >= 2
       ? groupsLackingAgreeRepness(
-          publicResult.repness,
-          publicResult.group_count ?? 0,
+          mapPayload.repness,
+          mapPayload.groupCount,
           (sid) => sid in statementTexts,
         )
       : [];
@@ -126,11 +125,11 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         <div>
           <h1 className="text-xl font-bold">{theme.title}</h1>
           {theme.description && (
-            <p className="mt-2 whitespace-pre-wrap text-sm text-stone-700 dark:text-stone-300">
+            <p className="mt-2 whitespace-pre-wrap text-sm text-stone-700">
               {theme.description}
             </p>
           )}
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-stone-600 dark:text-stone-500">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-stone-600">
             <span>
               <LiveVoterCount themeId={theme.id} initial={counts.voterCount} />
               人が投票 · 意見{allStatements.length}件 · {formatRelativeDate(theme.createdAt)}
@@ -144,25 +143,25 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         </div>
 
         <section id="vote" className="scroll-mt-20">
-          <h2 className="mb-1 text-sm font-semibold text-stone-700 dark:text-stone-300">
+          <h2 className="mb-1 text-sm font-semibold text-stone-700">
             まずは投票してみましょう
           </h2>
-          <p className="mb-3 text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+          <p className="mb-3 text-xs leading-relaxed text-stone-600">
             投票を重ねると、あなたと考えの近い人がわかり、下の意見マップにあなたの立場が現れます。
           </p>
           <VoteDeck
             themeId={theme.id}
             statements={items}
-            priorities={publicResult?.statement_priorities ?? null}
+            priorities={mapPayload?.statementPriorities ?? null}
           />
         </section>
 
         <section id="post" className="scroll-mt-20">
-          <h2 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">
+          <h2 className="mb-2 text-sm font-semibold text-stone-700">
             まだ出ていない視点が思い浮かんだら、あなたの意見を投稿してみましょう
           </h2>
           {lackingAgreeGroups.length > 0 && (
-            <p className="mb-2 rounded-md border border-dashed border-stone-400 bg-stone-50 px-3 py-2 text-xs leading-relaxed text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300">
+            <p className="mb-2 rounded-md border border-dashed border-stone-400 bg-stone-50 px-3 py-2 text-xs leading-relaxed text-stone-700">
               {lackingAgreeGroups.map((g, i) => (
                 <span key={g}>
                   {i > 0 && "・"}
@@ -183,19 +182,19 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
           </StatementComposer>
         </section>
 
-        <div className="mt-6 border-t border-stone-400 pt-16 dark:border-stone-700">
+        <div className="mt-6 border-t border-stone-400 pt-16">
           <h2 className="text-lg font-bold">みんなの考えを見てみましょう</h2>
         </div>
 
         <section id="map" className="scroll-mt-20">
-          <h3 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">意見マップ</h3>
+          <h3 className="mb-2 text-sm font-semibold text-stone-700">意見マップ</h3>
           <OpinionMap
-            result={publicResult}
+            result={mapPayload}
             statementTexts={statementTexts}
             afterMap={
-              compassItems.length >= 5 && compassBreakdown ? (
+              compassItems.length >= CHART_MIN_ITEMS && compassBreakdown ? (
                 <div id="compass" className="scroll-mt-20">
-                  <h3 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">
+                  <h3 className="mb-2 text-sm font-semibold text-stone-700">
                     意見コンパス
                   </h3>
                   <StatementMap
@@ -213,10 +212,10 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         <Link
           href={`/t/${theme.id}/report`}
           prefetch={false}
-          className="block rounded-lg border border-stone-400 bg-white px-4 py-3 transition hover:border-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:hover:border-stone-500"
+          className="block rounded-lg border border-stone-400 bg-white px-4 py-3 transition hover:border-stone-600"
         >
           <p className="text-sm font-semibold">より詳しい結果はレポートページで →</p>
-          <p className="mt-0.5 text-xs text-stone-600 dark:text-stone-400">
+          <p className="mt-0.5 text-xs text-stone-600">
             意見ごとの賛成・反対・パスの割合を、全体とグループ別に見られます
           </p>
         </Link>
@@ -225,7 +224,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
             開閉はブロック全体をクリック領域にする */}
         <section>
           <details className="group">
-            <summary className="block cursor-pointer list-none rounded-lg border border-stone-400 bg-white px-4 py-3 transition marker:content-none group-open:rounded-b-none hover:border-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:hover:border-stone-500 [&::-webkit-details-marker]:hidden">
+            <summary className="block cursor-pointer list-none rounded-lg border border-stone-400 bg-white px-4 py-3 transition marker:content-none group-open:rounded-b-none hover:border-stone-600 [&::-webkit-details-marker]:hidden">
               <p className="flex items-center gap-2 text-sm font-semibold">
                 <svg
                   viewBox="0 0 16 16"
@@ -236,11 +235,11 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
                 </svg>
                 すべての意見({allStatements.length})
               </p>
-              <p className="mt-0.5 pl-5 text-xs text-stone-600 dark:text-stone-400">
+              <p className="mt-0.5 pl-5 text-xs text-stone-600">
                 自分の投票を確認・修正できます
               </p>
             </summary>
-            <div className="rounded-b-lg border border-t-0 border-stone-400 bg-white px-4 py-3 dark:border-stone-700 dark:bg-stone-900">
+            <div className="rounded-b-lg border border-t-0 border-stone-400 bg-white px-4 py-3">
               <StatementList themeId={theme.id} statements={items} />
             </div>
           </details>

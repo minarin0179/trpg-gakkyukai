@@ -10,8 +10,9 @@ import {
   type GroupBreakdown,
   type GroupVoteCounts,
 } from "@/lib/queries";
-import type { MathResultJson } from "@/lib/recompute";
-import { OpinionMap, type PublicMathResult } from "@/components/OpinionMap";
+import { OpinionMap } from "@/components/OpinionMap";
+import { toMapPayload, toPublicMathResult } from "@/lib/math-result";
+import { MAP_MIN_VOTES, CHART_MIN_ITEMS } from "@/lib/config";
 import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
 import { groupsLackingAgreeRepness } from "@/lib/repness";
 import { StatementBeeswarm } from "@/components/StatementBeeswarm";
@@ -29,8 +30,9 @@ export const revalidate = 300;
 
 // 各セクションで畳まずに見せる件数
 const SECTION_PREVIEW = 5;
-// 割れ方・地図に載せる意見の最低投票数(少票の割合はノイズが大きい)
-const SECTION_MIN_VOTES = 7;
+// 割れ方・地図に載せる意見の最低投票数(少票の割合はノイズが大きい)。
+// 意見マップに載る基準と同じ値を使う
+const SECTION_MIN_VOTES = MAP_MIN_VOTES;
 
 export function generateStaticParams() {
   return [];
@@ -58,7 +60,7 @@ const pct = (n: number, t: number) => (t > 0 ? Math.round((n / t) * 100) : 0);
 function VoteBar({ s }: { s: { agree: number; disagree: number; pass: number } }) {
   const t = total(s);
   return (
-    <div className="h-2 rounded-full bg-stone-100 dark:bg-stone-800">
+    <div className="h-2 rounded-full bg-stone-100">
       {t > 0 && (
         <div
           className="flex h-2 overflow-hidden rounded-full"
@@ -79,9 +81,9 @@ function VoteNumbers({ s }: { s: { agree: number; disagree: number; pass: number
   const t = total(s);
   if (t === 0) return <p className="mt-0.5 text-[11px] text-stone-500">投票なし</p>;
   return (
-    <p className="mt-0.5 text-[11px] tabular-nums text-stone-600 dark:text-stone-500">
-      <span className="font-medium text-emerald-700 dark:text-emerald-500">{pct(s.agree, t)}%</span>{" "}
-      <span className="font-medium text-rose-700 dark:text-rose-500">{pct(s.disagree, t)}%</span>{" "}
+    <p className="mt-0.5 text-[11px] tabular-nums text-stone-600">
+      <span className="font-medium text-emerald-700">{pct(s.agree, t)}%</span>{" "}
+      <span className="font-medium text-rose-700">{pct(s.disagree, t)}%</span>{" "}
       <span>{pct(s.pass, t)}%</span> <span>({t}票)</span>
     </p>
   );
@@ -116,10 +118,10 @@ function CompareBars({
       {cols.map((c) => (
         <div
           key={c.label}
-          className={c.highlight ? "-mx-1 rounded-md bg-stone-100 px-1 py-0.5 dark:bg-stone-800" : ""}
+          className={c.highlight ? "-mx-1 rounded-md bg-stone-100 px-1 py-0.5" : ""}
         >
           <p
-            className="mb-1 text-[11px] font-medium text-stone-600 dark:text-stone-400"
+            className="mb-1 text-[11px] font-medium text-stone-600"
             style={c.color ? { color: c.color } : undefined}
           >
             {c.label}
@@ -136,7 +138,7 @@ function SectionHeading({ title, note }: { title: string; note: string }) {
   return (
     <div>
       <h2 className="text-base font-bold">{title}</h2>
-      <p className="mt-0.5 text-xs leading-relaxed text-stone-600 dark:text-stone-400">{note}</p>
+      <p className="mt-0.5 text-xs leading-relaxed text-stone-600">{note}</p>
     </div>
   );
 }
@@ -155,13 +157,10 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
     (): GroupBreakdown | null => null,
   );
 
-  // 意見マップの再掲用(客観表示)。pidMap は参加者の身元なのでクライアントに渡さない
-  const raw = (mathRow?.result ?? null) as MathResultJson | null;
-  let publicResult: PublicMathResult | null = null;
-  if (raw && raw.status === "ok") {
-    const { pidMap: _pidMap, ...rest } = raw;
-    publicResult = rest as PublicMathResult;
-  }
+  // 意見マップの再掲用(客観表示)。pidMap は参加者の身元なのでクライアントに渡さない。
+  // 不成立(insufficient)のときは再掲しない(このページは集計を見せる場のため)
+  const parsedResult = toPublicMathResult(mathRow?.result ?? null);
+  const publicResult = parsedResult?.status === "ok" ? parsedResult : null;
   const statementTexts: Record<number, string> = {};
   for (const s of stats) statementTexts[s.id] = s.text;
   const statById = new Map(stats.map((s) => [s.id, s]));
@@ -179,7 +178,7 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
   const card = (s: Stat, highlightGroup?: number) => (
     <li
       key={s.id}
-      className="rounded-md border border-stone-400 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900"
+      className="rounded-md border border-stone-400 bg-white px-3 py-2 text-sm"
     >
       <p>{s.text}</p>
       <CompareBars s={s} groups={groupsFor(s.id)} highlightGroup={highlightGroup} />
@@ -192,7 +191,7 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
       <ul className="flex flex-col gap-3">{items.slice(0, SECTION_PREVIEW).map((s) => card(s))}</ul>
       {items.length > SECTION_PREVIEW && (
         <details className="mt-2">
-          <summary className="cursor-pointer text-xs text-stone-600 underline dark:text-stone-500">
+          <summary className="cursor-pointer text-xs text-stone-600 underline">
             残り{items.length - SECTION_PREVIEW}件を見る
           </summary>
           <ul className="mt-2 flex flex-col gap-3">
@@ -237,7 +236,7 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
         <Link
           href={`/t/${theme.id}`}
           prefetch={false}
-          className="text-xs text-stone-600 underline dark:text-stone-500"
+          className="text-xs text-stone-600 underline"
         >
           テーマに戻る
         </Link>
@@ -251,7 +250,7 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
       </div>
 
       {/* 概況(本家レポートの Overview に相当) */}
-      <div className="rounded-md border border-stone-400 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900">
+      <div className="rounded-md border border-stone-400 bg-white px-3 py-2 text-sm">
         <p>
           {counts.voterCount}人が投票 · 意見{stats.length}件 · {totalVotes}票
           {breakdown && (
@@ -271,11 +270,11 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
             </>
           )}
         </p>
-        <p className="mt-1 text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+        <p className="mt-1 text-xs leading-relaxed text-stone-600">
           集計は約5分ごとに更新。割合は多数決の結果ではなく、意見の分布を見るための参考情報です。
           数値は左から
-          <span className="font-medium text-emerald-700 dark:text-emerald-500">賛成</span>・
-          <span className="font-medium text-rose-700 dark:text-rose-500">反対</span>・パスの割合。
+          <span className="font-medium text-emerald-700">賛成</span>・
+          <span className="font-medium text-rose-700">反対</span>・パスの割合。
         </p>
       </div>
 
@@ -285,11 +284,15 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
             title="意見マップ"
             note="テーマページの意見マップと同じもので、点はひとりの参加者。投票の傾向が近い人ほど近くに置かれます。このページは全員に同じ内容のレポートのため、自分の位置は表示されません。"
           />
-          <OpinionMap result={publicResult} statementTexts={statementTexts} variant="report" />
+          <OpinionMap
+            result={toMapPayload(publicResult)}
+            statementTexts={statementTexts}
+            variant="report"
+          />
         </section>
       )}
 
-      {mapItems.length >= 5 && breakdown && (
+      {mapItems.length >= CHART_MIN_ITEMS && breakdown && (
         <section className="flex flex-col gap-3">
           <SectionHeading
             title="意見コンパス"
@@ -299,7 +302,7 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
         </section>
       )}
 
-      {beeswarmItems.length >= 5 && (
+      {beeswarmItems.length >= CHART_MIN_ITEMS && (
         <section className="flex flex-col gap-3">
           <SectionHeading
             title="この議論はどれくらい意見が割れたか"
@@ -317,7 +320,7 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
           />
           {consensusAgree.length > 0 && (
             <>
-              <h3 className="text-sm font-semibold text-emerald-700 dark:text-emerald-500">
+              <h3 className="text-sm font-semibold text-emerald-700">
                 賛成で一致
               </h3>
               {previewList(consensusAgree)}
@@ -325,7 +328,7 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
           )}
           {consensusDisagree.length > 0 && (
             <>
-              <h3 className="text-sm font-semibold text-rose-700 dark:text-rose-500">
+              <h3 className="text-sm font-semibold text-rose-700">
                 反対で一致
               </h3>
               {previewList(consensusDisagree)}
@@ -360,7 +363,7 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
                   <ul className="flex flex-col gap-3">{reps.map((s) => card(s, g))}</ul>
                 )}
                 {missingAgree && (
-                  <p className="mt-2 rounded-md border border-dashed border-stone-400 bg-stone-50 px-3 py-2 text-xs leading-relaxed text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300">
+                  <p className="mt-2 rounded-md border border-dashed border-stone-400 bg-stone-50 px-3 py-2 text-xs leading-relaxed text-stone-700">
                     グループ{GROUP_NAMES[g] ?? g}が特に賛成する意見は、他のグループに比べてまだ少ないようです。
                     このグループの気持ちを代弁する意見が増えると、合意や違いがより正確に見えてきます。
                     <Link

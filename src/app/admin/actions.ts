@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidateTheme } from "@/lib/revalidate";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { after } from "next/server";
 import { getCache } from "@vercel/functions";
@@ -9,8 +9,12 @@ import { db, themes, statements, reports, themeTags } from "@/db";
 import { normalizeTag } from "@/lib/tags";
 import { TAGS_PER_THEME } from "@/lib/config";
 import { recomputeTheme } from "@/lib/recompute";
-import { isAdmin } from "@/lib/admin-auth";
+import { isAdmin, loginAdmin, logoutAdmin } from "@/lib/admin-auth";
+import { checkAndRecordRate } from "@/lib/rate-limit";
+import { ipActor } from "@/lib/request";
 import { notFound } from "next/navigation";
+import { isTargetType, toIntId } from "@/lib/validate";
+import type { ActionResult } from "@/lib/action-result";
 
 type TargetType = "theme" | "statement" | "contact" | "tag";
 
@@ -36,12 +40,15 @@ async function resolveOpenReportsForTarget(
 // 通報対象を削除(status=removed)し、その対象への未対応通報を全て消化する
 export async function removeContentAction(formData: FormData) {
   if (!(await isAdmin())) notFound();
-  const targetType = String(formData.get("targetType")) as TargetType;
+  // フォーム値は型注釈では保証されない。不正値でDB例外を起こす前にここで弾く
+  const targetType = formData.get("targetType");
+  if (!isTargetType(targetType)) notFound();
   const targetId = String(formData.get("targetId"));
   const reason = String(formData.get("removedReason") ?? "通報対応");
 
   if (targetType === "statement") {
-    const sid = Number(targetId);
+    const sid = toIntId(targetId);
+    if (sid === null) notFound();
     const [stmt] = await db
       .select({ themeId: statements.themeId })
       .from(statements)
@@ -52,28 +59,37 @@ export async function removeContentAction(formData: FormData) {
       .where(eq(statements.id, sid));
     if (stmt) {
       // 削除はISRの30分キャッシュを待たず即時にページへ反映する(notice & takedownの実効性)
-      revalidatePath(`/t/${stmt.themeId}`);
+      revalidateTheme(stmt.themeId);
       after(async () => {
         await recomputeTheme(stmt.themeId).catch(() => {});
       });
     }
   } else if (targetType === "tag") {
-    const tid = Number(targetId);
+    const tid = toIntId(targetId);
+    if (tid === null) notFound();
     const [row] = await db
       .select({ themeId: themeTags.themeId })
       .from(themeTags)
       .where(eq(themeTags.id, tid));
     await db.delete(themeTags).where(eq(themeTags.id, tid));
-    if (row) revalidatePath(`/t/${row.themeId}`);
+    // タグ語彙・一覧カードのタグのRuntime Cacheからも即時に消す
+    await getCache()
+      .expireTag("tag-vocab")
+      .catch(() => {});
+    if (row) revalidateTheme(row.themeId);
   } else if (targetType === "theme") {
     await db
       .update(themes)
       .set({ status: "removed", removedReason: reason })
       .where(eq(themes.id, targetId));
-    revalidatePath(`/t/${targetId}`);
-    // テーマ一覧のRuntime Cacheからも即時に消す
+    revalidateTheme(targetId);
+    // テーマ一覧のRuntime Cacheからも即時に消す。
+    // タグ語彙はactiveテーマのみを数えるため、テーマの削除でも変わる
     await getCache()
       .expireTag("themes-list")
+      .catch(() => {});
+    await getCache()
+      .expireTag("tag-vocab")
       .catch(() => {});
   }
 
@@ -85,7 +101,8 @@ export async function removeContentAction(formData: FormData) {
 // 対象(theme/statement)への未対応通報をまとめて却下する(基準外)
 export async function dismissTargetAction(formData: FormData) {
   if (!(await isAdmin())) notFound();
-  const targetType = String(formData.get("targetType")) as TargetType;
+  const targetType = formData.get("targetType");
+  if (!isTargetType(targetType)) notFound();
   const targetId = String(formData.get("targetId"));
   await resolveOpenReportsForTarget(targetType, targetId, "dismissed");
   redirect("/admin");
@@ -94,7 +111,8 @@ export async function dismissTargetAction(formData: FormData) {
 // 単一の通報を対応済みにする(主にお問い合わせ用。contactは対象でまとめない)
 export async function dismissReportAction(formData: FormData) {
   if (!(await isAdmin())) notFound();
-  const reportId = Number(formData.get("reportId"));
+  const reportId = toIntId(formData.get("reportId"));
+  if (reportId === null) notFound();
   await db
     .update(reports)
     .set({ resolvedAt: new Date(), resolution: "dismissed" })
@@ -108,10 +126,11 @@ export async function adminSetTagAction(
   themeId: string,
   rawTag: string,
   op: "add" | "remove",
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<ActionResult> {
   if (!(await isAdmin())) notFound();
   const { tag, error } = normalizeTag(rawTag);
-  if (!tag) return { ok: false, error };
+  // normalizeTagはtagが無いとき必ず理由を返すが、型上はundefinedを取り得る
+  if (!tag) return { ok: false, error: error ?? "操作に失敗しました" };
 
   if (op === "remove") {
     await db
@@ -125,6 +144,25 @@ export async function adminSetTagAction(
     if (n >= TAGS_PER_THEME) return { ok: false, error: `タグは${TAGS_PER_THEME}個までです` };
     await db.insert(themeTags).values({ themeId, tag }).onConflictDoNothing();
   }
-  revalidatePath(`/t/${themeId}`);
-  return { ok: true };
+  // 付け外しのどちらでもタグ語彙・一覧カードのタグが変わる
+  await getCache()
+    .expireTag("tag-vocab")
+    .catch(() => {});
+  revalidateTheme(themeId);
+  return { ok: true, data: undefined };
+}
+
+// フォームからの管理ログイン。鍵の総当たりを防ぐためIP単位で回数を絞る。
+// 結果はクエリ文字列で返す(このページは他の管理画面と同じく素のformで組む)
+export async function adminLoginAction(formData: FormData) {
+  const key = String(formData.get("key") ?? "");
+  const rate = await checkAndRecordRate("admin_login", await ipActor());
+  if (!rate.ok) redirect("/admin/login?error=rate");
+  if (!(await loginAdmin(key))) redirect("/admin/login?error=1");
+  redirect("/admin");
+}
+
+export async function adminLogoutAction() {
+  await logoutAdmin();
+  redirect("/admin/login");
 }

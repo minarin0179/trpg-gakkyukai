@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Python仮想環境と静的アセットはlint対象外
+    ".venv/**",
+    "public/**",
   ]),
 ]);
 

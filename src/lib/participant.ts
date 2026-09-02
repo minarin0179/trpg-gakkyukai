@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { randomUUID, createHash } from "crypto";
 import { db, participants } from "@/db";
+import { hashSalt } from "./env";
+import { PARTICIPANT_COOKIE_MAX_AGE_SEC } from "./config";
 
 const COOKIE_NAME = "gk_pid";
 // 「参加済み」の目印(値に意味はない)。本体のgk_pidはhttpOnlyでクライアントから
@@ -15,7 +17,7 @@ function setMarkerCookie(store: CookieStore): void {
     httpOnly: false,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 400,
+    maxAge: PARTICIPANT_COOKIE_MAX_AGE_SEC,
     path: "/",
   });
 }
@@ -36,7 +38,7 @@ export async function getOrCreateParticipantId(): Promise<string> {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 400,
+    maxAge: PARTICIPANT_COOKIE_MAX_AGE_SEC,
     path: "/",
   });
   setMarkerCookie(store);
@@ -49,14 +51,9 @@ export async function getParticipantId(): Promise<string | null> {
   return v && /^[0-9a-f-]{36}$/.test(v) ? v : null;
 }
 
-// participantがDBに存在することを保証する(cookieだけ持っていてDB行がないケースの救済)
-export async function ensureParticipant(id: string): Promise<void> {
-  await db.insert(participants).values({ id }).onConflictDoNothing();
-}
-
 // レート制限・通報記録用のハッシュ。生IPや生cookie IDは保存しない
 export function actorHash(value: string): string {
-  const salt = process.env.HASH_SALT ?? "trpg-gakkyukai";
+  const salt = hashSalt();
   return createHash("sha256").update(`${salt}:${value}`).digest("hex").slice(0, 32);
 }
 
@@ -65,6 +62,6 @@ export function actorHash(value: string): string {
 // レート制限の窓(24時間)の用途には十分
 export function dailyActorHash(value: string): string {
   const day = new Date().toISOString().slice(0, 10);
-  const salt = process.env.HASH_SALT ?? "trpg-gakkyukai";
+  const salt = hashSalt();
   return createHash("sha256").update(`${salt}:${day}:${value}`).digest("hex").slice(0, 32);
 }

@@ -1,8 +1,10 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { submitContactAction, type FormState } from "@/app/actions";
+import { submitContactAction } from "@/app/actions/reports";
+import { type FormState } from "@/lib/action-result";
 import { CONTACT_CATEGORIES } from "@/lib/contact";
+import { CONTACT_BODY_MAX, CONTACT_REPLY_TO_MAX } from "@/lib/config";
 
 export function ContactForm() {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
@@ -60,7 +62,7 @@ export function ContactForm() {
           name="body"
           required
           minLength={5}
-          maxLength={2000}
+          maxLength={CONTACT_BODY_MAX}
           rows={6}
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -75,7 +77,7 @@ export function ContactForm() {
         <input
           id="replyTo"
           name="replyTo"
-          maxLength={200}
+          maxLength={CONTACT_REPLY_TO_MAX}
           value={replyTo}
           onChange={(e) => setReplyTo(e.target.value)}
           placeholder="返信が必要な場合のみ(Xアカウント、メールアドレスなど)"

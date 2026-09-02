@@ -8,8 +8,12 @@
     "setup:assets": "node scripts/fetch-illustrations.mjs",
     "start": "next start",
     "lint": "eslint",
-    "db:push": "drizzle-kit push",
-    "compute:dev": "uv run python scripts/compute-server.py"
+    "typecheck": "next typegen && tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "compute:dev": "uv run python scripts/compute-server.py",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/ts-resolver.mjs --test \"tests/unit/**/*.test.ts\"",
+    "test:py": "python -m pytest tests/python -q"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

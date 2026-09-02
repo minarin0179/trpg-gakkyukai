@@ -1,28 +1,31 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createStatementAction, type FormState } from "@/app/actions";
+import { createStatementAction } from "@/app/actions/statements";
+import { type FormState } from "@/lib/action-result";
+import { STATEMENT_MAX } from "@/lib/config";
 
 export function StatementForm({ themeId }: { themeId: string }) {
-  const [state, formAction, pending] = useActionState<FormState, FormData>(
-    createStatementAction,
-    {},
-  );
   const [text, setText] = useState("");
   const [justPosted, setJustPosted] = useState(false);
   const router = useRouter();
-
   // 投稿成功時のみ入力をクリア(エラー時は保持)し、投票への誘導を出す。
   // あわせてサーバーコンポーネントを再取得し、投稿した意見がリロードなしで
-  // 投票デッキ・意見一覧に現れるようにする
-  useEffect(() => {
-    if (state.done) {
-      setText("");
-      setJustPosted(true);
-      router.refresh();
-    }
-  }, [state, router]);
+  // 投票デッキ・意見一覧に現れるようにする。
+  // 副作用はeffectではなくアクション側に置く(成功したときだけ・1回だけ走らせたいため)
+  const [state, formAction, pending] = useActionState<FormState, FormData>(
+    async (prev, formData) => {
+      const result = await createStatementAction(prev, formData);
+      if (result.done) {
+        setText("");
+        setJustPosted(true);
+        router.refresh();
+      }
+      return result;
+    },
+    {},
+  );
 
   return (
     // 投稿は編集・削除できないため、送信前にブラウザの確認ダイアログを挟む
@@ -41,17 +44,17 @@ export function StatementForm({ themeId }: { themeId: string }) {
         name="text"
         required
         minLength={2}
-        maxLength={140}
+        maxLength={STATEMENT_MAX}
         rows={2}
-        placeholder="あなたの意見(140文字まで)"
+        placeholder={`あなたの意見(${STATEMENT_MAX}文字まで)`}
         value={text}
         onChange={(e) => {
           setText(e.target.value);
           if (justPosted) setJustPosted(false);
         }}
-        className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+        className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm"
       />
-      {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
+      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       {justPosted && (
         // 投稿直後はエンゲージメントが高い。この瞬間に投票へ橋渡しする
         <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
@@ -69,7 +72,7 @@ export function StatementForm({ themeId }: { themeId: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="self-end rounded-md bg-stone-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300"
+        className="self-end rounded-md bg-stone-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50"
       >
         {pending ? "投稿中..." : "意見を投稿"}
       </button>
