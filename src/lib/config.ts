@@ -17,6 +17,9 @@ export const SEED_STATEMENTS_MAX = 10;
 // お問い合わせフォームの上限
 export const CONTACT_BODY_MAX = 2000;
 export const CONTACT_REPLY_TO_MAX = 200;
+// 連絡先(任意入力)を対応済みから何日で消すか。プライバシーポリシーは期間を
+// 約束していないため、これは運営内部の保持ルール(文言は変更しない)
+export const CONTACT_REPLY_TO_RETENTION_DAYS = 90;
 
 // 投票の水増し対策(IP×テーマ単位のレート制限)。
 // 正規ユーザー1人が1テーマで投じる票は最大でも意見数なので、上限を

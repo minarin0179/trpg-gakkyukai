@@ -200,7 +200,17 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
 
             {/* 通報理由のアコーディオン(contactは1件なのでそのまま表示) */}
             {isContact ? (
-              <p className="mt-2 whitespace-pre-wrap text-sm text-stone-700">{g.reports[0].reason}</p>
+              <>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-stone-700">
+                  {g.reports[0].reason}
+                </p>
+                {/* 連絡先は専用列。古い行は本文の末尾に入っているのでそのまま読める */}
+                {g.reports[0].replyTo && (
+                  <p className="mt-2 text-xs text-stone-600">
+                    連絡先: <span className="text-stone-800">{g.reports[0].replyTo}</span>
+                  </p>
+                )}
+              </>
             ) : (
               <details className="mt-2">
                 <summary className="cursor-pointer text-xs font-medium text-stone-700">
