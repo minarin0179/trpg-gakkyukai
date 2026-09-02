@@ -13,7 +13,6 @@ import type { MapPayload } from "@/lib/math-result";
 import { MAP_MIN_VOTES } from "@/lib/config";
 // 座標・凸包・ラベル配置の計算は純関数として切り出してある
 import {
-  type Pt,
   buildClusters,
   extents,
   nearestCluster,
@@ -29,7 +28,11 @@ const PREVIEW_COUNT = 2;
 
 // 点の半径と、グループ未割当(7票未満)の点の色
 const POINT_R = 4.5;
+const POINT_OPACITY = 0.55;
 const UNCLUSTERED_COLOR = "#a8a29e";
+// 点のクラス名。グループ未割当はグレー1色なので固定名を使う
+const GREY_CLASS = "pg";
+const pointClass = (cluster: number | null) => (cluster === null ? GREY_CLASS : `p${cluster}`);
 
 // 描画領域とラベルの寸法。幾何計算のメモ化キーに入れずに済むよう定数にする
 const W = 480;
@@ -41,30 +44,37 @@ const LABEL_H = 26;
 // 点が無いときの安定した空配列(useMemoのキーが毎回変わらないように)
 const EMPTY_PTS: MapPayload["pts"] = [];
 
-type PointLayer = { key: number; color: string; d: string };
+// 参加者1人ぶんの点。位置とクラス名だけを持ち、色・半径・透明度はCSSで与える
+type PointDot = { key: number; cx: number; cy: number; cls: string };
 
-// 参加者の点の層。ホバー(activeGroup)では何も変わらないので、
-// 幾何計算の結果ごとメモ化して再描画の対象から外す
-const MapPoints = memo(function MapPoints({ layers }: { layers: PointLayer[] }) {
+// 参加者の点の層。1点1要素の <circle> は維持する:
+// 半透明の点が重なったときの濃淡が密度の表現で、グレー(未割当)とグループの点が
+// 参加者の並び順どおりに入れ替わりながら描かれることも絵の一部だから。
+// 軽くするのは属性のほうで、色・半径・透明度・pointer-events は
+// SVG内の <style> にクラス単位で一度だけ書き、各要素は cx/cy/class だけにする。
+// ホバー(activeGroup)では何も変わらないので、幾何計算の結果ごとメモ化する
+const MapPoints = memo(function MapPoints({ css, dots }: { css: string; dots: PointDot[] }) {
   return (
     <>
-      {layers.map(({ key, color, d }) => (
-        <path key={key} d={d} fill={color} fillOpacity={0.55} pointerEvents="none" />
+      <style>{css}</style>
+      {dots.map(({ key, cx, cy, cls }) => (
+        <circle key={key} cx={cx} cy={cy} className={cls} />
       ))}
     </>
   );
 });
 
-// 参加者の点をまとめて1つのパス文字列にする。参加者1000人規模だと
-// 1点1要素の <circle> がSSRしたHTMLの大半を占めるため、クラスタごとに
-// 1つの <path> へ畳む(点1つ=半円の円弧2つのサブパス)。
-// 座標は小数2桁に丸める(480×340のviewBoxでは表示上の差は出ない)
-function pointsPath(positions: Pt[]): string {
-  let d = "";
-  for (const pos of positions) {
-    d += `M${pos.x.toFixed(2)} ${pos.y.toFixed(2)}m${-POINT_R} 0a${POINT_R} ${POINT_R} 0 1 0 ${POINT_R * 2} 0a${POINT_R} ${POINT_R} 0 1 0 ${-POINT_R * 2} 0`;
-  }
-  return d;
+// 点のクラスに対するCSS。共通の指定を1つにまとめ、fillだけクラスごとに書く
+function pointCss(classes: string[]): string {
+  const common = `${classes.map((c) => `.${c}`).join(",")}{r:${POINT_R};fill-opacity:${POINT_OPACITY};pointer-events:none}`;
+  const fills = classes
+    .map((c) => {
+      const cid = c === GREY_CLASS ? null : Number(c.slice(1));
+      const color = cid === null ? UNCLUSTERED_COLOR : GROUP_COLORS[cid % GROUP_COLORS.length];
+      return `.${c}{fill:${color}}`;
+    })
+    .join("");
+  return common + fills;
 }
 
 export function OpinionMap({
@@ -118,22 +128,25 @@ export function OpinionMap({
     // 同一座標に重なる点は小さな輪状にほどいて全員を可視化する(決定的な配置)
     const displayPos = spreadCoincident(pts, sx, sy);
 
-    // グループごとにまとめた点のパス。グループ未割当(7票未満)の参加者もグレーで
-    // 描く。隠すと「N人が投票」との数のギャップが不信感につながるため、表示した
-    // うえで下の凡例で意味を説明する
-    const byCluster = new Map<number, Pt[]>();
+    // 参加者の点(自分以外)。並びは pts のまま=計算結果の参加者順で、
+    // グループ未割当(7票未満)の参加者もグレーで描く。隠すと「N人が投票」との
+    // 数のギャップが不信感につながるため、表示したうえで下の凡例で意味を説明する。
+    // 座標は小数2桁に丸める(480×340のviewBoxでは表示上の差は出ない)
+    const dots: PointDot[] = [];
+    const usedClasses = new Set<string>();
     pts.forEach((p, i) => {
       if (i === myPos) return;
-      const key = p[2] ?? -1;
-      const bucket = byCluster.get(key);
-      if (bucket) bucket.push(displayPos[i]);
-      else byCluster.set(key, [displayPos[i]]);
+      const cls = pointClass(p[2]);
+      usedClasses.add(cls);
+      dots.push({
+        key: i,
+        cx: +displayPos[i].x.toFixed(2),
+        cy: +displayPos[i].y.toFixed(2),
+        cls,
+      });
     });
-    const pointLayers: PointLayer[] = [...byCluster.entries()].map(([cid, positions]) => ({
-      key: cid,
-      color: cid >= 0 ? GROUP_COLORS[cid % GROUP_COLORS.length] : UNCLUSTERED_COLOR,
-      d: pointsPath(positions),
-    }));
+    // クラス名は出現順ではなく安定した順に並べ、CSSの文字列を無駄に変えない
+    const pointsCss = pointCss([...usedClasses].sort());
 
     // クラスタごとの点となわばり(大きいなわばりを下に描く順で返る)
     const clusters = buildClusters(pts, displayPos, HULL_MARGIN);
@@ -158,7 +171,7 @@ export function OpinionMap({
     const axisX = minX < 0 && maxX > 0 ? sx(0) : null;
     const axisY = minY < 0 && maxY > 0 ? sy(0) : null;
 
-    return { sx, sy, displayPos, pointLayers, clusters, labelPos, groupLabelRects, axisX, axisY };
+    return { sx, sy, displayPos, dots, pointsCss, clusters, labelPos, groupLabelRects, axisX, axisY };
   }, [pts, liveSelf, myPos]);
 
   if (!result || pts.length === 0) {
@@ -169,7 +182,7 @@ export function OpinionMap({
     );
   }
 
-  const { sx, sy, displayPos, pointLayers, clusters, labelPos, groupLabelRects, axisX, axisY } =
+  const { sx, sy, displayPos, dots, pointsCss, clusters, labelPos, groupLabelRects, axisX, axisY } =
     geo;
 
   // 公式の計算結果における自分のグループ。7票未満などで未クラスタなら null。
@@ -270,9 +283,8 @@ export function OpinionMap({
               );
             })}
 
-            {/* 参加者の点(自分以外)。自分は最前面に別途描く。
-                グループごとに1つのパスへ畳む(描画順は pts での初出順) */}
-            <MapPoints layers={pointLayers} />
+            {/* 参加者の点(自分以外)。自分は最前面に別途描く */}
+            <MapPoints css={pointsCss} dots={dots} />
 
             {/* グループラベル(近接時は縦にずらして重なりを避ける) */}
             {clusters.map(({ cid, members }) => {
