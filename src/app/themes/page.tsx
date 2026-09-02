@@ -83,8 +83,12 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
 
       {/* タグ絞り込み: 複数選択可(チップの再クリックで解除)。
           「いずれか(OR)/すべて(かつ)」はトグルで切り替える */}
-      {tagVocabulary.length > 0 && (
-        <details className="mb-4" open={tagPanelOpen}>
+      {/* 「タグで絞り込み」と「ランダムに開く」を同じ行に置く(左右に振り分け)。
+          絞り込みを開いても右のリンクは行頭の高さに留まる。
+          ランダムに開くはリダイレクト先が毎回変わるため Link のプリフェッチを避けて素のアンカーにする(要望#4575) */}
+      <div className="mb-4 flex items-start justify-between gap-3">
+      {tagVocabulary.length > 0 ? (
+        <details className="min-w-0 flex-1" open={tagPanelOpen}>
           <summary className="cursor-pointer text-sm text-stone-600 underline">
             タグで絞り込み{selectedTags.length > 0 ? `: ${selectedTags.join("、")}` : ""}
           </summary>
@@ -128,7 +132,16 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
               ))}
           </p>
         </details>
+      ) : (
+        <div />
       )}
+        <a
+          href="/themes/random"
+          className="shrink-0 whitespace-nowrap text-sm text-stone-600 underline hover:text-stone-800"
+        >
+          ランダムに開く
+        </a>
+      </div>
 
       {tagFilter ? (
         <>
@@ -186,17 +199,6 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         </>
       ) : (
         <>
-          {/* ランダムに1テーマ開く(要望#4575)。リダイレクト先が毎回変わるため
-              Linkのプリフェッチを避けて素のアンカーにする。
-              タブ行と同じ行に置くとスマホで横幅が足りないので、タブの上に右寄せで置く */}
-          <div className="mb-1 flex justify-end">
-            <a
-              href="/themes/random"
-              className="px-2 py-1 text-xs text-stone-600 underline hover:text-stone-800"
-            >
-              ランダムに開く
-            </a>
-          </div>
           <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-stone-400">
             <Link href="/themes" className={tabClass(currentTab === "fresh")}>
               新着
