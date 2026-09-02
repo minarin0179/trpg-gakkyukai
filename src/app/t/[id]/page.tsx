@@ -3,10 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTheme, getThemeCounts, getVisibleStatements, getMathResult, getGroupVoteBreakdown, getThemeTags, getTagVocabulary } from "@/lib/queries";
 import { StatementMap } from "@/components/StatementMap";
-import type { MathResultJson } from "@/lib/recompute";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
-import { OpinionMap, type PublicMathResult } from "@/components/OpinionMap";
+import { OpinionMap } from "@/components/OpinionMap";
+import { toPublicMathResult } from "@/lib/math-result";
 import { StatementList } from "@/components/StatementList";
 import { ReportButton } from "@/components/ReportButton";
 import { ShareTheme } from "@/components/ShareTheme";
@@ -80,12 +80,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
 
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない。
   // 自分の点の位置(myIndex)は /api/t/[id]/me 側で pidMap を使って解決する。
-  const raw = (mathRow?.result ?? null) as MathResultJson | null;
-  let publicResult: PublicMathResult | null = null;
-  if (raw) {
-    const { pidMap: _pidMap, ...rest } = raw;
-    publicResult = rest as PublicMathResult;
-  }
+  const publicResult = toPublicMathResult(mathRow?.result ?? null);
 
   const items = allStatements.map((s) => ({ id: s.id, text: s.text }));
   const statementTexts: Record<number, string> = {};

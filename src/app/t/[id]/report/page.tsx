@@ -10,8 +10,8 @@ import {
   type GroupBreakdown,
   type GroupVoteCounts,
 } from "@/lib/queries";
-import type { MathResultJson } from "@/lib/recompute";
-import { OpinionMap, type PublicMathResult } from "@/components/OpinionMap";
+import { OpinionMap } from "@/components/OpinionMap";
+import { toPublicMathResult } from "@/lib/math-result";
 import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
 import { groupsLackingAgreeRepness } from "@/lib/repness";
 import { StatementBeeswarm } from "@/components/StatementBeeswarm";
@@ -155,13 +155,10 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
     (): GroupBreakdown | null => null,
   );
 
-  // 意見マップの再掲用(客観表示)。pidMap は参加者の身元なのでクライアントに渡さない
-  const raw = (mathRow?.result ?? null) as MathResultJson | null;
-  let publicResult: PublicMathResult | null = null;
-  if (raw && raw.status === "ok") {
-    const { pidMap: _pidMap, ...rest } = raw;
-    publicResult = rest as PublicMathResult;
-  }
+  // 意見マップの再掲用(客観表示)。pidMap は参加者の身元なのでクライアントに渡さない。
+  // 不成立(insufficient)のときは再掲しない(このページは集計を見せる場のため)
+  const parsedResult = toPublicMathResult(mathRow?.result ?? null);
+  const publicResult = parsedResult?.status === "ok" ? parsedResult : null;
   const statementTexts: Record<number, string> = {};
   for (const s of stats) statementTexts[s.id] = s.text;
   const statById = new Map(stats.map((s) => [s.id, s]));

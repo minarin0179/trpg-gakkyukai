@@ -18,6 +18,7 @@ import { getCache } from "@vercel/functions";
 import { db, themes, statements, votes, mathResults, themeTags } from "@/db";
 import { embedTexts } from "./embedding";
 import { checkAndRecordRate } from "./rate-limit";
+import { isMathResultJson, type RepnessItem } from "./math-result";
 import { actorHash, dailyActorHash } from "./participant";
 import {
   TAG_VOCABULARY_LIMIT,
@@ -628,7 +629,7 @@ export type GroupBreakdown = {
   groupCount: number;
   groupSizes: number[]; // 添字 = グループ(クラスタ)ID
   byStatement: Record<number, GroupVoteCounts[]>; // 意見ID → グループごとの内訳
-  repness: Record<string, { statement_id: number; repful_for: string }[]>;
+  repness: Record<string, RepnessItem[]>;
   consensus: { agree: number[]; disagree: number[] };
   // 意見の散布図用: 意見ID → 主成分負荷(pc1, pc2)。古い計算結果には無い
   statementXY: Record<number, [number, number]>;
@@ -644,7 +645,9 @@ export async function getGroupVoteBreakdown(
 ): Promise<GroupBreakdown | null> {
   const row = preloaded ?? (await getMathResult(themeId));
   if (!row) return null;
-  const result = row.result as import("./recompute").MathResultJson;
+  // jsonbの中身は型では保証されないので、使う前に形を確かめる
+  const result = row.result;
+  if (!isMathResultJson(result)) return null;
   if (result.status !== "ok" || !result.participants || !result.pidMap) return null;
 
   // 行列インデックス → クラスタ、参加者UUID → クラスタの順に引けるようにする

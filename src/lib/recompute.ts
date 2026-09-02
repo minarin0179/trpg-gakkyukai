@@ -4,26 +4,10 @@ import { internalApiKey } from "./env";
 import { db, statements, votes, mathResults } from "@/db";
 import { getThemeCounts, getMathResultMeta } from "./queries";
 import { RECOMPUTE_MIN_INTERVAL_SEC } from "./config";
+import { isMathResultJson, type MathResultJson } from "./math-result";
 
-// 保存するJSONの形。pidMap(参加者UUID→行列インデックス)はサーバー内部専用で、
-// クライアントに渡す前に必ず取り除くこと(UUIDは参加者の身元そのもの)
-export type MathResultJson = {
-  status: "ok" | "insufficient";
-  reason?: string;
-  threshold_used?: number;
-  group_count?: number;
-  participants?: { id: number; x: number; y: number; cluster: number | null }[];
-  consensus?: {
-    agree: { statement_id: number; agree_ratio: number | null }[];
-    disagree: { statement_id: number; agree_ratio: number | null }[];
-  };
-  repness?: Record<string, { statement_id: number; repful_for: string }[]>;
-  // 意見の提示優先度(本家Polisのcomment priority)。投票デッキの重み付き抽選に使う
-  statement_priorities?: Record<string, number>;
-  // 自分の点のライブ投影用(意見ごとの [pc1, pc2, mean] とマップの全意見数)
-  projection?: { n_statements: number; statements: Record<string, [number, number, number]> };
-  pidMap?: Record<string, number>;
-};
+// 型は math-result.ts に集約した。既存のimport互換のためここからも再輸出する
+export type { MathResultJson } from "./math-result";
 
 function computeEndpoint(): string {
   if (process.env.COMPUTE_URL) return process.env.COMPUTE_URL; // ローカル開発用
@@ -97,7 +81,13 @@ export async function recomputeTheme(themeId: string): Promise<void> {
   if (!res.ok) {
     throw new Error(`compute failed: ${res.status} ${await res.text()}`);
   }
-  const result = (await res.json()) as MathResultJson;
+  // 計算関数の応答は外部入力と同じ扱いにする。想定外の形をそのまま保存すると
+  // 読み出し側(ページ)で壊れるため、ここで弾いて前回の結果を残す
+  const parsed: unknown = await res.json();
+  if (!isMathResultJson(parsed)) {
+    throw new Error("compute returned an unexpected shape");
+  }
+  const result: MathResultJson = parsed;
   result.pidMap = pidMap;
 
   await db

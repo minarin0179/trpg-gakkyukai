@@ -2,8 +2,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { timingSafeEqual, createHash } from "crypto";
 import { adminKey } from "./env";
-
-export const ADMIN_COOKIE = "gk_admin";
+import { ADMIN_COOKIE, adminTokenFor } from "./admin-token";
 
 // 一定時間で比較して鍵の推測(タイミング攻撃)を防ぐ
 export function safeEqual(a: string, b: string): boolean {
@@ -12,20 +11,15 @@ export function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(ha, hb);
 }
 
-// Cookieに入れる認証トークン(ADMIN_KEYそのものは入れず、ハッシュを入れる)
-export function adminToken(): string {
-  const key = adminKey() ?? "";
-  return createHash("sha256").update(`admin:${key}`).digest("hex");
-}
-
 // Cookieのみで認証済みか判定する。
-// ?key= を受け取ってCookieを立てる処理は middleware.ts が行う(Server Component
+// ?key= を受け取ってCookieを立てる処理は proxy.ts が行う(Server Component
 // のレンダリング中はCookieを書けないため)。
 export async function isAdmin(): Promise<boolean> {
-  if (!adminKey()) return false;
+  const key = adminKey();
+  if (!key) return false;
   const store = await cookies();
   const c = store.get(ADMIN_COOKIE)?.value;
-  return !!c && safeEqual(c, adminToken());
+  return !!c && safeEqual(c, await adminTokenFor(key));
 }
 
 // ページ用: 未認証なら notFound()(ページの存在自体を隠す)

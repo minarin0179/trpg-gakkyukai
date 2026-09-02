@@ -8,27 +8,13 @@ import { usePersonalizationOptional } from "./ThemePersonalization";
 // ホバー(タッチ端末はタップ)でそのグループの特徴的な意見を表示する。
 
 import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
+// 計算結果の型はサーバー側と共有する(math-result.ts が唯一の定義)
+import type { PublicMathResult } from "@/lib/math-result";
 
 // ホバー吹き出し・合意・グループカードで共通の「既定で見せる件数」。
 // 絞り込みのルールを全体で揃え、続きは「すべて見る」で展開する。
 const PREVIEW_COUNT = 2;
 
-export type PublicMathResult = {
-  status: "ok" | "insufficient";
-  // マップ参加に必要な最低投票数(通常7。意見が少ないテーマでは下がる)
-  threshold_used?: number;
-  group_count?: number;
-  participants?: { id: number; x: number; y: number; cluster: number | null }[];
-  consensus?: {
-    agree: { statement_id: number; agree_ratio: number | null }[];
-    disagree: { statement_id: number; agree_ratio: number | null }[];
-  };
-  repness?: Record<string, { statement_id: number; repful_for: string }[]>;
-  // 意見の提示優先度(投票デッキの重み付き抽選用。マップ自体は使わない)
-  statement_priorities?: Record<string, number>;
-  // 自分の点のライブ投影用の材料(意見ごとの [pc1, pc2, mean] と全意見数)
-  projection?: { n_statements: number; statements: Record<string, [number, number, number]> };
-};
 
 type Pt = { x: number; y: number };
 
