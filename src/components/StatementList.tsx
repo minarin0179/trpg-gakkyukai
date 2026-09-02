@@ -30,7 +30,7 @@ export function StatementList({ themeId, statements }: { themeId: string; statem
         const res = await castVoteAction(themeId, statementId, value);
         if (!res.ok) {
           // 拒否された票を巻き戻す(サーバーの実状態を取り直す)
-          setError(res.error ?? "投票できませんでした。時間を置いて再読み込みしてください");
+          setError(res.error);
           refresh();
         } else {
           setError(null);

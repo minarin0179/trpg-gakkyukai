@@ -18,6 +18,7 @@ import { normalizeTag } from "@/lib/tags";
 import { CONTACT_CATEGORIES } from "@/lib/contact";
 import { notifyAdmin } from "@/lib/notify";
 import { isThemeId, toIntId, REPORT_TARGET_ID_MAX } from "@/lib/validate";
+import type { ActionResult, FormState } from "@/lib/action-result";
 import {
   THEME_TITLE_MAX,
   THEME_DESCRIPTION_MAX,
@@ -34,10 +35,8 @@ import {
   RATE_LIMITS,
 } from "@/lib/config";
 
-export type FormState = {
-  error?: string;
-  done?: boolean;
-};
+// 型は action-result.ts が唯一の定義。移行中の呼び出し側のために再輸出する
+export type { FormState };
 
 // 埋め込みベクトルに意味の近いactiveテーマを返す(閾値以上のみ、上位N件)
 async function similarThemesByVec(vec: number[]): Promise<{ id: string; title: string }[]> {
@@ -260,9 +259,11 @@ export async function castVoteAction(
   _clientThemeId: string,
   statementId: number,
   value: number,
-): Promise<{ ok: boolean; error?: string }> {
-  if (![1, 0, -1].includes(value)) return { ok: false };
-  if (!Number.isSafeInteger(statementId)) return { ok: false };
+): Promise<ActionResult> {
+  // UIからは起きない不正値。従来クライアント側で出していた文言をそのまま返す
+  const invalid = { ok: false, error: "投票できませんでした。時間を置いて再読み込みしてください" } as const;
+  if (![1, 0, -1].includes(value)) return invalid;
+  if (!Number.isSafeInteger(statementId)) return invalid;
 
   // 投票はサイト内で最も呼ばれる経路なので往復数を切り詰める
   // (neon-httpは1クエリ=1往復):
@@ -322,7 +323,7 @@ export async function castVoteAction(
     await maybeRecompute(themeId);
   });
 
-  return { ok: true };
+  return { ok: true, data: undefined };
 }
 
 export async function submitReportAction(
@@ -410,10 +411,11 @@ export async function submitContactAction(
 export async function addThemeTagAction(
   themeId: string,
   rawTag: string,
-): Promise<{ ok: boolean; id?: number; tag?: string; error?: string }> {
+): Promise<ActionResult<{ id?: number; tag: string }>> {
   if (!isThemeId(themeId)) return { ok: false, error: "不正なリクエストです" };
   const { tag, error } = normalizeTag(rawTag);
-  if (!tag) return { ok: false, error };
+  // normalizeTagはtagが無いとき必ず理由を返すが、型上はundefinedを取り得る
+  if (!tag) return { ok: false, error: error ?? "追加できませんでした" };
 
   const [theme] = await db
     .select({ status: themes.status })
@@ -457,5 +459,5 @@ export async function addThemeTagAction(
   // ページはISRキャッシュのため、表示の即時更新はクライアント側で行う
   // (revalidateThemeは他の閲覧者向けのキャッシュ更新)
   revalidateTheme(themeId);
-  return { ok: true, id: row?.id, tag };
+  return { ok: true, data: { id: row?.id, tag } };
 }

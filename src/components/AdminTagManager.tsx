@@ -58,7 +58,7 @@ export function AdminTagManager({
         ),
       );
     } else {
-      setError(res.error ?? "操作に失敗しました");
+      setError(res.error);
     }
     setBusy(false);
   }

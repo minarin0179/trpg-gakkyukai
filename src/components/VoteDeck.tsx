@@ -113,7 +113,7 @@ export function VoteDeck({
       const res = await castVoteAction(themeId, current.id, value);
       if (!res.ok) {
         // レート制限などで拒否された票は反映せず、カードも進めない
-        setError(res.error ?? "投票できませんでした。時間を置いて再読み込みしてください");
+        setError(res.error);
         return;
       }
       setError(null);

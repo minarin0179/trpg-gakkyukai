@@ -37,16 +37,16 @@ export function ThemeTagsRow({
     setError(null);
     startTransition(async () => {
       const res = await addThemeTagAction(themeId, tag);
-      if (res.ok && res.tag) {
-        const t = res.tag;
-        setTags((prev) =>
-          prev.some((x) => x.tag.toLowerCase() === t.toLowerCase())
-            ? prev
-            : [...prev, { id: res.id ?? -prev.length - 1, tag: t }],
-        );
-      } else if (!res.ok) {
-        setError(res.error ?? "追加できませんでした");
+      if (!res.ok) {
+        setError(res.error);
+        return;
       }
+      const { id, tag: t } = res.data;
+      setTags((prev) =>
+        prev.some((x) => x.tag.toLowerCase() === t.toLowerCase())
+          ? prev
+          : [...prev, { id: id ?? -prev.length - 1, tag: t }],
+      );
     });
     return true;
   }

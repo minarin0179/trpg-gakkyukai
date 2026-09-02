@@ -12,6 +12,7 @@ import { recomputeTheme } from "@/lib/recompute";
 import { isAdmin } from "@/lib/admin-auth";
 import { notFound } from "next/navigation";
 import { isTargetType, toIntId } from "@/lib/validate";
+import type { ActionResult } from "@/lib/action-result";
 
 type TargetType = "theme" | "statement" | "contact" | "tag";
 
@@ -123,10 +124,11 @@ export async function adminSetTagAction(
   themeId: string,
   rawTag: string,
   op: "add" | "remove",
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<ActionResult> {
   if (!(await isAdmin())) notFound();
   const { tag, error } = normalizeTag(rawTag);
-  if (!tag) return { ok: false, error };
+  // normalizeTagはtagが無いとき必ず理由を返すが、型上はundefinedを取り得る
+  if (!tag) return { ok: false, error: error ?? "操作に失敗しました" };
 
   if (op === "remove") {
     await db
@@ -145,5 +147,5 @@ export async function adminSetTagAction(
     .expireTag("tag-vocab")
     .catch(() => {});
   revalidateTheme(themeId);
-  return { ok: true };
+  return { ok: true, data: undefined };
 }
