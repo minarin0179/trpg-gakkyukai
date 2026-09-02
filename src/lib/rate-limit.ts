@@ -1,44 +1,17 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
+import { RATE_LIMITS, type RateKind } from "@/lib/config";
 
-const DAY = 24 * 60 * 60 * 1000;
-
-// 内容ではなく流量で制御する(無審査設計の前提となる対策)。
-// *_ip はCGNAT(モバイル回線等で多人数が同一IPを共有)を考慮し、
-// cookie側の上限より大幅に緩くして正規ユーザーの巻き添えを防ぐ
-const LIMITS: Record<string, { max: number; windowMs: number }> = {
-  theme_create: { max: 3, windowMs: DAY },
-  statement_create: { max: 30, windowMs: DAY },
-  statement_create_ip: { max: 100, windowMs: DAY },
-  report_create: { max: 20, windowMs: DAY },
-  // 投票(IP×テーマ単位)。上限はテーマの意見数に比例するため、
-  // 呼び出し側が maxOverride で渡す。max: 0 は「渡し忘れたら常に拒否」の安全側の既定
-  vote_ip_theme: { max: 0, windowMs: DAY },
-  // 類似テーマのライブチェック(入力デバウンスごとに1回)。埋め込み計算の乱用防止
-  similar_check: { max: 300, windowMs: DAY },
-  // テーマ検索の意味検索(検索1回につき1回)。超過時は部分一致のみに縮退する
-  search_embed: { max: 300, windowMs: DAY },
-  // タグ付与(cookie/IPの二重計数)
-  tag_add: { max: 30, windowMs: DAY },
-  tag_add_ip: { max: 100, windowMs: DAY },
-};
+// 上限の表は config.ts が唯一の定義(UIの案内文もそこから組み立てる)
+export type { RateKind };
 
 export async function checkAndRecordRate(
-  kind:
-    | "theme_create"
-    | "statement_create"
-    | "statement_create_ip"
-    | "report_create"
-    | "vote_ip_theme"
-    | "similar_check"
-    | "search_embed"
-    | "tag_add"
-    | "tag_add_ip",
+  kind: RateKind,
   actor: string,
   maxOverride?: number,
   context?: string,
 ): Promise<{ ok: boolean; remaining: number }> {
-  const limit = LIMITS[kind];
+  const limit = RATE_LIMITS[kind];
   const max = maxOverride ?? limit.max;
   const since = new Date(Date.now() - limit.windowMs);
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { listThemes } from "@/lib/queries";
 import { ThemeCard } from "@/components/ThemeCard";
+import { STATEMENT_MAX, PROMOTION_MIN_PARTICIPANTS } from "@/lib/config";
 
 // トップは個人化データを持たない(featuredは共有情報)ので、ISRで60秒キャッシュし
 // DB転送を大幅に削減する。新規テーマ等は最大60秒で反映される。
@@ -40,7 +41,7 @@ const STEPS = [
   {
     image: "/illustrations/126.png",
     title: "自分の意見を書いてもいい",
-    body: "言い足りないことがあれば、あなたの意見を1つ140文字以内で投稿できます。それが今度は他の参加者の投票対象になり、賛同が集まればグループを越えた合意として浮かび上がります。",
+    body: `言い足りないことがあれば、あなたの意見を1つ${STATEMENT_MAX}文字以内で投稿できます。それが今度は他の参加者の投票対象になり、賛同が集まればグループを越えた合意として浮かび上がります。`,
   },
 ];
 
@@ -145,7 +146,7 @@ export default async function HomePage() {
           <Link href="/themes" className="underline">
             新着タブ
           </Link>
-          に載ります。10人が投票すると人気タブにも並びます。
+          に載ります。{PROMOTION_MIN_PARTICIPANTS}人が投票すると人気タブにも並びます。
           運営が事前に内容を選別することはありません。
         </div>
       </section>

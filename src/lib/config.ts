@@ -14,6 +14,10 @@ export const THEME_DESCRIPTION_MAX = 2000;
 export const STATEMENT_MAX = 140;
 export const SEED_STATEMENTS_MAX = 10;
 
+// お問い合わせフォームの上限
+export const CONTACT_BODY_MAX = 2000;
+export const CONTACT_REPLY_TO_MAX = 200;
+
 // 投票の水増し対策(IP×テーマ単位のレート制限)。
 // 正規ユーザー1人が1テーマで投じる票は最大でも意見数なので、上限を
 // 「意見数 × VOTE_IP_THEME_PER_STATEMENT」にすれば、同一IP(CGNAT・
@@ -58,3 +62,47 @@ export const RANKING_GRAVITY = 1.8;
 
 // テーマ一覧(無限スクロール)の1ページ件数
 export const THEMES_PAGE_SIZE = 20;
+
+// 意見マップに載る(=クラスタに割り当てられる)のに必要な最低投票数。
+// 計算側の api/_logic.py の POLIS_MIN_VOTE_THRESHOLD と同じ値で、
+// 実際に使われた閾値は計算結果の threshold_used に入る
+// (意見数がこれより少ないテーマではその意見数まで下がる)。
+// ここはUI側(説明文・暫定表示の判定)の既定値として持つ
+export const MAP_MIN_VOTES = 7;
+
+// 図(意見コンパス・割れ方のbeeswarm)を出す最低件数。
+// 点が数個だと図として読めないので、それ未満はセクションごと出さない
+export const CHART_MIN_ITEMS = 5;
+
+// テーマ提案フォームの類似チェックを走らせるまでの入力停止時間(ミリ秒)
+export const SIMILAR_CHECK_DEBOUNCE_MS = 600;
+
+// 参加者cookieの有効期間(秒)。アカウントレスなので、これが切れると
+// 過去の投票と結び付かなくなる(=別人として扱われる)ため長めに取る
+export const PARTICIPANT_COOKIE_MAX_AGE_SEC = 60 * 60 * 24 * 400;
+
+// レート制限の上限(kind別)。内容ではなく流量で制御する
+// (無審査設計の前提となる対策)。
+// *_ip はCGNAT(モバイル回線等で多人数が同一IPを共有)を考慮し、
+// cookie側の上限より大幅に緩くして正規ユーザーの巻き添えを防ぐ。
+// UIの案内文もこの値から組み立てるため、ここが唯一の定義になる
+const DAY_MS = 24 * 60 * 60 * 1000;
+export const RATE_LIMITS = {
+  theme_create: { max: 3, windowMs: DAY_MS },
+  statement_create: { max: 30, windowMs: DAY_MS },
+  statement_create_ip: { max: 100, windowMs: DAY_MS },
+  report_create: { max: 20, windowMs: DAY_MS },
+  // 投票(IP×テーマ単位)。上限はテーマの意見数に比例するため、
+  // 呼び出し側が maxOverride で渡す。max: 0 は「渡し忘れたら常に拒否」の安全側の既定
+  vote_ip_theme: { max: 0, windowMs: DAY_MS },
+  // 類似テーマのライブチェック(入力デバウンスごとに1回)。埋め込み計算の乱用防止
+  similar_check: { max: 300, windowMs: DAY_MS },
+  // テーマ検索の意味検索(検索1回につき1回)。超過時は部分一致のみに縮退する
+  search_embed: { max: 300, windowMs: DAY_MS },
+  // タグ付与(cookie/IPの二重計数)
+  tag_add: { max: 30, windowMs: DAY_MS },
+  tag_add_ip: { max: 100, windowMs: DAY_MS },
+} as const;
+
+// DBのkind列の enum もこの表から導出する(schema.ts)
+export type RateKind = keyof typeof RATE_LIMITS;

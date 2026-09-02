@@ -7,6 +7,7 @@ import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
 import { OpinionMap } from "@/components/OpinionMap";
 import { toPublicMathResult } from "@/lib/math-result";
+import { MAP_MIN_VOTES, CHART_MIN_ITEMS } from "@/lib/config";
 import { StatementList } from "@/components/StatementList";
 import { ReportButton } from "@/components/ReportButton";
 import { ShareTheme } from "@/components/ShareTheme";
@@ -98,7 +99,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         const rows = compassBreakdown.byStatement[s.id];
         if (!xy || !rows) return [];
         const t = rows.reduce((sum, c) => sum + c.agree + c.disagree + c.pass, 0);
-        if (t < 7) return [];
+        if (t < MAP_MIN_VOTES) return [];
         return [
           { id: s.id, text: s.text, agree: 0, disagree: 0, pass: 0, x: xy[0], y: xy[1], byGroup: null },
         ];
@@ -188,7 +189,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
             result={publicResult}
             statementTexts={statementTexts}
             afterMap={
-              compassItems.length >= 5 && compassBreakdown ? (
+              compassItems.length >= CHART_MIN_ITEMS && compassBreakdown ? (
                 <div id="compass" className="scroll-mt-20">
                   <h3 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">
                     意見コンパス

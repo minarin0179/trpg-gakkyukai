@@ -12,6 +12,7 @@ import {
 } from "@/lib/queries";
 import { OpinionMap } from "@/components/OpinionMap";
 import { toPublicMathResult } from "@/lib/math-result";
+import { MAP_MIN_VOTES, CHART_MIN_ITEMS } from "@/lib/config";
 import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
 import { groupsLackingAgreeRepness } from "@/lib/repness";
 import { StatementBeeswarm } from "@/components/StatementBeeswarm";
@@ -29,8 +30,9 @@ export const revalidate = 300;
 
 // 各セクションで畳まずに見せる件数
 const SECTION_PREVIEW = 5;
-// 割れ方・地図に載せる意見の最低投票数(少票の割合はノイズが大きい)
-const SECTION_MIN_VOTES = 7;
+// 割れ方・地図に載せる意見の最低投票数(少票の割合はノイズが大きい)。
+// 意見マップに載る基準と同じ値を使う
+const SECTION_MIN_VOTES = MAP_MIN_VOTES;
 
 export function generateStaticParams() {
   return [];
@@ -286,7 +288,7 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
         </section>
       )}
 
-      {mapItems.length >= 5 && breakdown && (
+      {mapItems.length >= CHART_MIN_ITEMS && breakdown && (
         <section className="flex flex-col gap-3">
           <SectionHeading
             title="意見コンパス"
@@ -296,7 +298,7 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
         </section>
       )}
 
-      {beeswarmItems.length >= 5 && (
+      {beeswarmItems.length >= CHART_MIN_ITEMS && (
         <section className="flex flex-col gap-3">
           <SectionHeading
             title="この議論はどれくらい意見が割れたか"

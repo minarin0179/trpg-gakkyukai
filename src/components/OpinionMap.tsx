@@ -10,6 +10,7 @@ import { usePersonalizationOptional } from "./ThemePersonalization";
 import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
 // 計算結果の型はサーバー側と共有する(math-result.ts が唯一の定義)
 import type { PublicMathResult } from "@/lib/math-result";
+import { MAP_MIN_VOTES } from "@/lib/config";
 
 // ホバー吹き出し・合意・グループカードで共通の「既定で見せる件数」。
 // 絞り込みのルールを全体で揃え、続きは「すべて見る」で展開する。
@@ -113,7 +114,7 @@ export function OpinionMap({
   // 重心に対して同じ規則を適用すれば、公式の境界の引き方を再現できる。
   // 公式ルールに合わせ、マップ参加基準(通常7票)に達するまでは判定しない。
   // 30分ごとの本計算が来たら公式の割り当てで上書きされる暫定表示
-  const clusterThreshold = result.threshold_used ?? 7;
+  const clusterThreshold = result.threshold_used ?? MAP_MIN_VOTES;
   let liveCluster: number | null = null;
   if (liveSelf !== null && Object.keys(myVotes).length >= clusterThreshold) {
     const acc = new Map<number, { x: number; y: number; n: number }>();
@@ -469,7 +470,7 @@ export function OpinionMap({
             </li>
             <li>グレーの点は、投票がまだ少なくグループが決まっていない参加者です</li>
             {variant !== "report" && (
-              <li>投票すると、あなたの位置がすぐにマップへ反映されます(7件以上でグループも暫定表示され、定期の再計算で確定します)</li>
+              <li>投票すると、あなたの位置がすぐにマップへ反映されます({MAP_MIN_VOTES}件以上でグループも暫定表示され、定期の再計算で確定します)</li>
             )}
           </ul>
         </details>

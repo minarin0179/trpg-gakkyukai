@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { randomUUID, createHash } from "crypto";
 import { db, participants } from "@/db";
 import { hashSalt } from "./env";
+import { PARTICIPANT_COOKIE_MAX_AGE_SEC } from "./config";
 
 const COOKIE_NAME = "gk_pid";
 // 「参加済み」の目印(値に意味はない)。本体のgk_pidはhttpOnlyでクライアントから
@@ -16,7 +17,7 @@ function setMarkerCookie(store: CookieStore): void {
     httpOnly: false,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 400,
+    maxAge: PARTICIPANT_COOKIE_MAX_AGE_SEC,
     path: "/",
   });
 }
@@ -37,7 +38,7 @@ export async function getOrCreateParticipantId(): Promise<string> {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 400,
+    maxAge: PARTICIPANT_COOKIE_MAX_AGE_SEC,
     path: "/",
   });
   setMarkerCookie(store);

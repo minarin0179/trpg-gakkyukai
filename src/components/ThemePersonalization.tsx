@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { PARTICIPANT_COOKIE_MAX_AGE_SEC } from "@/lib/config";
 
 type PersonalizationState = {
   votes: Record<number, number>; // 意見ID→自分の投票値(1/0/-1)
@@ -68,7 +69,7 @@ export function ThemePersonalization({
           Object.keys(data.votes ?? {}).length > 0 || typeof data.myIndex === "number";
         try {
           if (participated) {
-            document.cookie = "gk_p=1; max-age=34560000; path=/; samesite=lax";
+            document.cookie = `gk_p=1; max-age=${PARTICIPANT_COOKIE_MAX_AGE_SEC}; path=/; samesite=lax`;
             localStorage.removeItem("gk_np");
           } else if (!hasMarker) {
             localStorage.setItem("gk_np", "1");

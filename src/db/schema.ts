@@ -10,6 +10,7 @@ import {
   uniqueIndex,
   vector,
 } from "drizzle-orm/pg-core";
+import { RATE_LIMITS, type RateKind } from "@/lib/config";
 
 // テーマ(議題)。事前審査なしで即時公開、一定の参加を得ると人気タブにも並ぶ
 export const themes = pgTable("themes", {
@@ -127,18 +128,9 @@ export const rateEvents = pgTable(
   "rate_events",
   {
     id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    // 種別は config の RATE_LIMITS から導出する(上限表と列の定義がずれないように)
     kind: text("kind", {
-      enum: [
-        "theme_create",
-        "statement_create",
-        "statement_create_ip",
-        "report_create",
-        "vote_ip_theme",
-        "similar_check",
-        "search_embed",
-        "tag_add",
-        "tag_add_ip",
-      ],
+      enum: Object.keys(RATE_LIMITS) as [RateKind, ...RateKind[]],
     }).notNull(),
     actorHash: text("actor_hash").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

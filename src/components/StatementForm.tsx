@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createStatementAction, type FormState } from "@/app/actions";
+import { STATEMENT_MAX } from "@/lib/config";
 
 export function StatementForm({ themeId }: { themeId: string }) {
   const [text, setText] = useState("");
@@ -42,9 +43,9 @@ export function StatementForm({ themeId }: { themeId: string }) {
         name="text"
         required
         minLength={2}
-        maxLength={140}
+        maxLength={STATEMENT_MAX}
         rows={2}
-        placeholder="あなたの意見(140文字まで)"
+        placeholder={`あなたの意見(${STATEMENT_MAX}文字まで)`}
         value={text}
         onChange={(e) => {
           setText(e.target.value);

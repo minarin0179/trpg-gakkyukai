@@ -29,6 +29,9 @@ import {
   THEME_SIMILAR_MAX,
   STATEMENT_GATE_VOTES,
   TAGS_PER_THEME,
+  CONTACT_BODY_MAX,
+  CONTACT_REPLY_TO_MAX,
+  RATE_LIMITS,
 } from "@/lib/config";
 
 export type FormState = {
@@ -128,7 +131,9 @@ export async function createThemeAction(
   for (const actor of [actorHash(participantId), dailyActorHash(`ip:${ip}`)]) {
     const rate = await checkAndRecordRate("theme_create", actor);
     if (!rate.ok) {
-      return { error: "テーマ提案は1日3件までです。明日また提案してください" };
+      return {
+        error: `テーマ提案は1日${RATE_LIMITS.theme_create.max}件までです。明日また提案してください`,
+      };
     }
   }
 
@@ -243,7 +248,7 @@ export async function createStatementAction(
 
   const rate = await checkAndRecordRate("statement_create", actorHash(participantId));
   if (!rate.ok) {
-    return { error: "意見の投稿は1日30件までです" };
+    return { error: `意見の投稿は1日${RATE_LIMITS.statement_create.max}件までです` };
   }
   // cookie再発行による回避を防ぐため、IP側(日替わりハッシュ)でも緩く計数する
   const ipRate = await checkAndRecordRate(
@@ -390,11 +395,11 @@ export async function submitContactAction(
   if (!(CONTACT_CATEGORIES as readonly string[]).includes(category)) {
     return { error: "カテゴリを選択してください" };
   }
-  if (body.length < 5 || body.length > 2000) {
-    return { error: "本文は5〜2000文字で入力してください" };
+  if (body.length < 5 || body.length > CONTACT_BODY_MAX) {
+    return { error: `本文は5〜${CONTACT_BODY_MAX}文字で入力してください` };
   }
-  if (replyTo.length > 200) {
-    return { error: "連絡先は200文字以内で入力してください" };
+  if (replyTo.length > CONTACT_REPLY_TO_MAX) {
+    return { error: `連絡先は${CONTACT_REPLY_TO_MAX}文字以内で入力してください` };
   }
 
   const rate = await checkAndRecordRate(
@@ -450,7 +455,9 @@ export async function addThemeTagAction(
 
   const participantId = await getOrCreateParticipantId();
   const rate = await checkAndRecordRate("tag_add", actorHash(participantId), undefined, themeId);
-  if (!rate.ok) return { ok: false, error: "タグの追加は1日30回までです" };
+  if (!rate.ok) {
+    return { ok: false, error: `タグの追加は1日${RATE_LIMITS.tag_add.max}回までです` };
+  }
   const ipRate = await checkAndRecordRate(
     "tag_add_ip",
     dailyActorHash(`ip:${await clientIp()}`),
