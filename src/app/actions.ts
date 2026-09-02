@@ -116,6 +116,17 @@ export async function createThemeAction(
     return { error: "bot対策の確認に失敗しました。再読み込みして試してください" };
   }
 
+  // 同一タイトルの重複は常に拒否(実データで同名テーマの並立が起きたため)。
+  // レート制限より前に置き、差し戻しで枠を消費させない
+  const exact = await db
+    .select({ id: themes.id })
+    .from(themes)
+    .where(and(eq(themes.status, "active"), eq(themes.title, title)))
+    .limit(1);
+  if (exact.length > 0) {
+    return { error: "同じタイトルのテーマがすでにあります。検索して参加してみてください" };
+  }
+
   const participantId = await getOrCreateParticipantId();
   const ip = await clientIp();
   // cookieを消しても IP 側の制限が残るよう、両方で数える
@@ -124,16 +135,6 @@ export async function createThemeAction(
     if (!rate.ok) {
       return { error: "テーマ提案は1日3件までです。明日また提案してください" };
     }
-  }
-
-  // 同一タイトルの重複は常に拒否(実データで同名テーマの並立が起きたため)
-  const exact = await db
-    .select({ id: themes.id })
-    .from(themes)
-    .where(and(eq(themes.status, "active"), eq(themes.title, title)))
-    .limit(1);
-  if (exact.length > 0) {
-    return { error: "同じタイトルのテーマがすでにあります。検索して参加してみてください" };
   }
 
   // 類似テーマは入力中のライブチェック(findSimilarThemesAction)で「表示」するのみ。
