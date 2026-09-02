@@ -4,11 +4,11 @@ import { and, cosineDistance, count, desc, eq, isNotNull, sql } from "drizzle-or
 import { redirect } from "next/navigation";
 import { revalidateTheme } from "@/lib/revalidate";
 import { after } from "next/server";
-import { headers } from "next/headers";
 import { getCache } from "@vercel/functions";
 import { nanoid } from "nanoid";
 import { db, themes, statements, votes, reports, themeTags } from "@/db";
-import { getOrCreateParticipantId, actorHash, dailyActorHash } from "@/lib/participant";
+import { getOrCreateParticipantId, actorHash } from "@/lib/participant";
+import { ipActor } from "@/lib/request";
 import { checkAndRecordRate } from "@/lib/rate-limit";
 import { embedTexts } from "@/lib/embedding";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -39,12 +39,6 @@ export type FormState = {
   done?: boolean;
 };
 
-async function clientIp(): Promise<string> {
-  const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-}
-
-
 // 埋め込みベクトルに意味の近いactiveテーマを返す(閾値以上のみ、上位N件)
 async function similarThemesByVec(vec: number[]): Promise<{ id: string; title: string }[]> {
   const sim = sql<number>`1 - (${cosineDistance(themes.embedding, vec)})`;
@@ -67,7 +61,7 @@ export async function findSimilarThemesAction(
   const title = String(rawTitle ?? "").trim();
   if (title.length < 5 || title.length > THEME_TITLE_MAX) return [];
   // 公開エンドポイント相当なので、埋め込み計算の乱用をIP単位で抑える
-  const rate = await checkAndRecordRate("similar_check", dailyActorHash(`ip:${await clientIp()}`));
+  const rate = await checkAndRecordRate("similar_check", await ipActor());
   if (!rate.ok) return [];
   const vec = (await embedTexts([title]))?.[0] ?? null;
   if (!vec) return [];
@@ -126,9 +120,8 @@ export async function createThemeAction(
   }
 
   const participantId = await getOrCreateParticipantId();
-  const ip = await clientIp();
   // cookieを消しても IP 側の制限が残るよう、両方で数える
-  for (const actor of [actorHash(participantId), dailyActorHash(`ip:${ip}`)]) {
+  for (const actor of [actorHash(participantId), await ipActor()]) {
     const rate = await checkAndRecordRate("theme_create", actor);
     if (!rate.ok) {
       return {
@@ -251,10 +244,7 @@ export async function createStatementAction(
     return { error: `意見の投稿は1日${RATE_LIMITS.statement_create.max}件までです` };
   }
   // cookie再発行による回避を防ぐため、IP側(日替わりハッシュ)でも緩く計数する
-  const ipRate = await checkAndRecordRate(
-    "statement_create_ip",
-    dailyActorHash(`ip:${await clientIp()}`),
-  );
+  const ipRate = await checkAndRecordRate("statement_create_ip", await ipActor());
   if (!ipRate.ok) {
     return { error: "この回線からの投稿が多すぎます。時間を置いてください" };
   }
@@ -309,7 +299,7 @@ export async function castVoteAction(
   // (別参加者になり主キー制約ごと回避できる)ため設けない。
   // 上限は意見数に比例させ、人間の正規参加には届かない天井にする(config参照)
   const voteCap = Math.max(VOTE_IP_THEME_MIN, Number(target.n ?? 0) * VOTE_IP_THEME_PER_STATEMENT);
-  const ipTheme = dailyActorHash(`ip:${await clientIp()}:theme:${themeId}`);
+  const ipTheme = await ipActor(`theme:${themeId}`);
   const rate = await checkAndRecordRate("vote_ip_theme", ipTheme, voteCap, themeId);
   if (!rate.ok) {
     return { ok: false, error: "この回線からの投票が多すぎます。時間を置いてください" };
@@ -363,10 +353,7 @@ export async function submitReportAction(
   }
 
   // 通報洪水で管理キューを埋める攻撃への速度制限
-  const rate = await checkAndRecordRate(
-    "report_create",
-    dailyActorHash(`ip:${await clientIp()}`),
-  );
+  const rate = await checkAndRecordRate("report_create", await ipActor());
   if (!rate.ok) {
     return { error: "通報が多すぎます。時間を置いてください" };
   }
@@ -402,10 +389,7 @@ export async function submitContactAction(
     return { error: `連絡先は${CONTACT_REPLY_TO_MAX}文字以内で入力してください` };
   }
 
-  const rate = await checkAndRecordRate(
-    "report_create",
-    dailyActorHash(`ip:${await clientIp()}`),
-  );
+  const rate = await checkAndRecordRate("report_create", await ipActor());
   if (!rate.ok) {
     return { error: "送信が多すぎます。時間を置いてください" };
   }
@@ -458,12 +442,7 @@ export async function addThemeTagAction(
   if (!rate.ok) {
     return { ok: false, error: `タグの追加は1日${RATE_LIMITS.tag_add.max}回までです` };
   }
-  const ipRate = await checkAndRecordRate(
-    "tag_add_ip",
-    dailyActorHash(`ip:${await clientIp()}`),
-    undefined,
-    themeId,
-  );
+  const ipRate = await checkAndRecordRate("tag_add_ip", await ipActor(), undefined, themeId);
   if (!ipRate.ok) return { ok: false, error: "この回線からのタグ追加が多すぎます。時間を置いてください" };
 
   const [row] = await db
