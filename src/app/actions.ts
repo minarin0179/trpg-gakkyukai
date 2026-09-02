@@ -164,6 +164,10 @@ export async function createThemeAction(
       .insert(themeTags)
       .values(themeTagList.map((tag) => ({ themeId: id, tag })))
       .onConflictDoNothing();
+    // 新しいタグが語彙一覧に出るよう、タグ語彙のキャッシュも落とす
+    await getCache()
+      .expireTag("tag-vocab")
+      .catch(() => {});
   }
 
   // 新テーマをテーマ一覧のRuntime Cache(60秒)を待たず即時反映する
@@ -460,6 +464,10 @@ export async function addThemeTagAction(
     .values({ themeId, tag })
     .onConflictDoNothing()
     .returning({ id: themeTags.id });
+  // タグ語彙・一覧カードのタグはRuntime Cacheに載っているので即時に無効化する
+  await getCache()
+    .expireTag("tag-vocab")
+    .catch(() => {});
   // ページはISRキャッシュのため、表示の即時更新はクライアント側で行う
   // (revalidateThemeは他の閲覧者向けのキャッシュ更新)
   revalidateTheme(themeId);

@@ -69,6 +69,10 @@ export async function removeContentAction(formData: FormData) {
       .from(themeTags)
       .where(eq(themeTags.id, tid));
     await db.delete(themeTags).where(eq(themeTags.id, tid));
+    // タグ語彙・一覧カードのタグのRuntime Cacheからも即時に消す
+    await getCache()
+      .expireTag("tag-vocab")
+      .catch(() => {});
     if (row) revalidateTheme(row.themeId);
   } else if (targetType === "theme") {
     await db
@@ -76,9 +80,13 @@ export async function removeContentAction(formData: FormData) {
       .set({ status: "removed", removedReason: reason })
       .where(eq(themes.id, targetId));
     revalidateTheme(targetId);
-    // テーマ一覧のRuntime Cacheからも即時に消す
+    // テーマ一覧のRuntime Cacheからも即時に消す。
+    // タグ語彙はactiveテーマのみを数えるため、テーマの削除でも変わる
     await getCache()
       .expireTag("themes-list")
+      .catch(() => {});
+    await getCache()
+      .expireTag("tag-vocab")
       .catch(() => {});
   }
 
@@ -132,6 +140,10 @@ export async function adminSetTagAction(
     if (n >= TAGS_PER_THEME) return { ok: false, error: `タグは${TAGS_PER_THEME}個までです` };
     await db.insert(themeTags).values({ themeId, tag }).onConflictDoNothing();
   }
+  // 付け外しのどちらでもタグ語彙・一覧カードのタグが変わる
+  await getCache()
+    .expireTag("tag-vocab")
+    .catch(() => {});
   revalidateTheme(themeId);
   return { ok: true };
 }
