@@ -50,11 +50,6 @@ export async function getParticipantId(): Promise<string | null> {
   return v && /^[0-9a-f-]{36}$/.test(v) ? v : null;
 }
 
-// participantがDBに存在することを保証する(cookieだけ持っていてDB行がないケースの救済)
-export async function ensureParticipant(id: string): Promise<void> {
-  await db.insert(participants).values({ id }).onConflictDoNothing();
-}
-
 // レート制限・通報記録用のハッシュ。生IPや生cookie IDは保存しない
 export function actorHash(value: string): string {
   const salt = hashSalt();

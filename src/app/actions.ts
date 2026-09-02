@@ -8,12 +8,7 @@ import { headers } from "next/headers";
 import { getCache } from "@vercel/functions";
 import { nanoid } from "nanoid";
 import { db, themes, statements, votes, reports, themeTags } from "@/db";
-import {
-  getOrCreateParticipantId,
-  ensureParticipant,
-  actorHash,
-  dailyActorHash,
-} from "@/lib/participant";
+import { getOrCreateParticipantId, actorHash, dailyActorHash } from "@/lib/participant";
 import { checkAndRecordRate } from "@/lib/rate-limit";
 import { embedTexts } from "@/lib/embedding";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -270,12 +265,24 @@ export async function castVoteAction(
   if (![1, 0, -1].includes(value)) return { ok: false };
   if (!Number.isSafeInteger(statementId)) return { ok: false };
 
+  // 投票はサイト内で最も呼ばれる経路なので往復数を切り詰める
+  // (neon-httpは1クエリ=1往復):
+  // 変更前 6回 = 意見の存在確認 + 意見数 + レート判定(count) + レート記録(insert)
+  //   + participant補完 + 投票upsert (これに after 内の再計算判定が加わる)
+  // 変更後 3回 = 存在確認と意見数を1クエリに + レート制限を1文に(rate-limit.ts)
+  //   + participant補完と投票upsertを1文に (after 内の判定は据え置き)
+
   // 投票先のテーマは意見IDから導出する。クライアントの申告するthemeIdを信じると、
   // 別テーマ名義でIP×テーマのレート制限を素通りでき(枠が分散する)、
   // さらにテーマ横断の票がレポートの集計を汚染できてしまうため。
-  // ついでに、非表示の意見・終了したテーマへの投票もここで弾く
+  // ついでに、非表示の意見・終了したテーマへの投票もここで弾く。
+  // 投票上限の算出に使うテーマ内の意見数も、相関サブクエリで同時に取る
   const [target] = await db
-    .select({ themeId: statements.themeId })
+    .select({
+      themeId: statements.themeId,
+      n: sql<number>`(select count(*) from ${statements} s2
+        where s2.theme_id = ${statements.themeId} and s2.status = 'visible')::int`,
+    })
     .from(statements)
     .innerJoin(themes, eq(themes.id, statements.themeId))
     .where(
@@ -292,11 +299,7 @@ export async function castVoteAction(
   // 水増し対策: IP×テーマ単位のレート制限。Cookie側はリセットで逃れられる
   // (別参加者になり主キー制約ごと回避できる)ため設けない。
   // 上限は意見数に比例させ、人間の正規参加には届かない天井にする(config参照)
-  const [stmtCount] = await db
-    .select({ n: count() })
-    .from(statements)
-    .where(and(eq(statements.themeId, themeId), eq(statements.status, "visible")));
-  const voteCap = Math.max(VOTE_IP_THEME_MIN, (stmtCount?.n ?? 0) * VOTE_IP_THEME_PER_STATEMENT);
+  const voteCap = Math.max(VOTE_IP_THEME_MIN, Number(target.n ?? 0) * VOTE_IP_THEME_PER_STATEMENT);
   const ipTheme = dailyActorHash(`ip:${await clientIp()}:theme:${themeId}`);
   const rate = await checkAndRecordRate("vote_ip_theme", ipTheme, voteCap, themeId);
   if (!rate.ok) {
@@ -304,15 +307,16 @@ export async function castVoteAction(
   }
 
   const participantId = await getOrCreateParticipantId();
-  await ensureParticipant(participantId);
 
-  await db
-    .insert(votes)
-    .values({ themeId, statementId, participantId, value })
-    .onConflictDoUpdate({
-      target: [votes.statementId, votes.participantId],
-      set: { value, updatedAt: new Date() },
-    });
+  // participant行の補完(cookieだけ持っていてDB行がないケースの救済)と投票upsertを1文で。
+  // WITH内のINSERTは参照されなくても必ず実行され、FK検査は文の最後に走るため、
+  // 同じ文の中で先にparticipantsへ入れた行が votes のFKから見える
+  await db.execute(sql`
+    WITH p AS (INSERT INTO participants (id) VALUES (${participantId}) ON CONFLICT DO NOTHING)
+    INSERT INTO votes (statement_id, participant_id, theme_id, value)
+    VALUES (${statementId}, ${participantId}, ${themeId}, ${value})
+    ON CONFLICT (statement_id, participant_id) DO UPDATE SET value = EXCLUDED.value, updated_at = now()
+  `);
 
   // レスポンスを返した後にバックグラウンドで再計算(必要な場合のみ)
   after(async () => {
