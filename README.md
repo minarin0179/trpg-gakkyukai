@@ -63,7 +63,7 @@ node --env-file=.env.local scripts/seed.mjs
 
 - `src/db/schema.ts` — themes / participants / statements / votes / theme_tags /
   math_results / reports / rate_events
-- `src/app/actions.ts` — テーマ提案・意見投稿・投票・通報のServer Actions
+- `src/app/actions/` — Server Actions(`themes.ts` テーマ提案・タグ / `statements.ts` 意見投稿・投票 / `reports.ts` 通報・問い合わせ)
 - `src/lib/recompute.ts` — 投票後の再計算オーケストレーション(最短30分間隔。自分の点はクライアント側でライブ投影)
 - `api/_logic.py` — red-dwarf呼び出し本体(エンドポイントから分離、単体テスト可)
 - `api/_http.py` — Python Function共通のHTTP層(内部鍵の検証・JSON読み取り・応答)
