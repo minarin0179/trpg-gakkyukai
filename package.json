@@ -8,6 +8,7 @@
     "setup:assets": "node scripts/fetch-illustrations.mjs",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
     "db:push": "drizzle-kit push",
     "compute:dev": "uv run python scripts/compute-server.py"
   },

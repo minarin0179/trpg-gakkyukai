@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      # allowScripts に列挙した esbuild / unrs-resolver は npm では通常どおり
+      # postinstall が走る(この項目は npm の設定ではない)。ネイティブバイナリの
+      # 準備に必要なので --ignore-scripts は付けない
+      - run: npm ci
+      - run: npm run lint
+      # typecheck は next typegen で PageProps 等のルート型を生成してから tsc を回す
+      - run: npm run typecheck
+      # next build はここでは走らせない。DB接続(sitemap/ISRのデータ取得)と
+      # イラスト素材の外部ダウンロードが必要で、CIでは成立しないため。
+      # ビルドの確認は Vercel の preview デプロイに任せる
