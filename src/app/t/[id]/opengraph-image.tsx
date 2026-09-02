@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { notFound } from "next/navigation";
 import { getTheme } from "@/lib/queries";
 
 export const alt = "TRPG学級会のテーマ";
@@ -43,7 +44,9 @@ async function loadJpFont(text: string): Promise<ArrayBuffer | null> {
 export default async function OgImage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const theme = await getTheme(id).catch(() => null);
-  const title = theme?.title ?? "TRPG学級会";
+  // 存在しないIDでの描画(外部フォント取得+Satori)を防ぐ
+  if (!theme) notFound();
+  const title = theme.title;
   const fontData = await loadJpFont(title + STATIC_TEXT);
   // 長いタイトルは小さめに
   const titleSize = title.length > 44 ? 52 : title.length > 26 ? 64 : 76;
