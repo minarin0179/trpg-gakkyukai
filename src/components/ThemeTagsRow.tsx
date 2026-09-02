@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { addThemeTagAction } from "@/app/actions";
+import { addThemeTagAction } from "@/app/actions/themes";
 import { TagSelector } from "@/components/TagSelector";
 import { TagReportButton } from "@/components/TagReportButton";
 import { TAGS_PER_THEME } from "@/lib/config";
@@ -37,16 +37,16 @@ export function ThemeTagsRow({
     setError(null);
     startTransition(async () => {
       const res = await addThemeTagAction(themeId, tag);
-      if (res.ok && res.tag) {
-        const t = res.tag;
-        setTags((prev) =>
-          prev.some((x) => x.tag.toLowerCase() === t.toLowerCase())
-            ? prev
-            : [...prev, { id: res.id ?? -prev.length - 1, tag: t }],
-        );
-      } else if (!res.ok) {
-        setError(res.error ?? "追加できませんでした");
+      if (!res.ok) {
+        setError(res.error);
+        return;
       }
+      const { id, tag: t } = res.data;
+      setTags((prev) =>
+        prev.some((x) => x.tag.toLowerCase() === t.toLowerCase())
+          ? prev
+          : [...prev, { id: id ?? -prev.length - 1, tag: t }],
+      );
     });
     return true;
   }
@@ -58,7 +58,7 @@ export function ThemeTagsRow({
           key={tag}
           prefetch={false}
           href={`/themes?tag=${encodeURIComponent(tag)}`}
-          className="rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs text-stone-600 hover:border-stone-500 hover:text-stone-800 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
+          className="rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs text-stone-600 hover:border-stone-500 hover:text-stone-800"
         >
           {tag}
         </Link>
@@ -66,16 +66,16 @@ export function ThemeTagsRow({
       {tags.length < TAGS_PER_THEME && !open && (
         <button
           onClick={() => setOpen(true)}
-          className="rounded-full border border-dashed border-stone-400 px-2 py-0.5 text-xs text-stone-500 hover:border-stone-600 hover:text-stone-700 dark:border-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+          className="rounded-full border border-dashed border-stone-400 px-2 py-0.5 text-xs text-stone-500 hover:border-stone-600 hover:text-stone-700"
         >
           タグを追加
         </button>
       )}
       <TagReportButton tags={tags.filter((t) => t.id > 0)} />
       {open && (
-        <div className="mt-1 w-full rounded-md border border-stone-300 bg-stone-50 p-3 dark:border-stone-700 dark:bg-stone-800">
+        <div className="mt-1 w-full rounded-md border border-stone-300 bg-stone-50 p-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs text-stone-600 dark:text-stone-400">
+            <p className="text-xs text-stone-600">
               一覧から選ぶか、新しいタグを入力してください({tags.length}/{TAGS_PER_THEME})
             </p>
             <button
@@ -95,7 +95,7 @@ export function ThemeTagsRow({
             full={tags.length >= TAGS_PER_THEME}
             pending={pending}
           />
-          {error && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
         </div>
       )}
     </div>

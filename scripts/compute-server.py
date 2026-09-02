@@ -10,12 +10,16 @@
     #   EMBED_URL=http://localhost:8787/embed
 """
 
-import json
 import os
 import sys
+import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+# sys.path を通したあとで本番と同じHTTP層を読み込む(応答形式をそろえるため)。
+# 認証はローカル専用サーバーなので行わない
+from api._http import read_json, respond  # noqa: E402
 
 PORT = 8787
 
@@ -23,8 +27,7 @@ PORT = 8787
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
-            length = int(self.headers.get("Content-Length", 0))
-            payload = json.loads(self.rfile.read(length))
+            payload = read_json(self)
             # 依存を持たない側の用途を壊さないよう、ルートごとに遅延importする
             # (例: red-dwarf未導入でも/embedは動く)
             if self.path.rstrip("/") == "/embed":
@@ -35,15 +38,13 @@ class Handler(BaseHTTPRequestHandler):
                 from api._logic import compute_clusters  # noqa: PLC0415
 
                 result = compute_clusters(payload)
-            body = json.dumps(result).encode()
-            self.send_response(200)
+            respond(self, 200, result)
+        except ValueError as e:
+            respond(self, 400, {"error": str(e)})
         except Exception as e:  # noqa: BLE001
-            body = json.dumps({"error": str(e)}).encode()
-            self.send_response(500)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+            # ローカル開発では原因がすぐ分かるほうが有用なので例外文をそのまま返す
+            traceback.print_exc()
+            respond(self, 500, {"error": str(e)})
 
     def log_message(self, fmt, *args):
         print(f"[compute] {fmt % args}")

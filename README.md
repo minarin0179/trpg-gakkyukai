@@ -19,7 +19,7 @@ TRPGにまつわる論点に「賛成 / 反対 / パス」で投票し、意見�
 
 ```bash
 npm install
-uv venv && uv pip install -r requirements.txt
+uv venv && uv pip install -r requirements-dev.txt   # 本番の依存は requirements.txt
 
 # イラスト素材の取得(Loose Drawing公式サイトから。リポジトリには非同梱)
 npm run setup:assets
@@ -63,11 +63,33 @@ node --env-file=.env.local scripts/seed.mjs
 
 - `src/db/schema.ts` — themes / participants / statements / votes / theme_tags /
   math_results / reports / rate_events
-- `src/app/actions.ts` — テーマ提案・意見投稿・投票・通報のServer Actions
+- `src/app/actions/` — Server Actions(`themes.ts` テーマ提案・タグ / `statements.ts` 意見投稿・投票 / `reports.ts` 通報・問い合わせ)
 - `src/lib/recompute.ts` — 投票後の再計算オーケストレーション(最短30分間隔。自分の点はクライアント側でライブ投影)
 - `api/_logic.py` — red-dwarf呼び出し本体(エンドポイントから分離、単体テスト可)
+- `api/_http.py` — Python Function共通のHTTP層(内部鍵の検証・JSON読み取り・応答)
 - `src/app/api/cron/recompute/route.ts` — 日次バックストップ(vercel.json の crons)
 - 参加者は匿名cookie(`gk_pid`)のみで識別。個人情報は保存しない
+
+## テスト
+
+```bash
+npm test        # 純関数の単体テスト (node --test。Node 24が.tsの型を自前で剥がす)
+npm run test:py # Pythonロジックのテスト (pytest)
+```
+
+対象は副作用のない純関数(`src/lib/` と `api/_logic.py` / `api/_embed_logic.py`)。
+DBやNext.jsのレンダリングに依存する層はCIで再現しにくいので、Vercelのpreviewで確認する。
+
+`tests/ts-resolver.mjs` は、拡張子なしの相対importと `@/` エイリアスを
+tsconfigのpathsと同じように解決するためのフック(Node本体のESM解決は
+どちらも扱えないため、テスト実行時だけ補う)。
+
+## Pythonの依存
+
+VercelのPythonビルダーは `requirements.txt` を見るため、`pyproject.toml` /
+`uv.lock` は置かない(置くと解決方法が二重になる)。開発用の追加依存
+(pytest)は `requirements-dev.txt` にまとめ、本番の `requirements.txt` を
+`-r` で取り込む形にしてある。
 
 ## デプロイ
 
@@ -84,18 +106,23 @@ GitHub連携により `main` へのpushで本番へ自動デプロイされる(�
 | `HASH_SALT` | Vercel | cookie ID・IP のハッシュ化ソルト | 変更すると既存ハッシュと不整合 |
 | `CRON_SECRET` | Vercel | Vercel Cron の Authorization ヘッダ | Vercelが自動生成 |
 | `INTERNAL_API_KEY` | 任意 | Python Function を呼ぶ `X-Internal-Key` | 未設定なら `CRON_SECRET` を流用 |
-| `ADMIN_KEY` | Vercel | `/admin` のアクセスキー | 未設定なら管理画面は無効 |
+| `ADMIN_KEY` | Vercel | `/admin` のアクセスキー | 未設定なら管理画面は無効。`/admin/login` から入力する |
 | `TURNSTILE_SECRET_KEY` | Vercel | Turnstile の検証 | ローカルは未設定で公式テストキーに落ちる |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Vercel | Turnstile のサイトキー | ローカルは `1x00000000000000000000AA` |
 | `NEXT_PUBLIC_SITE_URL` | 任意 | canonical・OGP・sitemap の生成 | 未設定なら本番ドメイン |
 | `DISCORD_WEBHOOK_URL` | 任意 | 通報・問い合わせの運営通知 | 未設定なら通知しない |
 | `COMPUTE_URL` | ローカルのみ | クラスタリング計算の呼び出し先 | 本番は同一デプロイの `/api/compute` |
 | `EMBED_URL` | ローカルのみ | 埋め込み生成の呼び出し先 | 本番は同一デプロイの `/api/embed` |
+| `DEV_ALLOWED_ORIGINS` | ローカルのみ・任意 | 開発サーバーへのアクセスを許可するオリジン | カンマ区切り。LAN内の実機確認に使う |
 | `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` | Vercel | Python関数が225MB超のため必須 | Vercelプロジェクト設定側 |
 
 `HASH_SALT` / `TURNSTILE_SECRET_KEY` / `CRON_SECRET` / `ADMIN_KEY` の4つは、
 Vercel上(production/preview)では必須。未設定のまま開発用の既定値で動き続けないよう、
 `src/lib/env.ts` がリクエスト時に例外を投げる(ローカルでは従来どおり既定値に落ちる)。
+
+管理画面へは `/admin/login` でキーを入力してログインする(Cookieは30日で失効し、
+それ以降は再ログインが必要)。移行期間中は従来の `/admin?key=<キー>` でも入れるが、
+URLに鍵が残るため、フォームログインに慣れた時点で廃止する。
 
 ## ライセンス
 

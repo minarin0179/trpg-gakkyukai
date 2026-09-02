@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { submitContactAction, type FormState } from "@/app/actions";
+import { submitContactAction } from "@/app/actions/reports";
+import { type FormState } from "@/lib/action-result";
 import { CONTACT_CATEGORIES } from "@/lib/contact";
 import { CONTACT_BODY_MAX, CONTACT_REPLY_TO_MAX } from "@/lib/config";
 

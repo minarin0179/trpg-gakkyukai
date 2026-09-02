@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { usePersonalizationOptional } from "./ThemePersonalization";
 
 // red-dwarfの計算結果を2D散布図として描画する。
@@ -9,44 +9,72 @@ import { usePersonalizationOptional } from "./ThemePersonalization";
 
 import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
 // 計算結果の型はサーバー側と共有する(math-result.ts が唯一の定義)
-import type { PublicMathResult } from "@/lib/math-result";
+import type { MapPayload } from "@/lib/math-result";
 import { MAP_MIN_VOTES } from "@/lib/config";
+// 座標・凸包・ラベル配置の計算は純関数として切り出してある
+import {
+  buildClusters,
+  extents,
+  nearestCluster,
+  placeLabels,
+  placeSelfLabel,
+  projectSelf,
+  spreadCoincident,
+} from "@/lib/opinion-map-layout";
 
 // ホバー吹き出し・合意・グループカードで共通の「既定で見せる件数」。
 // 絞り込みのルールを全体で揃え、続きは「すべて見る」で展開する。
 const PREVIEW_COUNT = 2;
 
+// 点の半径と、グループ未割当(7票未満)の点の色
+const POINT_R = 4.5;
+const POINT_OPACITY = 0.55;
+const UNCLUSTERED_COLOR = "#a8a29e";
+// 点のクラス名。グループ未割当はグレー1色なので固定名を使う
+const GREY_CLASS = "pg";
+const pointClass = (cluster: number | null) => (cluster === null ? GREY_CLASS : `p${cluster}`);
 
-type Pt = { x: number; y: number };
+// 描画領域とラベルの寸法。幾何計算のメモ化キーに入れずに済むよう定数にする
+const W = 480;
+const H = 340;
+const HULL_MARGIN = 22;
+const LABEL_W = 90;
+const LABEL_H = 26;
 
-// Andrewのmonotone chainによる凸包
-function convexHull(points: Pt[]): Pt[] {
-  if (points.length <= 2) return points;
-  const pts = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
-  const cross = (o: Pt, a: Pt, b: Pt) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-  const lower: Pt[] = [];
-  for (const p of pts) {
-    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
-    lower.push(p);
-  }
-  const upper: Pt[] = [];
-  for (const p of [...pts].reverse()) {
-    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
-    upper.push(p);
-  }
-  return [...lower.slice(0, -1), ...upper.slice(0, -1)];
-}
+// 点が無いときの安定した空配列(useMemoのキーが毎回変わらないように)
+const EMPTY_PTS: MapPayload["pts"] = [];
 
-// 凸包を重心から外側に押し広げて、点が縁に張り付かない「なわばり」にする
-function expandHull(hull: Pt[], padding: number): Pt[] {
-  const cx = hull.reduce((s, p) => s + p.x, 0) / hull.length;
-  const cy = hull.reduce((s, p) => s + p.y, 0) / hull.length;
-  return hull.map((p) => {
-    const dx = p.x - cx;
-    const dy = p.y - cy;
-    const len = Math.hypot(dx, dy) || 1;
-    return { x: p.x + (dx / len) * padding, y: p.y + (dy / len) * padding };
-  });
+// 参加者1人ぶんの点。位置とクラス名だけを持ち、色・半径・透明度はCSSで与える
+type PointDot = { key: number; cx: number; cy: number; cls: string };
+
+// 参加者の点の層。1点1要素の <circle> は維持する:
+// 半透明の点が重なったときの濃淡が密度の表現で、グレー(未割当)とグループの点が
+// 参加者の並び順どおりに入れ替わりながら描かれることも絵の一部だから。
+// 軽くするのは属性のほうで、色・半径・透明度・pointer-events は
+// SVG内の <style> にクラス単位で一度だけ書き、各要素は cx/cy/class だけにする。
+// ホバー(activeGroup)では何も変わらないので、幾何計算の結果ごとメモ化する
+const MapPoints = memo(function MapPoints({ css, dots }: { css: string; dots: PointDot[] }) {
+  return (
+    <>
+      <style>{css}</style>
+      {dots.map(({ key, cx, cy, cls }) => (
+        <circle key={key} cx={cx} cy={cy} className={cls} />
+      ))}
+    </>
+  );
+});
+
+// 点のクラスに対するCSS。共通の指定を1つにまとめ、fillだけクラスごとに書く
+function pointCss(classes: string[]): string {
+  const common = `${classes.map((c) => `.${c}`).join(",")}{r:${POINT_R};fill-opacity:${POINT_OPACITY};pointer-events:none}`;
+  const fills = classes
+    .map((c) => {
+      const cid = c === GREY_CLASS ? null : Number(c.slice(1));
+      const color = cid === null ? UNCLUSTERED_COLOR : GROUP_COLORS[cid % GROUP_COLORS.length];
+      return `.${c}{fill:${color}}`;
+    })
+    .join("");
+  return common + fills;
 }
 
 export function OpinionMap({
@@ -55,7 +83,7 @@ export function OpinionMap({
   variant = "theme",
   afterMap,
 }: {
-  result: PublicMathResult | null;
+  result: MapPayload | null;
   statementTexts: Record<number, string>;
   // "report" は結果ページ用の客観表示: 自分の点を出さず、合意・グループのカード
   // (結果ページでは独立したセクションが担う)も出さない
@@ -73,7 +101,80 @@ export function OpinionMap({
   const [activeGroup, setActiveGroup] = useState<number | null>(null);
   const [showAllConsensus, setShowAllConsensus] = useState(false);
 
-  if (!result || result.status !== "ok" || !result.participants?.length) {
+  const pts = result?.pts ?? EMPTY_PTS;
+
+  // 自分の点の配列位置。myIndex は行列インデックス(pidMap の値)で、
+  // participants には欠番があり得るため配列の位置とは一致しない
+  const myPos = useMemo(
+    () => (myIndex !== null ? pts.findIndex((p) => p[3] === myIndex) : -1),
+    [pts, myIndex],
+  );
+
+  // 自分の点のライブ投影。材料が無い古い計算結果では従来どおり
+  // 公式位置(myIndex)のみで表示する。
+  // 参照を安定させ、ホバーだけの再描画で下の幾何計算が走らないようにする
+  const projection = result?.projection;
+  const liveSelf = useMemo(() => projectSelf(projection, myVotes), [projection, myVotes]);
+
+  // 座標変換・重なりのほどき・なわばり・ラベル配置。参加者数に比例する重い処理で、
+  // 変わるのは「点の集合」と「自分の点の位置」だけ。ホバーや合意の開閉では
+  // 変わらないのでメモ化する(描画結果は従来と同一)
+  const geo = useMemo(() => {
+    // ライブ投影中の自分の点が描画範囲の外に出ないよう、範囲計算に含める
+    const { minX, maxX, minY, maxY } = extents(pts, liveSelf, 0.28);
+    const sx = (x: number) => ((x - minX) / (maxX - minX)) * W;
+    const sy = (y: number) => H - ((y - minY) / (maxY - minY)) * H;
+
+    // 同一座標に重なる点は小さな輪状にほどいて全員を可視化する(決定的な配置)
+    const displayPos = spreadCoincident(pts, sx, sy);
+
+    // 参加者の点(自分以外)。並びは pts のまま=計算結果の参加者順で、
+    // グループ未割当(7票未満)の参加者もグレーで描く。隠すと「N人が投票」との
+    // 数のギャップが不信感につながるため、表示したうえで下の凡例で意味を説明する。
+    // 座標は小数2桁に丸める(480×340のviewBoxでは表示上の差は出ない)
+    const dots: PointDot[] = [];
+    const usedClasses = new Set<string>();
+    pts.forEach((p, i) => {
+      if (i === myPos) return;
+      const cls = pointClass(p[2]);
+      usedClasses.add(cls);
+      dots.push({
+        key: i,
+        cx: +displayPos[i].x.toFixed(2),
+        cy: +displayPos[i].y.toFixed(2),
+        cls,
+      });
+    });
+    // クラス名は出現順ではなく安定した順に並べ、CSSの文字列を無駄に変えない
+    const pointsCss = pointCss([...usedClasses].sort());
+
+    // クラスタごとの点となわばり(大きいなわばりを下に描く順で返る)
+    const clusters = buildClusters(pts, displayPos, HULL_MARGIN);
+
+    // 近接クラスタのラベルが重ならないよう、縦方向に押しのける
+    const labelPos = placeLabels(clusters, {
+      width: W,
+      labelW: LABEL_W,
+      labelH: LABEL_H,
+      hullMargin: HULL_MARGIN,
+    });
+
+    // 各グループラベルの矩形(「あなた」ラベルの重なり回避に使う)
+    const groupLabelRects = clusters.map(({ cid, members }) => {
+      const pos = labelPos.get(cid)!;
+      const label = `${GROUP_NAMES[cid] ?? cid} · ${members.length}人`;
+      const w = label.length * 7 + 18;
+      return { x0: pos.cx - w / 2, y0: pos.cy - 11, x1: pos.cx + w / 2, y1: pos.cy + 11 };
+    });
+
+    // PCA空間の原点(意見の重心)を通る参考軸
+    const axisX = minX < 0 && maxX > 0 ? sx(0) : null;
+    const axisY = minY < 0 && maxY > 0 ? sy(0) : null;
+
+    return { sx, sy, displayPos, dots, pointsCss, clusters, labelPos, groupLabelRects, axisX, axisY };
+  }, [pts, liveSelf, myPos]);
+
+  if (!result || pts.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-stone-500 p-6 text-center text-sm text-stone-600">
         意見マップはまだありません。もう少し投票が集まると、意見グループの地図がここに描かれます。
@@ -81,159 +182,24 @@ export function OpinionMap({
     );
   }
 
-  const pts = result.participants;
+  const { sx, sy, displayPos, dots, pointsCss, clusters, labelPos, groupLabelRects, axisX, axisY } =
+    geo;
+
   // 公式の計算結果における自分のグループ。7票未満などで未クラスタなら null。
-  const officialCluster =
-    myIndex !== null ? (pts.find((p) => p.id === myIndex)?.cluster ?? null) : null;
+  const officialCluster = myPos >= 0 ? pts[myPos][2] : null;
 
-  // 自分の点のライブ投影(本家Polisと同じ方式)。公開されているPCAの軸(意見ごとの
-  // 成分と平均)に自分の投票を掛けるだけなので、再計算やリロードを待たずに
-  // 投票のたびに自分の点がすぐ動く。材料が無い古い計算結果では従来どおり
-  // 公式位置(myIndex)のみで表示する
-  let liveSelf: { x: number; y: number } | null = null;
-  const proj = result.projection;
-  if (proj && proj.n_statements > 0) {
-    let lx = 0;
-    let ly = 0;
-    let n = 0;
-    for (const [sid, v] of Object.entries(myVotes)) {
-      const s = proj.statements[sid];
-      if (!s) continue;
-      lx += (v - s[2]) * s[0];
-      ly += (v - s[2]) * s[1];
-      n++;
-    }
-    if (n > 0) {
-      const scale = Math.sqrt(proj.n_statements / n);
-      liveSelf = { x: lx * scale, y: ly * scale };
-    }
-  }
-
-  // 自分のグループの暫定判定(ライブ)。本計算のグループ分けはk-means
-  // (=「最も近い重心」への割り当て)なので、公開されている各グループの
-  // 重心に対して同じ規則を適用すれば、公式の境界の引き方を再現できる。
-  // 公式ルールに合わせ、マップ参加基準(通常7票)に達するまでは判定しない。
+  // 自分のグループの暫定判定(ライブ)。公式ルールに合わせ、
+  // マップ参加基準(通常7票)に達するまでは判定しない。
   // 30分ごとの本計算が来たら公式の割り当てで上書きされる暫定表示
-  const clusterThreshold = result.threshold_used ?? MAP_MIN_VOTES;
-  let liveCluster: number | null = null;
-  if (liveSelf !== null && Object.keys(myVotes).length >= clusterThreshold) {
-    const acc = new Map<number, { x: number; y: number; n: number }>();
-    for (const p of pts) {
-      if (p.cluster === null) continue;
-      const a = acc.get(p.cluster) ?? { x: 0, y: 0, n: 0 };
-      acc.set(p.cluster, { x: a.x + p.x, y: a.y + p.y, n: a.n + 1 });
-    }
-    let best = Infinity;
-    for (const [cid, a] of acc) {
-      const d = Math.hypot(liveSelf.x - a.x / a.n, liveSelf.y - a.y / a.n);
-      if (d < best) {
-        best = d;
-        liveCluster = cid;
-      }
-    }
-  }
+  const clusterThreshold = result.thresholdUsed ?? MAP_MIN_VOTES;
+  const liveCluster =
+    liveSelf !== null && Object.keys(myVotes).length >= clusterThreshold
+      ? nearestCluster(pts, liveSelf)
+      : null;
 
   // 表示に使う自分のグループ。点の表示位置と整合させる:
   // ライブ投影で描いているときは暫定判定、公式位置で描いているときは公式の割り当て
   const myCluster = liveSelf !== null ? liveCluster : officialCluster;
-
-  // ライブ投影中の自分の点が描画範囲の外に出ないよう、範囲計算に含める
-  const xs = [...pts.map((p) => p.x), ...(liveSelf ? [liveSelf.x] : [])];
-  const ys = [...pts.map((p) => p.y), ...(liveSelf ? [liveSelf.y] : [])];
-  const pad = 0.28;
-  const spanX = Math.max(Math.max(...xs) - Math.min(...xs), 0.01);
-  const spanY = Math.max(Math.max(...ys) - Math.min(...ys), 0.01);
-  const minX = Math.min(...xs) - spanX * pad;
-  const maxX = Math.max(...xs) + spanX * pad;
-  const minY = Math.min(...ys) - spanY * pad;
-  const maxY = Math.max(...ys) + spanY * pad;
-
-  const W = 480;
-  const H = 340;
-  const sx = (x: number) => ((x - minX) / (maxX - minX)) * W;
-  const sy = (y: number) => H - ((y - minY) / (maxY - minY)) * H;
-
-  // 完全に同じ投票をした参加者は数学的に同一座標になり、点が1つにしか見えない。
-  // 同一座標の点は小さな輪状にほどいて全員を可視化する(半透明の重なりが密度表現になる)。
-  // 乱数でなくインデックス順の決定的な配置にし、再描画で位置が揺れないようにする
-  const displayPos = new Map<number, { x: number; y: number }>();
-  {
-    const byPos = new Map<string, typeof pts>();
-    for (const p of pts) {
-      const key = `${p.x.toFixed(4)},${p.y.toFixed(4)}`;
-      if (!byPos.has(key)) byPos.set(key, []);
-      byPos.get(key)!.push(p);
-    }
-    for (const group of byPos.values()) {
-      const gx = sx(group[0].x);
-      const gy = sy(group[0].y);
-      if (group.length === 1) {
-        displayPos.set(group[0].id, { x: gx, y: gy });
-        continue;
-      }
-      const ringR = Math.min(3.5 + group.length, 10);
-      group.forEach((p, i) => {
-        const ang = (2 * Math.PI * i) / group.length;
-        displayPos.set(p.id, { x: gx + ringR * Math.cos(ang), y: gy + ringR * Math.sin(ang) });
-      });
-    }
-  }
-
-  // クラスタごとの点となわばり
-  const HULL_MARGIN = 22;
-  const clusterMap = new Map<number, Pt[]>();
-  for (const p of pts) {
-    if (p.cluster === null) continue;
-    if (!clusterMap.has(p.cluster)) clusterMap.set(p.cluster, []);
-    clusterMap.get(p.cluster)!.push(displayPos.get(p.id)!);
-  }
-  const clusters = [...clusterMap.entries()]
-    .map(([cid, members]) => {
-      const hull = expandHull(convexHull(members), HULL_MARGIN);
-      const cx = members.reduce((s, p) => s + p.x, 0) / members.length;
-      const cy = members.reduce((s, p) => s + p.y, 0) / members.length;
-      return { cid, members, hull, cx, cy };
-    })
-    .sort((a, b) => b.members.length - a.members.length); // 大きいなわばりを下に描く
-
-  // 近接クラスタのラベルが重ならないよう、縦方向に押しのける
-  const LABEL_W = 90;
-  const LABEL_H = 26;
-  // ラベルは重心ではなく「なわばり上端の点のない帯」(凸包はHULL_MARGINぶん外側に
-  // 押し広げてあるので、その帯に点は無い)に置き、密集した中心部の点を覆わないようにする
-  const labelAnchorY = (c: (typeof clusters)[number]): number => {
-    const topY =
-      c.hull.length >= 3
-        ? Math.min(...c.hull.map((p) => p.y))
-        : Math.min(...c.members.map((p) => p.y)) -
-          (Math.max(...c.members.map((p) => Math.hypot(p.x - c.cx, p.y - c.cy)), 0) + HULL_MARGIN);
-    return Math.max(topY + LABEL_H / 2 - 4, LABEL_H / 2 + 2);
-  };
-  const placed: { cid: number; cx: number; cy: number }[] = [...clusters]
-    .sort((a, b) => a.cy - b.cy)
-    .map((c) => ({
-      cid: c.cid,
-      cx: Math.min(Math.max(c.cx, LABEL_W / 2 + 2), W - LABEL_W / 2 - 2),
-      cy: labelAnchorY(c),
-    }));
-  for (let i = 0; i < placed.length; i++) {
-    for (let j = 0; j < i; j++) {
-      const dx = Math.abs(placed[i].cx - placed[j].cx);
-      const dy = placed[i].cy - placed[j].cy;
-      if (dx < LABEL_W && Math.abs(dy) < LABEL_H) {
-        placed[i].cy = placed[j].cy + LABEL_H;
-      }
-    }
-  }
-  const labelPos = new Map(placed.map((p) => [p.cid, { cx: p.cx, cy: p.cy }]));
-
-  // 各グループラベルの矩形(「あなた」ラベルの重なり回避に使う)
-  const groupLabelRects = clusters.map(({ cid, members }) => {
-    const pos = labelPos.get(cid)!;
-    const label = `${GROUP_NAMES[cid] ?? cid} · ${members.length}人`;
-    const w = label.length * 7 + 18;
-    return { x0: pos.cx - w / 2, y0: pos.cy - 11, x1: pos.cx + w / 2, y1: pos.cy + 11 };
-  });
 
   // ホバー中グループの特徴的な意見(既定件数)。下のカードと同じ絞り込みルール。
   const activeRepness =
@@ -263,13 +229,37 @@ export function OpinionMap({
   const hiddenConsensusCount =
     consensusAgree.length - agreeShown.length + (consensusDisagree.length - disagreeShown.length);
 
-  // PCA空間の原点(意見の重心)を通る参考軸
-  const axisX = minX < 0 && maxX > 0 ? sx(0) : null;
-  const axisY = minY < 0 && maxY > 0 ? sy(0) : null;
-
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-stone-400 bg-white p-4">
+        {/* 図のなわばりはマウス操作が前提になるため、同じ選択をキーボード・支援技術から
+            行えるボタン列を図の上に置く。押すと下の図に同じ吹き出しが出る */}
+        {clusters.length > 0 && (
+          <div className="mb-2 flex flex-wrap justify-center gap-1.5">
+            {[...clusters]
+              .sort((a, b) => a.cid - b.cid)
+              .map(({ cid, members }) => (
+                <button
+                  key={cid}
+                  type="button"
+                  aria-pressed={activeGroup === cid}
+                  onClick={() => setActiveGroup((v) => (v === cid ? null : cid))}
+                  className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 ${
+                    activeGroup === cid
+                      ? "border-stone-600 bg-stone-100 text-stone-900"
+                      : "border-stone-300 bg-white text-stone-700 hover:border-stone-500"
+                  }`}
+                >
+                  <span
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ backgroundColor: GROUP_COLORS[cid % GROUP_COLORS.length] }}
+                  />
+                  グループ{GROUP_NAMES[cid] ?? cid}
+                  <span className="font-normal text-stone-500">{members.length}人</span>
+                </button>
+              ))}
+          </div>
+        )}
         <div className="relative mx-auto w-full max-w-lg">
           <svg
             viewBox={`0 0 ${W} ${H}`}
@@ -304,7 +294,21 @@ export function OpinionMap({
                     e.stopPropagation();
                     setActiveGroup(cid);
                   }}
-                  className="cursor-pointer"
+                  // キーボード操作。フォーカスはホバーと同じ扱いにし、
+                  // Enter・スペースはクリックと同じ扱いにする
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`グループ${GROUP_NAMES[cid] ?? cid}(${members.length}人)の特徴的な意見を表示`}
+                  onFocus={() => setActiveGroup(cid)}
+                  onBlur={() => setActiveGroup(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setActiveGroup(cid);
+                    }
+                  }}
+                  className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900"
                 >
                   {hull.length >= 3 ? (
                     <polygon points={hull.map((p) => `${p.x},${p.y}`).join(" ")} strokeLinejoin="round" {...common} />
@@ -322,26 +326,11 @@ export function OpinionMap({
             })}
 
             {/* 参加者の点(自分以外)。自分は最前面に別途描く */}
-            {pts.map((p) => {
-              if (myIndex !== null && p.id === myIndex) return null;
-              // グループ未割当(7票未満)の参加者もグレーで描く。隠すと「N人が投票」との
-              // 数のギャップが不信感につながるため、表示したうえで下の凡例で意味を説明する
-              const color = p.cluster !== null ? GROUP_COLORS[p.cluster % GROUP_COLORS.length] : "#a8a29e";
-              const dp = displayPos.get(p.id)!;
-              return (
-                <circle
-                  key={p.id}
-                  cx={dp.x}
-                  cy={dp.y}
-                  r={4.5}
-                  fill={color}
-                  fillOpacity={0.55}
-                  pointerEvents="none"
-                />
-              );
-            })}
+            <MapPoints css={pointsCss} dots={dots} />
 
             {/* グループラベル(近接時は縦にずらして重なりを避ける) */}
+            {/* ラベルはなわばりと同じ選択を行うだけなので、キーボードのタブ位置は
+                二重に作らずマウス操作のみとする(上のボタン列となわばりで到達できる) */}
             {clusters.map(({ cid, members }) => {
               const { cx, cy } = labelPos.get(cid)!;
               const color = GROUP_COLORS[cid % GROUP_COLORS.length];
@@ -367,36 +356,17 @@ export function OpinionMap({
 
             {/* 自分の点とラベルは最前面に描き、なわばりやグループラベルに隠れないようにする。
                 位置はライブ投影があればそれを優先(投票のたびに動く)、無ければ公式位置 */}
-            {(liveSelf !== null || myIndex !== null) &&
+            {(liveSelf !== null || myPos >= 0) &&
               (() => {
-                const me = myIndex !== null ? pts.find((p) => p.id === myIndex) : undefined;
+                const myDisplay = myPos >= 0 ? displayPos[myPos] : null;
                 // 色は myCluster(表示位置と整合するグループ判定)に従う。
                 // 閾値未満・判定不能の間はグレー
                 const color =
-                  myCluster != null ? GROUP_COLORS[myCluster % GROUP_COLORS.length] : "#a8a29e";
-                const pos = liveSelf
-                  ? { x: sx(liveSelf.x), y: sy(liveSelf.y) }
-                  : me
-                    ? displayPos.get(me.id)!
-                    : null;
+                  myCluster != null ? GROUP_COLORS[myCluster % GROUP_COLORS.length] : UNCLUSTERED_COLOR;
+                const pos = liveSelf ? { x: sx(liveSelf.x), y: sy(liveSelf.y) } : myDisplay;
                 if (!pos) return null;
                 const { x: mx, y: my } = pos;
-                const TW = 34; // 「あなた」の概算幅
-                const HH = 8; // テキスト矩形の半高
-                // 点の右→左→上→下の順に、グループラベルと重ならず画面内に収まる位置を選ぶ
-                const candidates = [
-                  { anchor: "start" as const, tx: mx + 11, ty: my + 4, x0: mx + 9, y0: my - HH, x1: mx + 11 + TW, y1: my + HH },
-                  { anchor: "end" as const, tx: mx - 11, ty: my + 4, x0: mx - 11 - TW, y0: my - HH, x1: mx - 9, y1: my + HH },
-                  { anchor: "middle" as const, tx: mx, ty: my - 12, x0: mx - TW / 2, y0: my - 22, x1: mx + TW / 2, y1: my - 8 },
-                  { anchor: "middle" as const, tx: mx, ty: my + 18, x0: mx - TW / 2, y0: my + 8, x1: mx + TW / 2, y1: my + 22 },
-                ];
-                const overlaps = (c: (typeof candidates)[number], g: (typeof groupLabelRects)[number]) =>
-                  c.x0 < g.x1 && c.x1 > g.x0 && c.y0 < g.y1 && c.y1 > g.y0;
-                const inBounds = (c: (typeof candidates)[number]) => c.x0 >= 0 && c.x1 <= W && c.y0 >= 0 && c.y1 <= H;
-                const chosen =
-                  candidates.find((c) => inBounds(c) && !groupLabelRects.some((g) => overlaps(c, g))) ??
-                  candidates.find((c) => inBounds(c)) ??
-                  candidates[0];
+                const chosen = placeSelfLabel(mx, my, groupLabelRects, W, H);
                 return (
                   <g pointerEvents="none">
                     <circle cx={mx} cy={my} r={7} fill={color} strokeWidth={2} className="stroke-stone-900" />

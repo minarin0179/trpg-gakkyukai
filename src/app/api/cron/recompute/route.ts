@@ -3,7 +3,7 @@ import { eq, lt, isNotNull, sql, asc } from "drizzle-orm";
 import { db, themes, rateEvents, reports } from "@/db";
 import { maybeRecompute, recomputeTheme } from "@/lib/recompute";
 import { safeEqual } from "@/lib/admin-auth";
-import { RECOMPUTE_MIN_INTERVAL_SEC } from "@/lib/config";
+import { CONTACT_REPLY_TO_RETENTION_DAYS, RECOMPUTE_MIN_INTERVAL_SEC } from "@/lib/config";
 
 // 再計算は1テーマにつき全票の読み込み+計算関数の往復がかかる。
 // Vercelの関数上限まで使えるようにして、途中で打ち切られるのを防ぐ
@@ -121,6 +121,14 @@ export async function GET(request: Request) {
   await db.delete(rateEvents).where(lt(rateEvents.createdAt, cutoff));
   // 通報のIP記録は廃止済み。過去に保存された分を消し込む
   await db.update(reports).set({ ipHash: null }).where(isNotNull(reports.ipHash));
+  // 問い合わせの連絡先は対応が終われば不要になるので、対応済みから
+  // CONTACT_REPLY_TO_RETENTION_DAYS を過ぎたものを消す(本文は履歴として残す)
+  await db.execute(sql`
+    update reports set reply_to = null
+    where reply_to is not null
+      and resolved_at is not null
+      and resolved_at < now() - make_interval(days => ${CONTACT_REPLY_TO_RETENTION_DAYS}::int)
+  `);
 
   // themes は「この実行で対象にしたテーマ数」
   return NextResponse.json({ themes: targets.length, recomputed, ...(extra ?? {}) });

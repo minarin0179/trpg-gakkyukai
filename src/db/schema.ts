@@ -97,6 +97,9 @@ export const reports = pgTable("reports", {
   targetType: text("target_type", { enum: ["theme", "statement", "contact", "tag"] }).notNull(),
   targetId: text("target_id").notNull(),
   reason: text("reason").notNull(),
+  // 問い合わせの連絡先(任意入力)。本文と混ぜず専用列に置き、
+  // 対応後 CONTACT_REPLY_TO_RETENTION_DAYS を過ぎたものは日次cronで消す
+  replyTo: text("reply_to"),
   ipHash: text("ip_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   // 対応済みの記録。resolvedAt が null なら未対応。

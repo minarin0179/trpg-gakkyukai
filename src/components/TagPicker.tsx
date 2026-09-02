@@ -19,7 +19,7 @@ export function TagPicker({ vocabulary }: { vocabulary: string[] }) {
           {selected.length}/{TAGS_PER_THEME}
         </span>
       </p>
-      <p className="mb-1.5 text-xs text-stone-600 dark:text-stone-500">
+      <p className="mb-1.5 text-xs text-stone-600">
         公開後に誰でも追加できるので、無理につけなくて大丈夫です。
       </p>
       <input type="hidden" name="tags" value={selected.join(",")} />

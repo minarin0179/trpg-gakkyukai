@@ -32,7 +32,7 @@ export function StatementComposer({
   return (
     <div>
       <details
-        className="group rounded-md border border-stone-500 dark:border-stone-700"
+        className="group rounded-md border border-stone-500"
         onClick={(e) => {
           if (locked) {
             e.preventDefault(); // 展開せず案内だけ出す
@@ -40,7 +40,7 @@ export function StatementComposer({
           }
         }}
       >
-        <summary className="flex cursor-pointer list-none items-center justify-center gap-1.5 rounded-md px-4 py-2.5 text-sm font-medium text-stone-700 marker:content-none hover:bg-stone-50 [&::-webkit-details-marker]:hidden dark:text-stone-300 dark:hover:bg-stone-800/50">
+        <summary className="flex cursor-pointer list-none items-center justify-center gap-1.5 rounded-md px-4 py-2.5 text-sm font-medium text-stone-700 marker:content-none hover:bg-stone-50 [&::-webkit-details-marker]:hidden">
         <span className="group-open:hidden">意見を投稿する</span>
         <span className="hidden group-open:inline">閉じる</span>
         <svg
@@ -58,7 +58,7 @@ export function StatementComposer({
           />
         </svg>
       </summary>
-        <div className="border-t border-stone-300 px-4 py-3 dark:border-stone-700">{children}</div>
+        <div className="border-t border-stone-300 px-4 py-3">{children}</div>
       </details>
       {locked && showGateNotice && (
         <div

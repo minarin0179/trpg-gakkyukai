@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { castVoteAction } from "@/app/actions";
+import { castVoteAction } from "@/app/actions/statements";
 import { ReportButton } from "./ReportButton";
 import { usePersonalization } from "./ThemePersonalization";
 
@@ -30,7 +30,7 @@ export function StatementList({ themeId, statements }: { themeId: string; statem
         const res = await castVoteAction(themeId, statementId, value);
         if (!res.ok) {
           // 拒否された票を巻き戻す(サーバーの実状態を取り直す)
-          setError(res.error ?? "投票できませんでした。時間を置いて再読み込みしてください");
+          setError(res.error);
           refresh();
         } else {
           setError(null);
@@ -52,14 +52,14 @@ export function StatementList({ themeId, statements }: { themeId: string; statem
         return (
           <li
             key={s.id}
-            className="rounded-md border border-stone-400 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-900"
+            className="rounded-md border border-stone-400 bg-white px-3 py-2 text-sm"
           >
             <div className="flex items-start justify-between gap-3">
               <span className="min-w-0">{s.text}</span>
               <ReportButton targetType="statement" targetId={String(s.id)} />
             </div>
             <div className="mt-2 flex items-center gap-2">
-              <div className="inline-flex overflow-hidden rounded-md border border-stone-300 dark:border-stone-700">
+              <div className="inline-flex overflow-hidden rounded-md border border-stone-300">
                 {OPTIONS.map((o) => (
                   <button
                     key={o.v}
@@ -68,7 +68,7 @@ export function StatementList({ themeId, statements }: { themeId: string; statem
                     className={`px-2.5 py-1 text-xs font-medium transition disabled:opacity-50 ${
                       cur === o.v
                         ? o.on
-                        : "text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+                        : "text-stone-600 hover:bg-stone-100"
                     }`}
                   >
                     {o.label}

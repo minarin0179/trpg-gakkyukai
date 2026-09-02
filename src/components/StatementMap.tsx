@@ -29,12 +29,12 @@ export function MiniBar({ label, color, counts }: { label: string; color?: strin
   return (
     <div>
       <p
-        className="mb-1 text-[11px] font-medium text-stone-600 dark:text-stone-400"
+        className="mb-1 text-[11px] font-medium text-stone-600"
         style={color ? { color } : undefined}
       >
         {label}
       </p>
-      <div className="h-2 rounded-full bg-stone-100 dark:bg-stone-800">
+      <div className="h-2 rounded-full bg-stone-100">
         {t > 0 && (
           <div className="flex h-2 overflow-hidden rounded-full">
             <div className="bg-emerald-600" style={{ width: `${(counts.agree / t) * 100}%` }} />
@@ -44,15 +44,44 @@ export function MiniBar({ label, color, counts }: { label: string; color?: strin
         )}
       </div>
       {t > 0 ? (
-        <p className="mt-0.5 text-[11px] tabular-nums text-stone-600 dark:text-stone-500">
-          <span className="font-medium text-emerald-700 dark:text-emerald-500">{pc(counts.agree)}%</span>{" "}
-          <span className="font-medium text-rose-700 dark:text-rose-500">{pc(counts.disagree)}%</span>{" "}
+        <p className="mt-0.5 text-[11px] tabular-nums text-stone-600">
+          <span className="font-medium text-emerald-700">{pc(counts.agree)}%</span>{" "}
+          <span className="font-medium text-rose-700">{pc(counts.disagree)}%</span>{" "}
           <span>{pc(counts.pass)}%</span> <span>({t}票)</span>
         </p>
       ) : (
         <p className="mt-0.5 text-[11px] text-stone-500">投票なし</p>
       )}
     </div>
+  );
+}
+
+// 図の点を選ぶ操作はマウス前提になるため、同じ選択をキーボード・支援技術からも
+// 行えるプルダウン。意見は最大180件ほどになり得るのでボタンの一覧ではなく選択式にする
+// (意見コンパスとビースウォームで共用)
+export function StatementSelect({
+  items,
+  selected,
+  onSelect,
+}: {
+  items: { id: number; text: string }[];
+  selected: number | null;
+  onSelect: (id: number | null) => void;
+}) {
+  return (
+    <select
+      aria-label="意見を選ぶ"
+      value={selected ?? ""}
+      onChange={(e) => onSelect(e.target.value === "" ? null : Number(e.target.value))}
+      className="mt-2 w-full rounded-md border border-stone-300 bg-white px-2 py-1 text-xs text-stone-700"
+    >
+      <option value="">意見を選ぶ</option>
+      {items.map((s) => (
+        <option key={s.id} value={s.id}>
+          #{s.id} {s.text.length > 30 ? `${s.text.slice(0, 30)}…` : s.text}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -120,10 +149,12 @@ export function StatementMap({
 
   const byId = new Map(items.map((s) => [s.id, s]));
   const sel = selected !== null ? byId.get(selected) : undefined;
+  // 図に入るためのタブ位置(選択中の点。未選択なら先頭の点)
+  const focusId = selected ?? pts[0]?.id ?? null;
 
   return (
     // 図・選択カード・見方までを1つの白枠に収める(意見マップの囲いと同じ流儀)
-    <div className="rounded-lg border border-stone-300 bg-white p-3 dark:border-stone-700 dark:bg-stone-900">
+    <div className="rounded-lg border border-stone-300 bg-white p-3">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="w-full"
@@ -235,7 +266,12 @@ export function StatementMap({
           );
         })}
         {pts.map((s) => {
-          const dot = (key: string, x: number, y: number, fill: number | string) => (
+          // キーボードのタブ位置は「選択中(未選択なら先頭)の意見」1つだけに置く。
+          // 点は数百個になり得るため、全部をタブ順に入れると図を通り抜けられなくなる。
+          // ほかの意見へはプルダウンで移動する
+          const focusable = s.id === focusId;
+          const toggle = () => setSelected(s.id === selected ? null : s.id);
+          const dot = (key: string, x: number, y: number, fill: number | string, keyboard: boolean) => (
             <circle
               key={key}
               cx={px(x)}
@@ -244,22 +280,38 @@ export function StatementMap({
               fill={typeof fill === "string" ? fill : undefined}
               stroke={s.id === selected ? "#f59e0b" : "none"}
               strokeWidth={0.7}
-              className="cursor-pointer"
+              className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900"
               opacity={selected === null || s.id === selected ? 0.85 : 0.35}
-              onClick={() => setSelected(s.id === selected ? null : s.id)}
+              onClick={toggle}
               onMouseEnter={() => setSelected(s.id)}
+              {...(keyboard
+                ? {
+                    tabIndex: focusable ? 0 : -1,
+                    role: "button" as const,
+                    "aria-label": `意見「${s.text.length > 30 ? `${s.text.slice(0, 30)}…` : s.text}」を表示`,
+                    onFocus: () => setSelected(s.id),
+                    onKeyDown: (e: React.KeyboardEvent<SVGCircleElement>) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggle();
+                      }
+                    },
+                  }
+                : {})}
             />
           );
           // 賛成した人がいる方向に緑、点対称の位置(反対した人がいる方向)に赤の対で描く。
           // 反対で固まったグループの側にも点が現れるので、どの方向に
-          // どんな意見への賛否があるかが読める
+          // どんな意見への賛否があるかが読める。
+          // キーボード操作は対のうち緑の点だけに付け、タブ位置を二重に作らない
           return [
-            dot(`${s.id}-a`, s.x, s.y, "#059669"),
-            dot(`${s.id}-d`, -s.x, -s.y, "#e11d48"),
+            dot(`${s.id}-a`, s.x, s.y, "#059669", true),
+            dot(`${s.id}-d`, -s.x, -s.y, "#e11d48", false),
           ];
         })}
       </svg>
-      <div className="mt-2 min-h-16 rounded-md border border-stone-300 bg-stone-50 px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-800">
+      <StatementSelect items={items} selected={selected} onSelect={setSelected} />
+      <div className="mt-2 min-h-16 rounded-md border border-stone-300 bg-stone-50 px-3 py-2 text-sm">
         {sel ? (
           <>
             <p>{sel.text}</p>

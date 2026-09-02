@@ -34,8 +34,8 @@ export function ShareTheme({
       rel="noopener noreferrer"
       className={
         appearance === "button"
-          ? "inline-flex shrink-0 items-center gap-1.5 rounded-md bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-700 dark:bg-stone-200 dark:text-stone-900 dark:hover:bg-stone-400"
-          : "inline-flex items-center gap-1 text-stone-500 underline hover:text-stone-700 dark:text-stone-600 dark:hover:text-stone-300"
+          ? "inline-flex shrink-0 items-center gap-1.5 rounded-md bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-700"
+          : "inline-flex items-center gap-1 text-stone-500 underline hover:text-stone-700"
       }
     >
       {/* Xのロゴ。外部スクリプト(widgets.js)は使わない方針のためインラインSVGで描く */}

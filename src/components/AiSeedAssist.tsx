@@ -59,23 +59,29 @@ export function AiSeedAssist({
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
+    // 判定はawaitを挟むので、戻ったときには既にアンマウント済みのことがある
+    let cancelled = false;
     (async () => {
       try {
         if (typeof LanguageModel === "undefined") {
-          setStatus("hidden");
+          if (!cancelled) setStatus("hidden");
           return;
         }
         const a = await LanguageModel.availability({
           expectedInputs: [{ type: "text", languages: ["ja"] }],
           expectedOutputs: [{ type: "text", languages: ["ja"] }],
         });
+        if (cancelled) return;
         if (a === "available") setStatus("ready");
         else if (a === "downloadable" || a === "downloading") setStatus("needs-download");
         else setStatus("hidden");
       } catch {
-        setStatus("hidden");
+        if (!cancelled) setStatus("hidden");
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function generate() {
@@ -176,7 +182,7 @@ export function AiSeedAssist({
         type="button"
         onClick={generate}
         disabled={status === "generating" || status === "downloading"}
-        className="rounded-md bg-stone-900 px-5 py-2 text-xs font-medium text-white hover:bg-stone-700 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300"
+        className="rounded-md bg-stone-900 px-5 py-2 text-xs font-medium text-white hover:bg-stone-700 disabled:opacity-50"
       >
         {status === "generating"
           ? "生成中..."
