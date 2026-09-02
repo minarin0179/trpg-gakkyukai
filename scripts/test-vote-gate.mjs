@@ -13,6 +13,8 @@ function check(name, ok, detail = "") {
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 900, height: 1100 } });
+// 投稿前の confirm() ダイアログ(2026-09-01追加)を承諾する。無いとPlaywrightが自動でキャンセルし送信されない
+page.on("dialog", (d) => d.accept());
 
 try {
   await page.goto(`${BASE}/t/${THEME}`, { waitUntil: "load" });
