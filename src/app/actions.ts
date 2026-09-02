@@ -22,6 +22,7 @@ import { findContentViolation } from "@/lib/content-filter";
 import { normalizeTag } from "@/lib/tags";
 import { CONTACT_CATEGORIES } from "@/lib/contact";
 import { notifyAdmin } from "@/lib/notify";
+import { isThemeId, toIntId, REPORT_TARGET_ID_MAX } from "@/lib/validate";
 import {
   THEME_TITLE_MAX,
   THEME_DESCRIPTION_MAX,
@@ -32,7 +33,6 @@ import {
   THEME_SIMILAR_THRESHOLD,
   THEME_SIMILAR_MAX,
   STATEMENT_GATE_VOTES,
-  TAG_MAX_LENGTH,
   TAGS_PER_THEME,
 } from "@/lib/config";
 
@@ -183,13 +183,23 @@ export async function createStatementAction(
   const themeId = String(formData.get("themeId") ?? "");
   const text = String(formData.get("text") ?? "").trim();
 
-  if (!themeId) return { error: "不正なリクエストです" };
+  if (!isThemeId(themeId)) return { error: "不正なリクエストです" };
   if (text.length < 2 || text.length > STATEMENT_MAX) {
     return { error: `意見は2〜${STATEMENT_MAX}文字で入力してください` };
   }
 
   const violation = findContentViolation(text);
   if (violation) return { error: violation };
+
+  // 投稿先テーマの存在と公開状態をここで確認する。
+  // 未確認のままINSERTすると存在しないIDでFK違反になり、
+  // 例外がerror.tsxに落ちてフォームのエラー表示にならないため
+  const [targetTheme] = await db
+    .select({ id: themes.id })
+    .from(themes)
+    .where(and(eq(themes.id, themeId), eq(themes.status, "active")))
+    .limit(1);
+  if (!targetTheme) return { error: "このテーマには投稿できません" };
 
   // 完全一致の重複は常に拒否。レート制限より前に置き、差し戻しで枠を消費させない
   const dup = await db
@@ -320,6 +330,18 @@ export async function submitReportAction(
   if (targetType !== "theme" && targetType !== "statement" && targetType !== "tag") {
     return { error: "不正なリクエストです" };
   }
+  // 対象IDの形式を種別ごとに確認する。管理ページ側は targetId をそのままIDとして
+  // 使うため、ここで正規化しておかないと不正な文字列がキューに混ざる
+  if (targetId.length > REPORT_TARGET_ID_MAX) return { error: "不正なリクエストです" };
+  let normalizedTargetId: string;
+  if (targetType === "theme") {
+    if (!isThemeId(targetId)) return { error: "不正なリクエストです" };
+    normalizedTargetId = targetId;
+  } else {
+    const intId = toIntId(targetId);
+    if (intId === null) return { error: "不正なリクエストです" };
+    normalizedTargetId = String(intId);
+  }
   if (reason.length < 5 || reason.length > 500) {
     return { error: "通報理由は5〜500文字で入力してください" };
   }
@@ -335,7 +357,7 @@ export async function submitReportAction(
 
   await db.insert(reports).values({
     targetType,
-    targetId,
+    targetId: normalizedTargetId,
     reason,
   });
   after(async () => {
@@ -389,6 +411,7 @@ export async function addThemeTagAction(
   themeId: string,
   rawTag: string,
 ): Promise<{ ok: boolean; id?: number; tag?: string; error?: string }> {
+  if (!isThemeId(themeId)) return { ok: false, error: "不正なリクエストです" };
   const { tag, error } = normalizeTag(rawTag);
   if (!tag) return { ok: false, error };
 

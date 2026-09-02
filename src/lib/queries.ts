@@ -29,7 +29,10 @@ import {
   SEARCH_SEMANTIC_MAX,
 } from "./config";
 
-export type ThemesTab = "fresh" | "active" | "mine" | "unread" | "proposed";
+// 実行時にも検証できるよう配列を正とし、型はそこから導出する
+// (クライアント由来のtabをServer Actionの入口で照合するため)
+export const THEME_TABS = ["fresh", "active", "mine", "unread", "proposed"] as const;
+export type ThemesTab = (typeof THEME_TABS)[number];
 
 export type ThemeWithCounts = {
   id: string;

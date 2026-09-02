@@ -11,6 +11,7 @@ import { TAGS_PER_THEME } from "@/lib/config";
 import { recomputeTheme } from "@/lib/recompute";
 import { isAdmin } from "@/lib/admin-auth";
 import { notFound } from "next/navigation";
+import { isTargetType, toIntId } from "@/lib/validate";
 
 type TargetType = "theme" | "statement" | "contact" | "tag";
 
@@ -36,12 +37,15 @@ async function resolveOpenReportsForTarget(
 // 通報対象を削除(status=removed)し、その対象への未対応通報を全て消化する
 export async function removeContentAction(formData: FormData) {
   if (!(await isAdmin())) notFound();
-  const targetType = String(formData.get("targetType")) as TargetType;
+  // フォーム値は型注釈では保証されない。不正値でDB例外を起こす前にここで弾く
+  const targetType = formData.get("targetType");
+  if (!isTargetType(targetType)) notFound();
   const targetId = String(formData.get("targetId"));
   const reason = String(formData.get("removedReason") ?? "通報対応");
 
   if (targetType === "statement") {
-    const sid = Number(targetId);
+    const sid = toIntId(targetId);
+    if (sid === null) notFound();
     const [stmt] = await db
       .select({ themeId: statements.themeId })
       .from(statements)
@@ -58,7 +62,8 @@ export async function removeContentAction(formData: FormData) {
       });
     }
   } else if (targetType === "tag") {
-    const tid = Number(targetId);
+    const tid = toIntId(targetId);
+    if (tid === null) notFound();
     const [row] = await db
       .select({ themeId: themeTags.themeId })
       .from(themeTags)
@@ -85,7 +90,8 @@ export async function removeContentAction(formData: FormData) {
 // 対象(theme/statement)への未対応通報をまとめて却下する(基準外)
 export async function dismissTargetAction(formData: FormData) {
   if (!(await isAdmin())) notFound();
-  const targetType = String(formData.get("targetType")) as TargetType;
+  const targetType = formData.get("targetType");
+  if (!isTargetType(targetType)) notFound();
   const targetId = String(formData.get("targetId"));
   await resolveOpenReportsForTarget(targetType, targetId, "dismissed");
   redirect("/admin");
@@ -94,7 +100,8 @@ export async function dismissTargetAction(formData: FormData) {
 // 単一の通報を対応済みにする(主にお問い合わせ用。contactは対象でまとめない)
 export async function dismissReportAction(formData: FormData) {
   if (!(await isAdmin())) notFound();
-  const reportId = Number(formData.get("reportId"));
+  const reportId = toIntId(formData.get("reportId"));
+  if (reportId === null) notFound();
   await db
     .update(reports)
     .set({ resolvedAt: new Date(), resolution: "dismissed" })
