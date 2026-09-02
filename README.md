@@ -106,18 +106,23 @@ GitHub連携により `main` へのpushで本番へ自動デプロイされる(�
 | `HASH_SALT` | Vercel | cookie ID・IP のハッシュ化ソルト | 変更すると既存ハッシュと不整合 |
 | `CRON_SECRET` | Vercel | Vercel Cron の Authorization ヘッダ | Vercelが自動生成 |
 | `INTERNAL_API_KEY` | 任意 | Python Function を呼ぶ `X-Internal-Key` | 未設定なら `CRON_SECRET` を流用 |
-| `ADMIN_KEY` | Vercel | `/admin` のアクセスキー | 未設定なら管理画面は無効 |
+| `ADMIN_KEY` | Vercel | `/admin` のアクセスキー | 未設定なら管理画面は無効。`/admin/login` から入力する |
 | `TURNSTILE_SECRET_KEY` | Vercel | Turnstile の検証 | ローカルは未設定で公式テストキーに落ちる |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Vercel | Turnstile のサイトキー | ローカルは `1x00000000000000000000AA` |
 | `NEXT_PUBLIC_SITE_URL` | 任意 | canonical・OGP・sitemap の生成 | 未設定なら本番ドメイン |
 | `DISCORD_WEBHOOK_URL` | 任意 | 通報・問い合わせの運営通知 | 未設定なら通知しない |
 | `COMPUTE_URL` | ローカルのみ | クラスタリング計算の呼び出し先 | 本番は同一デプロイの `/api/compute` |
 | `EMBED_URL` | ローカルのみ | 埋め込み生成の呼び出し先 | 本番は同一デプロイの `/api/embed` |
+| `DEV_ALLOWED_ORIGINS` | ローカルのみ・任意 | 開発サーバーへのアクセスを許可するオリジン | カンマ区切り。LAN内の実機確認に使う |
 | `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` | Vercel | Python関数が225MB超のため必須 | Vercelプロジェクト設定側 |
 
 `HASH_SALT` / `TURNSTILE_SECRET_KEY` / `CRON_SECRET` / `ADMIN_KEY` の4つは、
 Vercel上(production/preview)では必須。未設定のまま開発用の既定値で動き続けないよう、
 `src/lib/env.ts` がリクエスト時に例外を投げる(ローカルでは従来どおり既定値に落ちる)。
+
+管理画面へは `/admin/login` でキーを入力してログインする(Cookieは30日で失効し、
+それ以降は再ログインが必要)。移行期間中は従来の `/admin?key=<キー>` でも入れるが、
+URLに鍵が残るため、フォームログインに慣れた時点で廃止する。
 
 ## ライセンス
 

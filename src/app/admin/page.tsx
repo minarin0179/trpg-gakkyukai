@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { desc, inArray, isNull, isNotNull, count } from "drizzle-orm";
 import { db, reports, statements, themes, themeTags } from "@/db";
-import { removeContentAction, dismissTargetAction, dismissReportAction } from "./actions";
+import {
+  removeContentAction,
+  dismissTargetAction,
+  dismissReportAction,
+  adminLogoutAction,
+} from "./actions";
 import { REMOVAL_CRITERIA } from "@/lib/rules";
 import { requireAdmin } from "@/lib/admin-auth";
 
@@ -100,7 +105,14 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold">通報管理</h1>
+      <div className="flex items-baseline justify-between gap-3">
+        <h1 className="text-xl font-bold">通報管理</h1>
+        <form action={adminLogoutAction}>
+          <button type="submit" className="text-xs underline">
+            ログアウト
+          </button>
+        </form>
+      </div>
 
       <div className="flex gap-1 border-b border-stone-400">
         <Link href="/admin" className={tabClass(!resolvedView)}>
@@ -188,7 +200,17 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
 
             {/* 通報理由のアコーディオン(contactは1件なのでそのまま表示) */}
             {isContact ? (
-              <p className="mt-2 whitespace-pre-wrap text-sm text-stone-700">{g.reports[0].reason}</p>
+              <>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-stone-700">
+                  {g.reports[0].reason}
+                </p>
+                {/* 連絡先は専用列。古い行は本文の末尾に入っているのでそのまま読める */}
+                {g.reports[0].replyTo && (
+                  <p className="mt-2 text-xs text-stone-600">
+                    連絡先: <span className="text-stone-800">{g.reports[0].replyTo}</span>
+                  </p>
+                )}
+              </>
             ) : (
               <details className="mt-2">
                 <summary className="cursor-pointer text-xs font-medium text-stone-700">

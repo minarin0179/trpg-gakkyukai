@@ -9,7 +9,9 @@ import { db, themes, statements, reports, themeTags } from "@/db";
 import { normalizeTag } from "@/lib/tags";
 import { TAGS_PER_THEME } from "@/lib/config";
 import { recomputeTheme } from "@/lib/recompute";
-import { isAdmin } from "@/lib/admin-auth";
+import { isAdmin, loginAdmin, logoutAdmin } from "@/lib/admin-auth";
+import { checkAndRecordRate } from "@/lib/rate-limit";
+import { ipActor } from "@/lib/request";
 import { notFound } from "next/navigation";
 import { isTargetType, toIntId } from "@/lib/validate";
 import type { ActionResult } from "@/lib/action-result";
@@ -148,4 +150,19 @@ export async function adminSetTagAction(
     .catch(() => {});
   revalidateTheme(themeId);
   return { ok: true, data: undefined };
+}
+
+// フォームからの管理ログイン。鍵の総当たりを防ぐためIP単位で回数を絞る。
+// 結果はクエリ文字列で返す(このページは他の管理画面と同じく素のformで組む)
+export async function adminLoginAction(formData: FormData) {
+  const key = String(formData.get("key") ?? "");
+  const rate = await checkAndRecordRate("admin_login", await ipActor());
+  if (!rate.ok) redirect("/admin/login?error=rate");
+  if (!(await loginAdmin(key))) redirect("/admin/login?error=1");
+  redirect("/admin");
+}
+
+export async function adminLogoutAction() {
+  await logoutAdmin();
+  redirect("/admin/login");
 }

@@ -79,11 +79,12 @@ export async function submitContactAction(
     return { error: "送信が多すぎます。時間を置いてください" };
   }
 
-  const text = `【${category}】${body}`;
+  // 連絡先は本文に混ぜず専用列に入れる(対応後に本文を残したまま消せるようにする)
   await db.insert(reports).values({
     targetType: "contact",
     targetId: "-",
-    reason: replyTo ? `${text}\n\n[連絡先] ${replyTo}` : text,
+    reason: `【${category}】${body}`,
+    replyTo: replyTo || null,
   });
   after(async () => {
     await notifyAdmin(`📮 新しいお問い合わせが届きました(${category})。管理ページを確認してください`);

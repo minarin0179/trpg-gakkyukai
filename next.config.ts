@@ -1,9 +1,14 @@
 import type { NextConfig } from "next";
 
+// 開発時にLAN内の実機(スマホ等)から http://<WSLのIP>:3000 でアクセスできるようにする。
+// 本番には影響しない(dev専用設定)。IPは環境ごとに変わるので .env.local から読む
+const devAllowedOrigins = (process.env.DEV_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const nextConfig: NextConfig = {
-  // 開発時にLAN内の実機(スマホ等)から http://<WSLのIP>:3000 でアクセスできるようにする。
-  // 本番には影響しない(dev専用設定)
-  allowedDevOrigins: ["192.168.191.79"],
+  allowedDevOrigins: devAllowedOrigins,
   // 最小限のセキュリティヘッダ。投票はワンクリックのため
   // クリックジャッキング対策(frame-ancestors)が主目的。
   // 完全なCSPはTurnstileとNextのインラインscriptの都合で
