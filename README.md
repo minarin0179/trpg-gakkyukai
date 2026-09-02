@@ -113,6 +113,7 @@ GitHub連携により `main` へのpushで本番へ自動デプロイされる(�
 | `DISCORD_WEBHOOK_URL` | 任意 | 通報・問い合わせの運営通知 | 未設定なら通知しない |
 | `COMPUTE_URL` | ローカルのみ | クラスタリング計算の呼び出し先 | 本番は同一デプロイの `/api/compute` |
 | `EMBED_URL` | ローカルのみ | 埋め込み生成の呼び出し先 | 本番は同一デプロイの `/api/embed` |
+| `DEV_ALLOWED_ORIGINS` | ローカルのみ・任意 | 開発サーバーへのアクセスを許可するオリジン | カンマ区切り。LAN内の実機確認に使う |
 | `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` | Vercel | Python関数が225MB超のため必須 | Vercelプロジェクト設定側 |
 
 `HASH_SALT` / `TURNSTILE_SECRET_KEY` / `CRON_SECRET` / `ADMIN_KEY` の4つは、
