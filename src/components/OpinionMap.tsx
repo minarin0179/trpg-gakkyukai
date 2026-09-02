@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { usePersonalizationOptional } from "./ThemePersonalization";
 
 // red-dwarfの計算結果を2D散布図として描画する。
@@ -30,6 +30,30 @@ const PREVIEW_COUNT = 2;
 // 点の半径と、グループ未割当(7票未満)の点の色
 const POINT_R = 4.5;
 const UNCLUSTERED_COLOR = "#a8a29e";
+
+// 描画領域とラベルの寸法。幾何計算のメモ化キーに入れずに済むよう定数にする
+const W = 480;
+const H = 340;
+const HULL_MARGIN = 22;
+const LABEL_W = 90;
+const LABEL_H = 26;
+
+// 点が無いときの安定した空配列(useMemoのキーが毎回変わらないように)
+const EMPTY_PTS: MapPayload["pts"] = [];
+
+type PointLayer = { key: number; color: string; d: string };
+
+// 参加者の点の層。ホバー(activeGroup)では何も変わらないので、
+// 幾何計算の結果ごとメモ化して再描画の対象から外す
+const MapPoints = memo(function MapPoints({ layers }: { layers: PointLayer[] }) {
+  return (
+    <>
+      {layers.map(({ key, color, d }) => (
+        <path key={key} d={d} fill={color} fillOpacity={0.55} pointerEvents="none" />
+      ))}
+    </>
+  );
+});
 
 // 参加者の点をまとめて1つのパス文字列にする。参加者1000人規模だと
 // 1点1要素の <circle> がSSRしたHTMLの大半を占めるため、クラスタごとに
@@ -67,7 +91,77 @@ export function OpinionMap({
   const [activeGroup, setActiveGroup] = useState<number | null>(null);
   const [showAllConsensus, setShowAllConsensus] = useState(false);
 
-  if (!result || result.pts.length === 0) {
+  const pts = result?.pts ?? EMPTY_PTS;
+
+  // 自分の点の配列位置。myIndex は行列インデックス(pidMap の値)で、
+  // participants には欠番があり得るため配列の位置とは一致しない
+  const myPos = useMemo(
+    () => (myIndex !== null ? pts.findIndex((p) => p[3] === myIndex) : -1),
+    [pts, myIndex],
+  );
+
+  // 自分の点のライブ投影。材料が無い古い計算結果では従来どおり
+  // 公式位置(myIndex)のみで表示する。
+  // 参照を安定させ、ホバーだけの再描画で下の幾何計算が走らないようにする
+  const projection = result?.projection;
+  const liveSelf = useMemo(() => projectSelf(projection, myVotes), [projection, myVotes]);
+
+  // 座標変換・重なりのほどき・なわばり・ラベル配置。参加者数に比例する重い処理で、
+  // 変わるのは「点の集合」と「自分の点の位置」だけ。ホバーや合意の開閉では
+  // 変わらないのでメモ化する(描画結果は従来と同一)
+  const geo = useMemo(() => {
+    // ライブ投影中の自分の点が描画範囲の外に出ないよう、範囲計算に含める
+    const { minX, maxX, minY, maxY } = extents(pts, liveSelf, 0.28);
+    const sx = (x: number) => ((x - minX) / (maxX - minX)) * W;
+    const sy = (y: number) => H - ((y - minY) / (maxY - minY)) * H;
+
+    // 同一座標に重なる点は小さな輪状にほどいて全員を可視化する(決定的な配置)
+    const displayPos = spreadCoincident(pts, sx, sy);
+
+    // グループごとにまとめた点のパス。グループ未割当(7票未満)の参加者もグレーで
+    // 描く。隠すと「N人が投票」との数のギャップが不信感につながるため、表示した
+    // うえで下の凡例で意味を説明する
+    const byCluster = new Map<number, Pt[]>();
+    pts.forEach((p, i) => {
+      if (i === myPos) return;
+      const key = p[2] ?? -1;
+      const bucket = byCluster.get(key);
+      if (bucket) bucket.push(displayPos[i]);
+      else byCluster.set(key, [displayPos[i]]);
+    });
+    const pointLayers: PointLayer[] = [...byCluster.entries()].map(([cid, positions]) => ({
+      key: cid,
+      color: cid >= 0 ? GROUP_COLORS[cid % GROUP_COLORS.length] : UNCLUSTERED_COLOR,
+      d: pointsPath(positions),
+    }));
+
+    // クラスタごとの点となわばり(大きいなわばりを下に描く順で返る)
+    const clusters = buildClusters(pts, displayPos, HULL_MARGIN);
+
+    // 近接クラスタのラベルが重ならないよう、縦方向に押しのける
+    const labelPos = placeLabels(clusters, {
+      width: W,
+      labelW: LABEL_W,
+      labelH: LABEL_H,
+      hullMargin: HULL_MARGIN,
+    });
+
+    // 各グループラベルの矩形(「あなた」ラベルの重なり回避に使う)
+    const groupLabelRects = clusters.map(({ cid, members }) => {
+      const pos = labelPos.get(cid)!;
+      const label = `${GROUP_NAMES[cid] ?? cid} · ${members.length}人`;
+      const w = label.length * 7 + 18;
+      return { x0: pos.cx - w / 2, y0: pos.cy - 11, x1: pos.cx + w / 2, y1: pos.cy + 11 };
+    });
+
+    // PCA空間の原点(意見の重心)を通る参考軸
+    const axisX = minX < 0 && maxX > 0 ? sx(0) : null;
+    const axisY = minY < 0 && maxY > 0 ? sy(0) : null;
+
+    return { sx, sy, displayPos, pointLayers, clusters, labelPos, groupLabelRects, axisX, axisY };
+  }, [pts, liveSelf, myPos]);
+
+  if (!result || pts.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-stone-500 p-6 text-center text-sm text-stone-600">
         意見マップはまだありません。もう少し投票が集まると、意見グループの地図がここに描かれます。
@@ -75,16 +169,11 @@ export function OpinionMap({
     );
   }
 
-  const pts = result.pts;
-  // 自分の点の配列位置。myIndex は行列インデックス(pidMap の値)で、
-  // participants には欠番があり得るため配列の位置とは一致しない
-  const myPos = myIndex !== null ? pts.findIndex((p) => p[3] === myIndex) : -1;
+  const { sx, sy, displayPos, pointLayers, clusters, labelPos, groupLabelRects, axisX, axisY } =
+    geo;
+
   // 公式の計算結果における自分のグループ。7票未満などで未クラスタなら null。
   const officialCluster = myPos >= 0 ? pts[myPos][2] : null;
-
-  // 自分の点のライブ投影。材料が無い古い計算結果では従来どおり
-  // 公式位置(myIndex)のみで表示する
-  const liveSelf = projectSelf(result.projection, myVotes);
 
   // 自分のグループの暫定判定(ライブ)。公式ルールに合わせ、
   // マップ参加基準(通常7票)に達するまでは判定しない。
@@ -98,58 +187,6 @@ export function OpinionMap({
   // 表示に使う自分のグループ。点の表示位置と整合させる:
   // ライブ投影で描いているときは暫定判定、公式位置で描いているときは公式の割り当て
   const myCluster = liveSelf !== null ? liveCluster : officialCluster;
-
-  // ライブ投影中の自分の点が描画範囲の外に出ないよう、範囲計算に含める
-  const { minX, maxX, minY, maxY } = extents(pts, liveSelf, 0.28);
-
-  const W = 480;
-  const H = 340;
-  const sx = (x: number) => ((x - minX) / (maxX - minX)) * W;
-  const sy = (y: number) => H - ((y - minY) / (maxY - minY)) * H;
-
-  // 同一座標に重なる点は小さな輪状にほどいて全員を可視化する(決定的な配置)
-  const displayPos = spreadCoincident(pts, sx, sy);
-
-  // グループごとにまとめた点のパス。グループ未割当(7票未満)の参加者もグレーで
-  // 描く。隠すと「N人が投票」との数のギャップが不信感につながるため、表示した
-  // うえで下の凡例で意味を説明する
-  const pointLayers = (() => {
-    const byCluster = new Map<number, Pt[]>();
-    pts.forEach((p, i) => {
-      if (i === myPos) return;
-      const key = p[2] ?? -1;
-      const bucket = byCluster.get(key);
-      if (bucket) bucket.push(displayPos[i]);
-      else byCluster.set(key, [displayPos[i]]);
-    });
-    return [...byCluster.entries()].map(([cid, positions]) => ({
-      key: cid,
-      color: cid >= 0 ? GROUP_COLORS[cid % GROUP_COLORS.length] : UNCLUSTERED_COLOR,
-      d: pointsPath(positions),
-    }));
-  })();
-
-  // クラスタごとの点となわばり(大きいなわばりを下に描く順で返る)
-  const HULL_MARGIN = 22;
-  const clusters = buildClusters(pts, displayPos, HULL_MARGIN);
-
-  // 近接クラスタのラベルが重ならないよう、縦方向に押しのける
-  const LABEL_W = 90;
-  const LABEL_H = 26;
-  const labelPos = placeLabels(clusters, {
-    width: W,
-    labelW: LABEL_W,
-    labelH: LABEL_H,
-    hullMargin: HULL_MARGIN,
-  });
-
-  // 各グループラベルの矩形(「あなた」ラベルの重なり回避に使う)
-  const groupLabelRects = clusters.map(({ cid, members }) => {
-    const pos = labelPos.get(cid)!;
-    const label = `${GROUP_NAMES[cid] ?? cid} · ${members.length}人`;
-    const w = label.length * 7 + 18;
-    return { x0: pos.cx - w / 2, y0: pos.cy - 11, x1: pos.cx + w / 2, y1: pos.cy + 11 };
-  });
 
   // ホバー中グループの特徴的な意見(既定件数)。下のカードと同じ絞り込みルール。
   const activeRepness =
@@ -178,10 +215,6 @@ export function OpinionMap({
     : consensusDisagree.slice(0, PREVIEW_COUNT);
   const hiddenConsensusCount =
     consensusAgree.length - agreeShown.length + (consensusDisagree.length - disagreeShown.length);
-
-  // PCA空間の原点(意見の重心)を通る参考軸
-  const axisX = minX < 0 && maxX > 0 ? sx(0) : null;
-  const axisY = minY < 0 && maxY > 0 ? sy(0) : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -239,9 +272,7 @@ export function OpinionMap({
 
             {/* 参加者の点(自分以外)。自分は最前面に別途描く。
                 グループごとに1つのパスへ畳む(描画順は pts での初出順) */}
-            {pointLayers.map(({ key, color, d }) => (
-              <path key={key} d={d} fill={color} fillOpacity={0.55} pointerEvents="none" />
-            ))}
+            <MapPoints layers={pointLayers} />
 
             {/* グループラベル(近接時は縦にずらして重なりを避ける) */}
             {clusters.map(({ cid, members }) => {

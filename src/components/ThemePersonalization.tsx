@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { PARTICIPANT_COOKIE_MAX_AGE_SEC } from "@/lib/config";
 
 type PersonalizationState = {
@@ -97,7 +105,15 @@ export function ThemePersonalization({
     setVotes((v) => ({ ...v, [statementId]: value }));
   }, []);
 
-  return (
-    <Ctx.Provider value={{ votes, myIndex, loaded, setVote, refresh }}>{children}</Ctx.Provider>
+  // value を毎描画で作り直すと、中身が同じでも全consumerが再描画される。
+  // votes/myIndex/loaded が実際に変わったときだけ配り直す。
+  // 文脈を votes と identity に分ける案は取らない: 3つのconsumer
+  // (VoteDeck・StatementList・OpinionMap)がいずれも votes を読むため、
+  // 分けても再描画は減らない
+  const value = useMemo(
+    () => ({ votes, myIndex, loaded, setVote, refresh }),
+    [votes, myIndex, loaded, setVote, refresh],
   );
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
