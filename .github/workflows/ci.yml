@@ -21,6 +21,23 @@ jobs:
       - run: npm run lint
       # typecheck は next typegen で PageProps 等のルート型を生成してから tsc を回す
       - run: npm run typecheck
+      # 純関数の単体テスト(node --test。Node 24が.tsの型を自前で剥がすので変換不要)
+      - run: npm test
       # next build はここでは走らせない。DB接続(sitemap/ISRのデータ取得)と
       # イラスト素材の外部ダウンロードが必要で、CIでは成立しないため。
       # ビルドの確認は Vercel の preview デプロイに任せる
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      # Vercelのビルダーに合わせて requirements.txt 系で入れる(pyproject/uv.lockは置かない)
+      - run: pip install -r requirements-dev.txt
+      # 埋め込みモデル(api/_model)はリポジトリに同梱しているため、
+      # 外部ダウンロードなしでCIでも埋め込みのテストがそのまま走る
+      - run: python -m pytest tests/python -q

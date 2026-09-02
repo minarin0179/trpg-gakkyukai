@@ -70,6 +70,20 @@ node --env-file=.env.local scripts/seed.mjs
 - `src/app/api/cron/recompute/route.ts` — 日次バックストップ(vercel.json の crons)
 - 参加者は匿名cookie(`gk_pid`)のみで識別。個人情報は保存しない
 
+## テスト
+
+```bash
+npm test        # 純関数の単体テスト (node --test。Node 24が.tsの型を自前で剥がす)
+npm run test:py # Pythonロジックのテスト (pytest)
+```
+
+対象は副作用のない純関数(`src/lib/` と `api/_logic.py` / `api/_embed_logic.py`)。
+DBやNext.jsのレンダリングに依存する層はCIで再現しにくいので、Vercelのpreviewで確認する。
+
+`tests/ts-resolver.mjs` は、拡張子なしの相対importと `@/` エイリアスを
+tsconfigのpathsと同じように解決するためのフック(Node本体のESM解決は
+どちらも扱えないため、テスト実行時だけ補う)。
+
 ## Pythonの依存
 
 VercelのPythonビルダーは `requirements.txt` を見るため、`pyproject.toml` /
