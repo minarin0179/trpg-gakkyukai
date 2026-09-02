@@ -24,16 +24,22 @@ const STATIC_TEXT =
 // Google Fontsから、描画する文字だけをサブセットしたNoto Sans JPを取得する。
 // Satori(next/og)はwoff2を読めないため、非ブラウザUAで truetype を返させる
 // (ブラウザUAだとwoff2、IE系だとformat無しの特殊URLになり解析に失敗する)。
+// 2つのfetchはどちらも Data Cache に載せる(cache: "force-cache")。
+// 画像生成のたびにGoogle Fontsへ2往復するのを避けるため。CSSのURLはタイトルを
+// サブセット指定に含むためテーマごとのキャッシュになるが、そこから引かれるTTFは
+// 収録文字が同じなら共有され、当たりやすい
 async function loadJpFont(text: string): Promise<ArrayBuffer | null> {
   try {
     const api = `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&text=${encodeURIComponent(text)}`;
-    const css = await (await fetch(api, { headers: { "User-Agent": "curl/8.0" } })).text();
+    const css = await (
+      await fetch(api, { headers: { "User-Agent": "curl/8.0" }, cache: "force-cache" })
+    ).text();
     // Satoriが読める truetype/opentype/woff のURLだけを拾う(woff2・format無しは除外)
     const url = css.match(
       /src:\s*url\((https:\/\/[^)]+?)\)\s*format\('(?:truetype|opentype|woff)'\)/,
     )?.[1];
     if (!url) return null;
-    const res = await fetch(url);
+    const res = await fetch(url, { cache: "force-cache" });
     if (!res.ok) return null;
     return await res.arrayBuffer();
   } catch {
