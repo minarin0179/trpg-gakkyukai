@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getTagVocabulary, listThemesForTab, type ThemesTab } from "@/lib/queries";
+import { semanticThemeIds } from "@/lib/search";
 import { getParticipantId } from "@/lib/participant";
 import { PROMOTION_MIN_PARTICIPANTS, THEMES_PAGE_SIZE } from "@/lib/config";
 import { ThemeInfiniteList } from "@/components/ThemeInfiniteList";
@@ -42,7 +43,17 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
   const initialItems = tagFilter
     ? await listThemesForTab("fresh", participantId, 0, undefined, undefined, tagFilter, tagMode)
     : searching
-      ? await listThemesForTab("fresh", participantId, 0, undefined, query)
+      ? // 意味検索はリクエスト依存(レート制限)なのでページ側で解決して渡す
+        await listThemesForTab(
+          "fresh",
+          participantId,
+          0,
+          undefined,
+          query,
+          undefined,
+          undefined,
+          await semanticThemeIds(query),
+        )
       : await listThemesForTab(currentTab, participantId, 0);
 
   const tabClass = (active: boolean) =>
