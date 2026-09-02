@@ -25,27 +25,27 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
     <Link
       prefetch={false}
       href={`/t/${theme.id}`}
-      className="block rounded-lg border border-stone-400 bg-white p-4 transition hover:border-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-600"
+      className="block rounded-lg border border-stone-400 bg-white p-4 transition hover:border-stone-600"
     >
       {/* カード全体がリンクのため、タグはリンクなしの表示のみ(絞り込みはテーマページから) */}
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold">{theme.title}</h3>
         {showNew ? (
-          <span className="shrink-0 rounded-full border border-rose-400 bg-white px-2 py-0.5 text-xs font-medium text-rose-600 dark:bg-stone-900">
+          <span className="shrink-0 rounded-full border border-rose-400 bg-white px-2 py-0.5 text-xs font-medium text-rose-600">
             新着 {theme.unansweredCount}件
           </span>
         ) : showParticipatedDone ? (
-          <span className="shrink-0 rounded-full border border-emerald-400 bg-white px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-stone-900">
+          <span className="shrink-0 rounded-full border border-emerald-400 bg-white px-2 py-0.5 text-xs font-medium text-emerald-700">
             参加済み
           </span>
         ) : showNotParticipated ? (
-          <span className="shrink-0 rounded-full border border-stone-300 bg-white px-2 py-0.5 text-xs font-medium text-stone-500 dark:border-stone-700 dark:bg-stone-900">
+          <span className="shrink-0 rounded-full border border-stone-300 bg-white px-2 py-0.5 text-xs font-medium text-stone-500">
             未参加
           </span>
         ) : null}
       </div>
       {theme.description && (
-        <p className="mt-1 line-clamp-2 text-sm text-stone-700 dark:text-stone-500">
+        <p className="mt-1 line-clamp-2 text-sm text-stone-700">
           {theme.description}
         </p>
       )}
@@ -54,7 +54,7 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
           {theme.tags.slice(0, 4).map((tag) => (
             <span
               key={tag}
-              className="rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs text-stone-600 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400"
+              className="rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs text-stone-600"
             >
               {tag}
             </span>
@@ -64,7 +64,7 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
           )}
         </p>
       )}
-      <p className="mt-2 text-xs text-stone-600 dark:text-stone-500">
+      <p className="mt-2 text-xs text-stone-600">
         {theme.voterCount}人が投票 · 意見{theme.statementCount}件 ·{" "}
         {/* 相対表示は Date.now() 基準。このカードは一覧の続きを読み込むときに
             クライアントでも描かれるため、日付が変わる前後でSSRと文言がずれ得る。

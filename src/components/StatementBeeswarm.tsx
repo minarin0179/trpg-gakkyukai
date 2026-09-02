@@ -60,7 +60,7 @@ export function StatementBeeswarm({ items }: { items: BeeswarmItem[] }) {
 
   return (
     // 図・選択カードを1つの白枠に収める(意見マップ・コンパスの囲いと同じ流儀)
-    <div className="rounded-lg border border-stone-300 bg-white p-3 dark:border-stone-700 dark:bg-stone-900">
+    <div className="rounded-lg border border-stone-300 bg-white p-3">
       <svg
         viewBox={`${-2 * R} ${-2 * R} ${W + 4 * R} ${H + 4 * R}`}
         className="w-full"
@@ -100,12 +100,12 @@ export function StatementBeeswarm({ items }: { items: BeeswarmItem[] }) {
           );
         })}
       </svg>
-      <div className="flex justify-between text-[11px] text-stone-600 dark:text-stone-500">
+      <div className="flex justify-between text-[11px] text-stone-600">
         <span>← 合意的な意見(全員が同じ方向)</span>
         <span>分断的な意見(賛否が二分)→</span>
       </div>
       <StatementSelect items={items} selected={selected} onSelect={setSelected} />
-      <div className="mt-2 min-h-16 rounded-md border border-stone-300 bg-stone-50 px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-800">
+      <div className="mt-2 min-h-16 rounded-md border border-stone-300 bg-stone-50 px-3 py-2 text-sm">
         {sel ? (
           <>
             <p>{sel.text}</p>

@@ -170,7 +170,7 @@ export function ThemeForm({ siteKey, tagVocabulary }: { siteKey: string; tagVoca
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           onBlur={onTitleBlur}
-          className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+          className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm"
         />
         <div aria-live="polite">
           {checking && !liveSimilar?.length && (
@@ -209,7 +209,7 @@ export function ThemeForm({ siteKey, tagVocabulary }: { siteKey: string; tagVoca
           placeholder="背景や論点の補足があれば"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+          className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm"
         />
       </div>
       <div>
@@ -238,23 +238,23 @@ export function ThemeForm({ siteKey, tagVocabulary }: { siteKey: string; tagVoca
           placeholder={"このテーマに賛成する人・反対する人、それぞれの言い分を想像して1行ずつ書く"}
           value={seeds}
           onChange={(e) => setSeeds(e.target.value)}
-          className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+          className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm"
         />
-        <p className="mt-1 text-xs text-stone-600 dark:text-stone-500">
+        <p className="mt-1 text-xs text-stone-600">
           賛成/反対が分かれそうな意見を並べておくと、参加者が投票しやすくなります。
 </p>
       </div>
       <TagPicker vocabulary={tagVocabulary} />
       <div ref={containerRef} />
-      {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
+      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button
         type="submit"
         disabled={pending}
-        className="self-start rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300"
+        className="self-start rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50"
       >
         {pending ? "作成中..." : "テーマを公開する"}
       </button>
-      <p className="text-xs text-stone-600 dark:text-stone-500">
+      <p className="text-xs text-stone-600">
         テーマは審査なしで即時公開されます。まず新着タブに載り、{" "}
         {PROMOTION_MIN_PARTICIPANTS}人が投票すると人気タブにも表示されます。
       </p>

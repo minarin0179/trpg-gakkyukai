@@ -50,7 +50,7 @@ export function VoteDeck({
 
   if (total === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-stone-500 p-6 text-center text-sm text-stone-600 dark:border-stone-700 dark:text-stone-500">
+      <p className="rounded-lg border border-dashed border-stone-500 p-6 text-center text-sm text-stone-600">
         まだ意見がありません。最初の意見を投稿してみてください。
       </p>
     );
@@ -59,7 +59,7 @@ export function VoteDeck({
   // 個人化(自分の投票)の読み込み待ち。誤って投票済みの意見を出さないよう待つ。
   if (deck === null) {
     return (
-      <div className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-500 dark:border-stone-800 dark:bg-stone-900">
+      <div className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-500">
         読み込み中…
       </div>
     );
@@ -89,7 +89,7 @@ export function VoteDeck({
 
   if (done) {
     return (
-      <p className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+      <p className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-700">
         このテーマの意見にはすべて投票しました。
         <br />
         あなたの投票は下の意見マップに反映されます。新しい意見が増えれば、続けて投票できます。
@@ -98,9 +98,9 @@ export function VoteDeck({
   }
 
   return (
-    <div className="rounded-lg border border-stone-400 bg-white p-6 dark:border-stone-800 dark:bg-stone-900">
+    <div className="rounded-lg border border-stone-400 bg-white p-6">
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-xs text-stone-500 dark:text-stone-500">
+        <p className="text-xs text-stone-500">
           意見 {index + 1} / {deck.length}
         </p>
         {/* 通報が完了したらこの意見はパス扱いで次へ(要望#4738)。
@@ -124,7 +124,7 @@ export function VoteDeck({
         <button
           onClick={() => vote(0)}
           disabled={pending}
-          className="rounded-md bg-stone-200 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-300 disabled:opacity-50 dark:bg-stone-700 dark:text-stone-200 dark:hover:bg-stone-600"
+          className="rounded-md bg-stone-200 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-300 disabled:opacity-50"
         >
           パス / わからない
         </button>

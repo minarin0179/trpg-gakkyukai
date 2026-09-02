@@ -69,11 +69,11 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
           defaultValue={query}
           aria-label="テーマを検索"
           placeholder="タイトル・説明文からキーワードで探す"
-          className="min-w-0 flex-1 rounded-md border border-stone-400 bg-white px-3 py-2 text-sm placeholder:text-stone-400 dark:border-stone-700 dark:bg-stone-900"
+          className="min-w-0 flex-1 rounded-md border border-stone-400 bg-white px-3 py-2 text-sm placeholder:text-stone-400"
         />
         <button
           type="submit"
-          className="shrink-0 rounded-md bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300"
+          className="shrink-0 rounded-md bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700"
         >
           検索
         </button>
@@ -83,7 +83,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
           「いずれか(OR)/すべて(かつ)」はトグルで切り替える */}
       {tagVocabulary.length > 0 && (
         <details className="mb-4" open={tagPanelOpen}>
-          <summary className="cursor-pointer text-sm text-stone-600 underline dark:text-stone-400">
+          <summary className="cursor-pointer text-sm text-stone-600 underline">
             タグで絞り込み{selectedTags.length > 0 ? `: ${selectedTags.join("、")}` : ""}
           </summary>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -99,8 +99,8 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
                   href={tagUrl(next, tagMode)}
                   className={`rounded-full border px-2.5 py-0.5 text-xs transition ${
                     active
-                      ? "border-stone-900 bg-stone-900 text-white dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900"
-                      : "border-stone-300 bg-white text-stone-600 hover:border-stone-500 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-400"
+                      ? "border-stone-900 bg-stone-900 text-white"
+                      : "border-stone-300 bg-white text-stone-600 hover:border-stone-500"
                   }`}
                 >
                   {tag}
@@ -108,7 +108,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
               );
             })}
           </div>
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-400">
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-stone-600">
             複数タグの条件:
               {(["or", "and"] as const).map((m) => (
                 <Link
@@ -117,8 +117,8 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
                   href={tagUrl(selectedTags, m)}
                   className={`rounded-md border px-2 py-0.5 transition ${
                     tagMode === m
-                      ? "border-stone-900 bg-stone-900 text-white dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900"
-                      : "border-stone-300 text-stone-600 hover:border-stone-500 dark:border-stone-700 dark:text-stone-400"
+                      ? "border-stone-900 bg-stone-900 text-white"
+                      : "border-stone-300 text-stone-600 hover:border-stone-500"
                   }`}
                 >
                   {m === "or" ? "いずれかを含む" : "すべて含む"}
@@ -130,13 +130,13 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
 
       {tagFilter ? (
         <>
-          <p className="mb-3 flex flex-wrap items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
+          <p className="mb-3 flex flex-wrap items-center gap-2 text-sm text-stone-700">
             <span>
               タグ「{selectedTags.join("」「")}」
               {selectedTags.length >= 2 ? (tagMode === "and" ? "をすべて含む" : "のいずれかを含む") : "の"}
               テーマ
             </span>
-            <Link href="/themes" className="text-xs text-stone-600 underline dark:text-stone-400">
+            <Link href="/themes" className="text-xs text-stone-600 underline">
               絞り込みを解除
             </Link>
           </p>
@@ -157,11 +157,11 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         </>
       ) : searching ? (
         <>
-          <p className="mb-3 flex flex-wrap items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
+          <p className="mb-3 flex flex-wrap items-center gap-2 text-sm text-stone-700">
             <span>
               「{query}」の検索結果
             </span>
-            <Link href="/themes" className="text-xs text-stone-600 underline dark:text-stone-400">
+            <Link href="/themes" className="text-xs text-stone-600 underline">
               検索を解除
             </Link>
           </p>
@@ -204,7 +204,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
                 Linkのプリフェッチを避けて素のアンカーにする */}
             <a
               href="/themes/random"
-              className="ml-auto shrink-0 whitespace-nowrap px-2 py-2 text-xs text-stone-600 underline hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
+              className="ml-auto shrink-0 whitespace-nowrap px-2 py-2 text-xs text-stone-600 underline hover:text-stone-800"
             >
               ランダムに開く
             </a>

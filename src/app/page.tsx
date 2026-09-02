@@ -62,7 +62,7 @@ export default async function HomePage() {
           <br className="sm:hidden" />
           セッションを。
         </h1>
-        <p className="mt-4 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
+        <p className="mt-4 text-sm leading-relaxed text-stone-700">
           <strong>TRPG学級会</strong>は、TRPGにまつわる賛否の分かれる話題に
           「賛成 / 反対 / パス」で投票して、意見の全体像と
           <strong>グループを越えた合意点</strong>を見つける場所です。
@@ -71,18 +71,18 @@ export default async function HomePage() {
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/themes"
-            className="rounded-md bg-stone-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-stone-700 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300"
+            className="rounded-md bg-stone-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-stone-700"
           >
             議論をのぞいてみる
           </Link>
           <Link
             href="/new"
-            className="rounded-md border border-stone-500 px-6 py-2.5 text-sm font-semibold text-stone-700 hover:border-stone-600 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-600"
+            className="rounded-md border border-stone-500 px-6 py-2.5 text-sm font-semibold text-stone-700 hover:border-stone-600"
           >
             テーマを提案する
           </Link>
         </div>
-        <p className="mt-3 text-xs text-stone-600 dark:text-stone-500">
+        <p className="mt-3 text-xs text-stone-600">
           アカウント登録なし・匿名のまま、いますぐ参加できます。
 </p>
       </section>
@@ -97,14 +97,14 @@ export default async function HomePage() {
           {FEATURES.map((f) => (
             <div
               key={f.title}
-              className="reveal rounded-lg border border-stone-400 bg-white p-5 dark:border-stone-800 dark:bg-stone-900"
+              className="reveal rounded-lg border border-stone-400 bg-white p-5"
             >
               <h3 className="mb-2 font-semibold">{f.title}</h3>
-              <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-500">{f.body}</p>
+              <p className="text-sm leading-relaxed text-stone-700">{f.body}</p>
             </div>
           ))}
         </div>
-        <p className="mt-4 text-center text-xs text-stone-600 dark:text-stone-500">
+        <p className="mt-4 text-center text-xs text-stone-600">
           意見マップの計算には、台湾の国民的議論などで実績のある{" "}
           <a href="https://pol.is" className="underline" rel="noopener">
             Polis
@@ -125,14 +125,14 @@ export default async function HomePage() {
           {STEPS.map((s, i) => (
             <li
               key={s.title}
-              className="reveal flex gap-4 rounded-lg border border-stone-400 bg-white p-5 dark:border-stone-800 dark:bg-stone-900"
+              className="reveal flex gap-4 rounded-lg border border-stone-400 bg-white p-5"
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-300 text-sm font-bold text-stone-900">
                 {i + 1}
               </span>
               <div className="flex-1">
                 <h3 className="mb-1 font-semibold">{s.title}</h3>
-                <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-500">{s.body}</p>
+                <p className="text-sm leading-relaxed text-stone-700">{s.body}</p>
               </div>
               <div className="hidden h-20 w-20 shrink-0 items-center justify-center self-center sm:flex">
                 <Image src={s.image} alt="" width={72} height={72} />
@@ -140,8 +140,8 @@ export default async function HomePage() {
             </li>
           ))}
         </ol>
-        <div className="mt-4 rounded-lg border border-dashed border-stone-500 p-4 text-sm leading-relaxed text-stone-700 dark:border-stone-700 dark:text-stone-500">
-          <strong className="text-stone-800 dark:text-stone-200">議題を立てたい人へ:</strong>{" "}
+        <div className="mt-4 rounded-lg border border-dashed border-stone-500 p-4 text-sm leading-relaxed text-stone-700">
+          <strong className="text-stone-800">議題を立てたい人へ:</strong>{" "}
           テーマの提案も登録不要です。審査はなく即時公開され、まず
           <Link href="/themes" className="underline">
             新着タブ
@@ -184,7 +184,7 @@ export default async function HomePage() {
         <h2 className="mb-4 text-center text-xl font-bold">
           このサイトが目指すもの
         </h2>
-        <div className="flex flex-col gap-4 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
+        <div className="flex flex-col gap-4 text-sm leading-relaxed text-stone-700">
           <p>
             TRPG界隈では、セッションの作法、システムの解釈、セーフティツール、
             キャラロストの是非——さまざまな話題で、定期的に論争が起きます。
@@ -209,12 +209,12 @@ export default async function HomePage() {
       </section>
 
       {/* 運営方針 */}
-      <section id="policy" className="reveal scroll-mt-20 rounded-lg border border-stone-400 bg-white p-6 text-center dark:border-stone-800 dark:bg-stone-900">
+      <section id="policy" className="reveal scroll-mt-20 rounded-lg border border-stone-400 bg-white p-6 text-center">
         <div className="mx-auto mb-3 w-fit">
           <Image src="/illustrations/1498.png" alt="握手のイラスト" width={130} height={130} />
         </div>
         <h2 className="mb-2 text-base font-bold">運営の約束</h2>
-        <p className="text-sm leading-relaxed text-stone-700 dark:text-stone-500">
+        <p className="text-sm leading-relaxed text-stone-700">
           「不快・論争的だから」という理由で投稿を消しません。削除するのは実在個人への攻撃・
           個人情報・違法・スパムなど、明文化された基準に該当するものだけです。個人情報は集めません。
           マップの計算も一覧の並び順も公開されている標準の手法をそのまま使い、

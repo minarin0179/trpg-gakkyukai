@@ -52,9 +52,9 @@ export function StatementForm({ themeId }: { themeId: string }) {
           setText(e.target.value);
           if (justPosted) setJustPosted(false);
         }}
-        className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+        className="w-full rounded-md border border-stone-500 bg-white px-3 py-2 text-sm"
       />
-      {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
+      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       {justPosted && (
         // 投稿直後はエンゲージメントが高い。この瞬間に投票へ橋渡しする
         <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
@@ -72,7 +72,7 @@ export function StatementForm({ themeId }: { themeId: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="self-end rounded-md bg-stone-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300"
+        className="self-end rounded-md bg-stone-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50"
       >
         {pending ? "投稿中..." : "意見を投稿"}
       </button>

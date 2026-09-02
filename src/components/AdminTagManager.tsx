@@ -70,7 +70,7 @@ export function AdminTagManager({
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="タイトル・タグで絞り込み(「なし」でタグ未設定のみ)"
-          className="w-80 rounded-md border border-stone-400 bg-white px-3 py-1.5 text-sm dark:border-stone-700 dark:bg-stone-900"
+          className="w-80 rounded-md border border-stone-400 bg-white px-3 py-1.5 text-sm"
         />
         <span className="text-xs text-stone-500">
           {visible.length}/{items.length}件
@@ -82,7 +82,7 @@ export function AdminTagManager({
         {visible.map((t) => (
           <li
             key={t.id}
-            className="rounded-md border border-stone-300 bg-white px-3 py-2 dark:border-stone-800 dark:bg-stone-900"
+            className="rounded-md border border-stone-300 bg-white px-3 py-2"
           >
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <a
@@ -98,7 +98,7 @@ export function AdminTagManager({
                 {t.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-0.5 rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300"
+                    className="inline-flex items-center gap-0.5 rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs text-stone-700"
                   >
                     {tag}
                     <button
@@ -116,14 +116,14 @@ export function AdminTagManager({
                     setActiveId(activeId === t.id ? null : t.id);
                     setFreeInput("");
                   }}
-                  className="rounded-full border border-dashed border-stone-400 px-1.5 py-0.5 text-xs text-stone-500 hover:border-stone-600 dark:border-stone-600"
+                  className="rounded-full border border-dashed border-stone-400 px-1.5 py-0.5 text-xs text-stone-500 hover:border-stone-600"
                 >
                   {activeId === t.id ? "閉じる" : "+"}
                 </button>
               </span>
             </div>
             {activeId === t.id && (
-              <div className="mt-2 border-t border-stone-200 pt-2 dark:border-stone-800">
+              <div className="mt-2 border-t border-stone-200 pt-2">
                 <div className="flex flex-wrap gap-1">
                   {vocabulary
                     .filter((v) => !t.tags.some((x) => x.toLowerCase() === v.toLowerCase()))
@@ -132,7 +132,7 @@ export function AdminTagManager({
                         key={v}
                         onClick={() => mutate(t.id, v, "add")}
                         disabled={busy}
-                        className="rounded-full border border-stone-300 bg-white px-2 py-0.5 text-xs text-stone-600 hover:border-stone-500 disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-400"
+                        className="rounded-full border border-stone-300 bg-white px-2 py-0.5 text-xs text-stone-600 hover:border-stone-500 disabled:opacity-50"
                       >
                         {v}
                       </button>
@@ -148,7 +148,7 @@ export function AdminTagManager({
                       }
                     }}
                     placeholder="新しいタグ(Enterで追加)"
-                    className="w-40 rounded-md border border-stone-400 bg-white px-2 py-0.5 text-xs dark:border-stone-700 dark:bg-stone-900"
+                    className="w-40 rounded-md border border-stone-400 bg-white px-2 py-0.5 text-xs"
                   />
                 </div>
               </div>

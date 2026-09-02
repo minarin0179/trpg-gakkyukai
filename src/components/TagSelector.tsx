@@ -64,8 +64,8 @@ export function TagSelector({
               aria-pressed={on}
               className={`rounded-full border px-2.5 py-0.5 text-xs transition disabled:opacity-60 ${
                 on
-                  ? "border-stone-900 bg-stone-900 text-white dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900"
-                  : "border-stone-300 bg-white text-stone-600 hover:border-stone-500 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-400"
+                  ? "border-stone-900 bg-stone-900 text-white"
+                  : "border-stone-300 bg-white text-stone-600 hover:border-stone-500"
               }`}
             >
               {tag}
@@ -89,14 +89,14 @@ export function TagSelector({
               addFromInput();
             }
           }}
-          className="w-52 rounded-md border border-stone-400 bg-white px-2 py-1 text-xs disabled:bg-stone-100 dark:border-stone-700 dark:bg-stone-900"
+          className="w-52 rounded-md border border-stone-400 bg-white px-2 py-1 text-xs disabled:bg-stone-100"
         />
         {q.length > 0 && !exactExists && !full && (
           <button
             type="button"
             disabled={pending}
             onClick={addFromInput}
-            className="rounded-md border border-stone-400 px-2 py-1 text-xs text-stone-700 disabled:opacity-50 dark:border-stone-700 dark:text-stone-300"
+            className="rounded-md border border-stone-400 px-2 py-1 text-xs text-stone-700 disabled:opacity-50"
           >
             「{filter.normalize("NFKC").trim()}」を追加
           </button>
