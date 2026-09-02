@@ -3,7 +3,9 @@ import { eq } from "drizzle-orm";
 import { db, themes } from "@/db";
 import { SITE_URL } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
+// 1時間ごとの再生成。テーマ一覧の反映が最大1時間遅れても実害はなく、
+// クローラの取得ごとに関数実行しない
+export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const active = await db
