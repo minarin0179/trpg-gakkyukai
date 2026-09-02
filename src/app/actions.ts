@@ -110,6 +110,22 @@ export async function createThemeAction(
     if (violation) return { error: violation };
   }
 
+  // bot判定とレート制限を埋め込み計算(Python関数)より前に置き、
+  // 無償で計算コストを発生させない
+  if (!(await verifyTurnstile(typeof turnstileToken === "string" ? turnstileToken : null))) {
+    return { error: "bot対策の確認に失敗しました。再読み込みして試してください" };
+  }
+
+  const participantId = await getOrCreateParticipantId();
+  const ip = await clientIp();
+  // cookieを消しても IP 側の制限が残るよう、両方で数える
+  for (const actor of [actorHash(participantId), dailyActorHash(`ip:${ip}`)]) {
+    const rate = await checkAndRecordRate("theme_create", actor);
+    if (!rate.ok) {
+      return { error: "テーマ提案は1日3件までです。明日また提案してください" };
+    }
+  }
+
   // 同一タイトルの重複は常に拒否(実データで同名テーマの並立が起きたため)
   const exact = await db
     .select({ id: themes.id })
@@ -125,20 +141,6 @@ export async function createThemeAction(
   // (そこまで入力した時点で投稿意思は固まっており、止める意味が薄いため)。
   // 埋め込みは類似検出・意味検索用にテーマへ保存する
   const titleVec = (await embedTexts([title]))?.[0] ?? null;
-
-  if (!(await verifyTurnstile(typeof turnstileToken === "string" ? turnstileToken : null))) {
-    return { error: "bot対策の確認に失敗しました。再読み込みして試してください" };
-  }
-
-  const participantId = await getOrCreateParticipantId();
-  const ip = await clientIp();
-  // cookieを消しても IP 側の制限が残るよう、両方で数える
-  for (const actor of [actorHash(participantId), dailyActorHash(`ip:${ip}`)]) {
-    const rate = await checkAndRecordRate("theme_create", actor);
-    if (!rate.ok) {
-      return { error: "テーマ提案は1日3件までです。明日また提案してください" };
-    }
-  }
 
   const id = nanoid(12);
   await db.insert(themes).values({
