@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { desc, inArray, isNull, isNotNull, count } from "drizzle-orm";
 import { db, reports, statements, themes, themeTags } from "@/db";
-import { removeContentAction, dismissTargetAction, dismissReportAction } from "./actions";
+import {
+  removeContentAction,
+  dismissTargetAction,
+  dismissReportAction,
+  adminLogoutAction,
+} from "./actions";
 import { REMOVAL_CRITERIA } from "@/lib/rules";
 import { requireAdmin } from "@/lib/admin-auth";
 
@@ -100,7 +105,14 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold">通報管理</h1>
+      <div className="flex items-baseline justify-between gap-3">
+        <h1 className="text-xl font-bold">通報管理</h1>
+        <form action={adminLogoutAction}>
+          <button type="submit" className="text-xs underline">
+            ログアウト
+          </button>
+        </form>
+      </div>
 
       <div className="flex gap-1 border-b border-stone-400">
         <Link href="/admin" className={tabClass(!resolvedView)}>

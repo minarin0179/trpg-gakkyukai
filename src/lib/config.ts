@@ -102,6 +102,9 @@ export const RATE_LIMITS = {
   // タグ付与(cookie/IPの二重計数)
   tag_add: { max: 30, windowMs: DAY_MS },
   tag_add_ip: { max: 100, windowMs: DAY_MS },
+  // 管理画面のログイン試行(IP単位)。鍵の総当たりを止めるのが目的で、
+  // 運営自身の打ち直しには十分足りる回数にしてある
+  admin_login: { max: 20, windowMs: DAY_MS },
 } as const;
 
 // DBのkind列の enum もこの表から導出する(schema.ts)
