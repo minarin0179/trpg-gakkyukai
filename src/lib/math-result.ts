@@ -79,3 +79,45 @@ export function toPublicMathResult(raw: unknown): PublicMathResult | null {
   delete copy.reason;
   return copy;
 }
+
+// 意見マップ上の1点。参加者1人ぶんの [x, y, cluster, id]。
+// id(=行列インデックス)を落とせないのは、計算結果の participants に
+// 欠番があり得る(可視の意見に1票も無い参加者が抜ける)ため。
+// /api/t/[id]/me が返す myIndex は pidMap の値なので、配列の位置とは一致しない
+export type MapPt = [x: number, y: number, cluster: number | null, id: number];
+
+// 意見マップがクライアントで実際に読む項目だけに絞った形。
+// PublicMathResult をそのまま渡すと、参加者1人あたり
+// {"id":..,"x":..,"y":..,"cluster":..} のオブジェクトが RSC ペイロードにも
+// SSR された HTML にも載り、参加者1000人規模のテーマではここが最大の転送量になる。
+// タプル化でキー名の反復を無くす(意味の対応は MapPt の定義が唯一の真実)
+export type MapPayload = {
+  groupCount: number;
+  // マップに載るのに必要な最低投票数(自分のグループの暫定判定に使う)
+  thresholdUsed?: number;
+  pts: MapPt[];
+  consensus?: MathResultJson["consensus"];
+  repness?: MathResultJson["repness"];
+  projection?: MathResultJson["projection"];
+  statementPriorities?: MathResultJson["statement_priorities"];
+};
+
+// クライアントへ渡す最小形へ変換する。participants の順序はそのまま保つこと
+// (同一座標のほどき方が配列順に依存する決定的な配置のため)
+export function toMapPayload(pub: PublicMathResult): MapPayload {
+  return {
+    groupCount: pub.group_count ?? 0,
+    thresholdUsed: pub.threshold_used,
+    // status !== "ok" のときは participants が無く、空配列=マップを描かない
+    pts: (pub.status === "ok" ? (pub.participants ?? []) : []).map((p) => [
+      p.x,
+      p.y,
+      p.cluster,
+      p.id,
+    ]),
+    consensus: pub.consensus,
+    repness: pub.repness,
+    projection: pub.projection,
+    statementPriorities: pub.statement_priorities,
+  };
+}

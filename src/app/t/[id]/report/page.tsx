@@ -11,7 +11,7 @@ import {
   type GroupVoteCounts,
 } from "@/lib/queries";
 import { OpinionMap } from "@/components/OpinionMap";
-import { toPublicMathResult } from "@/lib/math-result";
+import { toMapPayload, toPublicMathResult } from "@/lib/math-result";
 import { MAP_MIN_VOTES, CHART_MIN_ITEMS } from "@/lib/config";
 import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
 import { groupsLackingAgreeRepness } from "@/lib/repness";
@@ -284,7 +284,11 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
             title="意見マップ"
             note="テーマページの意見マップと同じもので、点はひとりの参加者。投票の傾向が近い人ほど近くに置かれます。このページは全員に同じ内容のレポートのため、自分の位置は表示されません。"
           />
-          <OpinionMap result={publicResult} statementTexts={statementTexts} variant="report" />
+          <OpinionMap
+            result={toMapPayload(publicResult)}
+            statementTexts={statementTexts}
+            variant="report"
+          />
         </section>
       )}
 

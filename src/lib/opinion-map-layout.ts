@@ -1,12 +1,16 @@
 // 意見マップ(散布図)の幾何計算。Reactに依存しない純関数として切り出し、
 // OpinionMap.tsx は状態・ホバー・SVGの組み立てに専念できるようにする。
 // 描画結果が変わらないことが前提なので、演算・反復順・同点時の扱いは変えないこと
-import type { PublicMathResult } from "./math-result";
+import type { MapPayload, MapPt } from "./math-result";
 
 export type Pt = { x: number; y: number };
 
-// 計算結果に入っている参加者の点(idは行列インデックス)
-export type MapPoint = NonNullable<PublicMathResult["participants"]>[number];
+// 参加者の点は [x, y, cluster, id] のタプル(定義は math-result.ts)。
+// 位置で読む箇所は X/Y/CLUSTER の定数だけを使い、生の添字を書かない
+export type { MapPt };
+const X = 0;
+const Y = 1;
+const CLUSTER = 2;
 
 // クラスタ(意見グループ)ごとの表示情報。membersは画面座標の点
 export type Cluster = { cid: number; members: Pt[]; hull: Pt[]; cx: number; cy: number };
@@ -25,7 +29,7 @@ export type SelfLabel = LabelBox & {
 // 成分と平均)に自分の投票を掛けるだけなので、再計算やリロードを待たずに
 // 投票のたびに自分の点がすぐ動く。材料が無い古い計算結果では null を返す
 export function projectSelf(
-  projection: PublicMathResult["projection"],
+  projection: MapPayload["projection"],
   myVotes: Record<number, number>,
 ): Pt | null {
   const proj = projection;
@@ -52,13 +56,13 @@ export function projectSelf(
 // (=「最も近い重心」への割り当て)なので、公開されている各グループの
 // 重心に対して同じ規則を適用すれば、公式の境界の引き方を再現できる。
 // 呼び出し側で「マップ参加基準(通常7票)に達したか」を確かめてから使う
-export function nearestCluster(pts: MapPoint[], self: Pt): number | null {
+export function nearestCluster(pts: MapPt[], self: Pt): number | null {
   let nearest: number | null = null;
   const acc = new Map<number, { x: number; y: number; n: number }>();
   for (const p of pts) {
-    if (p.cluster === null) continue;
-    const a = acc.get(p.cluster) ?? { x: 0, y: 0, n: 0 };
-    acc.set(p.cluster, { x: a.x + p.x, y: a.y + p.y, n: a.n + 1 });
+    if (p[CLUSTER] === null) continue;
+    const a = acc.get(p[CLUSTER]) ?? { x: 0, y: 0, n: 0 };
+    acc.set(p[CLUSTER], { x: a.x + p[X], y: a.y + p[Y], n: a.n + 1 });
   }
   let best = Infinity;
   for (const [cid, a] of acc) {
@@ -74,7 +78,7 @@ export function nearestCluster(pts: MapPoint[], self: Pt): number | null {
 // 描画範囲(余白込み)。ライブ投影中の自分の点も範囲に含める。
 // 参加者数が多いと Math.min(...xs) は引数の数の上限で落ちるため、走査で求める
 export function extents(
-  pts: MapPoint[],
+  pts: MapPt[],
   self: Pt | null,
   pad: number,
 ): { minX: number; maxX: number; minY: number; maxY: number } {
@@ -88,7 +92,7 @@ export function extents(
     if (y < lowY) lowY = y;
     if (y > highY) highY = y;
   };
-  for (const p of pts) consider(p.x, p.y);
+  for (const p of pts) consider(p[X], p[Y]);
   if (self) consider(self.x, self.y);
   const spanX = Math.max(highX - lowX, 0.01);
   const spanY = Math.max(highY - lowY, 0.01);
@@ -103,29 +107,31 @@ export function extents(
 // 完全に同じ投票をした参加者は数学的に同一座標になり、点が1つにしか見えない。
 // 同一座標の点は小さな輪状にほどいて全員を可視化する(半透明の重なりが密度表現になる)。
 // 乱数でなくインデックス順の決定的な配置にし、再描画で位置が揺れないようにする
+// 戻り値は pts と同じ並びの配列(添字=参加者の配列位置)。
+// idは欠番があり得るのでキーには使わない
 export function spreadCoincident(
-  pts: MapPoint[],
+  pts: MapPt[],
   sx: (x: number) => number,
   sy: (y: number) => number,
-): Map<number, Pt> {
-  const displayPos = new Map<number, Pt>();
-  const byPos = new Map<string, MapPoint[]>();
-  for (const p of pts) {
-    const key = `${p.x.toFixed(4)},${p.y.toFixed(4)}`;
+): Pt[] {
+  const displayPos: Pt[] = new Array(pts.length);
+  const byPos = new Map<string, number[]>();
+  pts.forEach((p, i) => {
+    const key = `${p[X].toFixed(4)},${p[Y].toFixed(4)}`;
     if (!byPos.has(key)) byPos.set(key, []);
-    byPos.get(key)!.push(p);
-  }
+    byPos.get(key)!.push(i);
+  });
   for (const group of byPos.values()) {
-    const gx = sx(group[0].x);
-    const gy = sy(group[0].y);
+    const gx = sx(pts[group[0]][X]);
+    const gy = sy(pts[group[0]][Y]);
     if (group.length === 1) {
-      displayPos.set(group[0].id, { x: gx, y: gy });
+      displayPos[group[0]] = { x: gx, y: gy };
       continue;
     }
     const ringR = Math.min(3.5 + group.length, 10);
-    group.forEach((p, i) => {
+    group.forEach((idx, i) => {
       const ang = (2 * Math.PI * i) / group.length;
-      displayPos.set(p.id, { x: gx + ringR * Math.cos(ang), y: gy + ringR * Math.sin(ang) });
+      displayPos[idx] = { x: gx + ringR * Math.cos(ang), y: gy + ringR * Math.sin(ang) };
     });
   }
   return displayPos;
@@ -163,16 +169,16 @@ export function expandHull(hull: Pt[], padding: number): Pt[] {
 
 // クラスタごとの点となわばり。大きいなわばりを下に描くため人数の降順で返す
 export function buildClusters(
-  pts: MapPoint[],
-  displayPos: Map<number, Pt>,
+  pts: MapPt[],
+  displayPos: Pt[],
   hullMargin: number,
 ): Cluster[] {
   const clusterMap = new Map<number, Pt[]>();
-  for (const p of pts) {
-    if (p.cluster === null) continue;
-    if (!clusterMap.has(p.cluster)) clusterMap.set(p.cluster, []);
-    clusterMap.get(p.cluster)!.push(displayPos.get(p.id)!);
-  }
+  pts.forEach((p, i) => {
+    if (p[CLUSTER] === null) return;
+    if (!clusterMap.has(p[CLUSTER])) clusterMap.set(p[CLUSTER], []);
+    clusterMap.get(p[CLUSTER])!.push(displayPos[i]);
+  });
   return [...clusterMap.entries()]
     .map(([cid, members]) => {
       const hull = expandHull(convexHull(members), hullMargin);

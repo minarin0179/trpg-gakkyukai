@@ -6,7 +6,7 @@ import { StatementMap } from "@/components/StatementMap";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
 import { OpinionMap } from "@/components/OpinionMap";
-import { toPublicMathResult } from "@/lib/math-result";
+import { toMapPayload, toPublicMathResult } from "@/lib/math-result";
 import { MAP_MIN_VOTES, CHART_MIN_ITEMS } from "@/lib/config";
 import { StatementList } from "@/components/StatementList";
 import { ReportButton } from "@/components/ReportButton";
@@ -82,6 +82,9 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない。
   // 自分の点の位置(myIndex)は /api/t/[id]/me 側で pidMap を使って解決する。
   const publicResult = toPublicMathResult(mathRow?.result ?? null);
+  // クライアントへは意見マップが実際に読む項目だけを渡す。参加者の点は
+  // タプル化してキー名の反復を落とす(参加者1000人規模ではここが転送量の最大要因)
+  const mapPayload = publicResult ? toMapPayload(publicResult) : null;
 
   const items = allStatements.map((s) => ({ id: s.id, text: s.text }));
   const statementTexts: Record<number, string> = {};
@@ -108,10 +111,10 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
 
   // 「特に賛成する意見」が相対的に少ないグループ。投稿欄の上で代弁を呼びかける
   const lackingAgreeGroups =
-    publicResult?.repness && (publicResult.group_count ?? 0) >= 2
+    mapPayload?.repness && mapPayload.groupCount >= 2
       ? groupsLackingAgreeRepness(
-          publicResult.repness,
-          publicResult.group_count ?? 0,
+          mapPayload.repness,
+          mapPayload.groupCount,
           (sid) => sid in statementTexts,
         )
       : [];
@@ -149,7 +152,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
           <VoteDeck
             themeId={theme.id}
             statements={items}
-            priorities={publicResult?.statement_priorities ?? null}
+            priorities={mapPayload?.statementPriorities ?? null}
           />
         </section>
 
@@ -186,7 +189,7 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
         <section id="map" className="scroll-mt-20">
           <h3 className="mb-2 text-sm font-semibold text-stone-700 dark:text-stone-300">意見マップ</h3>
           <OpinionMap
-            result={publicResult}
+            result={mapPayload}
             statementTexts={statementTexts}
             afterMap={
               compassItems.length >= CHART_MIN_ITEMS && compassBreakdown ? (

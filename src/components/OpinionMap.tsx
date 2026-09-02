@@ -9,10 +9,11 @@ import { usePersonalizationOptional } from "./ThemePersonalization";
 
 import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
 // 計算結果の型はサーバー側と共有する(math-result.ts が唯一の定義)
-import type { PublicMathResult } from "@/lib/math-result";
+import type { MapPayload } from "@/lib/math-result";
 import { MAP_MIN_VOTES } from "@/lib/config";
 // 座標・凸包・ラベル配置の計算は純関数として切り出してある
 import {
+  type Pt,
   buildClusters,
   extents,
   nearestCluster,
@@ -26,13 +27,29 @@ import {
 // 絞り込みのルールを全体で揃え、続きは「すべて見る」で展開する。
 const PREVIEW_COUNT = 2;
 
+// 点の半径と、グループ未割当(7票未満)の点の色
+const POINT_R = 4.5;
+const UNCLUSTERED_COLOR = "#a8a29e";
+
+// 参加者の点をまとめて1つのパス文字列にする。参加者1000人規模だと
+// 1点1要素の <circle> がSSRしたHTMLの大半を占めるため、クラスタごとに
+// 1つの <path> へ畳む(点1つ=半円の円弧2つのサブパス)。
+// 座標は小数2桁に丸める(480×340のviewBoxでは表示上の差は出ない)
+function pointsPath(positions: Pt[]): string {
+  let d = "";
+  for (const pos of positions) {
+    d += `M${pos.x.toFixed(2)} ${pos.y.toFixed(2)}m${-POINT_R} 0a${POINT_R} ${POINT_R} 0 1 0 ${POINT_R * 2} 0a${POINT_R} ${POINT_R} 0 1 0 ${-POINT_R * 2} 0`;
+  }
+  return d;
+}
+
 export function OpinionMap({
   result,
   statementTexts,
   variant = "theme",
   afterMap,
 }: {
-  result: PublicMathResult | null;
+  result: MapPayload | null;
   statementTexts: Record<number, string>;
   // "report" は結果ページ用の客観表示: 自分の点を出さず、合意・グループのカード
   // (結果ページでは独立したセクションが担う)も出さない
@@ -50,7 +67,7 @@ export function OpinionMap({
   const [activeGroup, setActiveGroup] = useState<number | null>(null);
   const [showAllConsensus, setShowAllConsensus] = useState(false);
 
-  if (!result || result.status !== "ok" || !result.participants?.length) {
+  if (!result || result.pts.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-stone-500 p-6 text-center text-sm text-stone-600">
         意見マップはまだありません。もう少し投票が集まると、意見グループの地図がここに描かれます。
@@ -58,10 +75,12 @@ export function OpinionMap({
     );
   }
 
-  const pts = result.participants;
+  const pts = result.pts;
+  // 自分の点の配列位置。myIndex は行列インデックス(pidMap の値)で、
+  // participants には欠番があり得るため配列の位置とは一致しない
+  const myPos = myIndex !== null ? pts.findIndex((p) => p[3] === myIndex) : -1;
   // 公式の計算結果における自分のグループ。7票未満などで未クラスタなら null。
-  const officialCluster =
-    myIndex !== null ? (pts.find((p) => p.id === myIndex)?.cluster ?? null) : null;
+  const officialCluster = myPos >= 0 ? pts[myPos][2] : null;
 
   // 自分の点のライブ投影。材料が無い古い計算結果では従来どおり
   // 公式位置(myIndex)のみで表示する
@@ -70,7 +89,7 @@ export function OpinionMap({
   // 自分のグループの暫定判定(ライブ)。公式ルールに合わせ、
   // マップ参加基準(通常7票)に達するまでは判定しない。
   // 30分ごとの本計算が来たら公式の割り当てで上書きされる暫定表示
-  const clusterThreshold = result.threshold_used ?? MAP_MIN_VOTES;
+  const clusterThreshold = result.thresholdUsed ?? MAP_MIN_VOTES;
   const liveCluster =
     liveSelf !== null && Object.keys(myVotes).length >= clusterThreshold
       ? nearestCluster(pts, liveSelf)
@@ -90,6 +109,25 @@ export function OpinionMap({
 
   // 同一座標に重なる点は小さな輪状にほどいて全員を可視化する(決定的な配置)
   const displayPos = spreadCoincident(pts, sx, sy);
+
+  // グループごとにまとめた点のパス。グループ未割当(7票未満)の参加者もグレーで
+  // 描く。隠すと「N人が投票」との数のギャップが不信感につながるため、表示した
+  // うえで下の凡例で意味を説明する
+  const pointLayers = (() => {
+    const byCluster = new Map<number, Pt[]>();
+    pts.forEach((p, i) => {
+      if (i === myPos) return;
+      const key = p[2] ?? -1;
+      const bucket = byCluster.get(key);
+      if (bucket) bucket.push(displayPos[i]);
+      else byCluster.set(key, [displayPos[i]]);
+    });
+    return [...byCluster.entries()].map(([cid, positions]) => ({
+      key: cid,
+      color: cid >= 0 ? GROUP_COLORS[cid % GROUP_COLORS.length] : UNCLUSTERED_COLOR,
+      d: pointsPath(positions),
+    }));
+  })();
 
   // クラスタごとの点となわばり(大きいなわばりを下に描く順で返る)
   const HULL_MARGIN = 22;
@@ -199,25 +237,11 @@ export function OpinionMap({
               );
             })}
 
-            {/* 参加者の点(自分以外)。自分は最前面に別途描く */}
-            {pts.map((p) => {
-              if (myIndex !== null && p.id === myIndex) return null;
-              // グループ未割当(7票未満)の参加者もグレーで描く。隠すと「N人が投票」との
-              // 数のギャップが不信感につながるため、表示したうえで下の凡例で意味を説明する
-              const color = p.cluster !== null ? GROUP_COLORS[p.cluster % GROUP_COLORS.length] : "#a8a29e";
-              const dp = displayPos.get(p.id)!;
-              return (
-                <circle
-                  key={p.id}
-                  cx={dp.x}
-                  cy={dp.y}
-                  r={4.5}
-                  fill={color}
-                  fillOpacity={0.55}
-                  pointerEvents="none"
-                />
-              );
-            })}
+            {/* 参加者の点(自分以外)。自分は最前面に別途描く。
+                グループごとに1つのパスへ畳む(描画順は pts での初出順) */}
+            {pointLayers.map(({ key, color, d }) => (
+              <path key={key} d={d} fill={color} fillOpacity={0.55} pointerEvents="none" />
+            ))}
 
             {/* グループラベル(近接時は縦にずらして重なりを避ける) */}
             {clusters.map(({ cid, members }) => {
@@ -245,18 +269,14 @@ export function OpinionMap({
 
             {/* 自分の点とラベルは最前面に描き、なわばりやグループラベルに隠れないようにする。
                 位置はライブ投影があればそれを優先(投票のたびに動く)、無ければ公式位置 */}
-            {(liveSelf !== null || myIndex !== null) &&
+            {(liveSelf !== null || myPos >= 0) &&
               (() => {
-                const me = myIndex !== null ? pts.find((p) => p.id === myIndex) : undefined;
+                const myDisplay = myPos >= 0 ? displayPos[myPos] : null;
                 // 色は myCluster(表示位置と整合するグループ判定)に従う。
                 // 閾値未満・判定不能の間はグレー
                 const color =
-                  myCluster != null ? GROUP_COLORS[myCluster % GROUP_COLORS.length] : "#a8a29e";
-                const pos = liveSelf
-                  ? { x: sx(liveSelf.x), y: sy(liveSelf.y) }
-                  : me
-                    ? displayPos.get(me.id)!
-                    : null;
+                  myCluster != null ? GROUP_COLORS[myCluster % GROUP_COLORS.length] : UNCLUSTERED_COLOR;
+                const pos = liveSelf ? { x: sx(liveSelf.x), y: sy(liveSelf.y) } : myDisplay;
                 if (!pos) return null;
                 const { x: mx, y: my } = pos;
                 const chosen = placeSelfLabel(mx, my, groupLabelRects, W, H);

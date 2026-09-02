@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isMathResultJson, toPublicMathResult } from "@/lib/math-result";
+import { isMathResultJson, toMapPayload, toPublicMathResult } from "@/lib/math-result";
 
 const good = {
   status: "ok",
@@ -41,4 +41,27 @@ test("toPublicMathResult は pidMap と reason を落とす", () => {
 
 test("形が想定外なら null(=マップを出さない)", () => {
   assert.equal(toPublicMathResult({ status: "broken" }), null);
+});
+
+test("toMapPayload は点をタプル化し、並びと欠番idを保つ", () => {
+  const pub = toPublicMathResult({
+    ...good,
+    // participants には欠番があり得る(可視の意見に1票も無い参加者は落ちる)。
+    // /me の myIndex は行列インデックスなので、idを落とすと自分の点を見失う
+    participants: [
+      { id: 0, x: 0.1, y: -0.2, cluster: 0 },
+      { id: 2, x: 0.3, y: 0.4, cluster: null },
+    ],
+  })!;
+  const payload = toMapPayload(pub);
+  assert.deepEqual(payload.pts, [
+    [0.1, -0.2, 0, 0],
+    [0.3, 0.4, null, 2],
+  ]);
+  assert.equal(payload.groupCount, 2);
+  assert.deepEqual(payload.statementPriorities, { "3": 5.06 });
+});
+
+test("status が ok でなければ点は空(=マップを描かない)", () => {
+  assert.deepEqual(toMapPayload({ status: "insufficient" }).pts, []);
 });
