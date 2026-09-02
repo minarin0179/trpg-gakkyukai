@@ -65,7 +65,11 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
         </p>
       )}
       <p className="mt-2 text-xs text-stone-600 dark:text-stone-500">
-        {theme.voterCount}人が投票 · 意見{theme.statementCount}件 · {formatRelativeDate(theme.createdAt)}
+        {theme.voterCount}人が投票 · 意見{theme.statementCount}件 ·{" "}
+        {/* 相対表示は Date.now() 基準。このカードは一覧の続きを読み込むときに
+            クライアントでも描かれるため、日付が変わる前後でSSRと文言がずれ得る。
+            表示上は無害なので、ここだけハイドレーションの警告を抑える */}
+        <span suppressHydrationWarning>{formatRelativeDate(theme.createdAt)}</span>
         {showMap ? (
           <span className="ml-1 text-emerald-700">· 意見マップあり</span>
         ) : showMapPending ? (

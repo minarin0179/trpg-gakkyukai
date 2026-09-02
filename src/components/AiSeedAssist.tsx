@@ -59,23 +59,29 @@ export function AiSeedAssist({
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
+    // 判定はawaitを挟むので、戻ったときには既にアンマウント済みのことがある
+    let cancelled = false;
     (async () => {
       try {
         if (typeof LanguageModel === "undefined") {
-          setStatus("hidden");
+          if (!cancelled) setStatus("hidden");
           return;
         }
         const a = await LanguageModel.availability({
           expectedInputs: [{ type: "text", languages: ["ja"] }],
           expectedOutputs: [{ type: "text", languages: ["ja"] }],
         });
+        if (cancelled) return;
         if (a === "available") setStatus("ready");
         else if (a === "downloadable" || a === "downloading") setStatus("needs-download");
         else setStatus("hidden");
       } catch {
-        setStatus("hidden");
+        if (!cancelled) setStatus("hidden");
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function generate() {

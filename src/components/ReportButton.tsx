@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useEffectEvent, useState } from "react";
 import { submitReportAction } from "@/app/actions/reports";
 import { type FormState } from "@/lib/action-result";
 import { REMOVAL_CRITERIA_SHORT } from "@/lib/rules";
@@ -22,10 +22,14 @@ export function ReportButton({
     {},
   );
 
+  // onDoneは描画ごとに新しい関数になり得る。useEffectEventで「常に最新のonDone」を
+  // 呼びつつ、発火の条件は完了(state.done)だけに保つ
+  const notifyDone = useEffectEvent(() => {
+    onDone?.();
+  });
+
   useEffect(() => {
-    if (state.done) onDone?.();
-    // onDoneは描画ごとに変わり得るため、完了の一度だけ発火させる
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (state.done) notifyDone();
   }, [state.done]);
 
   if (!open) {

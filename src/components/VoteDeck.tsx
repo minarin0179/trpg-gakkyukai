@@ -81,7 +81,8 @@ export function VoteDeck({
       setError(null);
       setVote(current.id, value);
       // パスが続いている=既存の意見がしっくり来ていないサインなので、投稿を提案する
-      setPassStreak(value === 0 ? passStreak + 1 : 0);
+      // 直前のレンダー時の値ではなく最新値から数える(連投で取りこぼさない)
+      setPassStreak((n) => (value === 0 ? n + 1 : 0));
       setIndex((i) => i + 1);
     });
   }
