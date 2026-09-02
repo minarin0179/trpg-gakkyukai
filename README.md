@@ -19,7 +19,7 @@ TRPGにまつわる論点に「賛成 / 反対 / パス」で投票し、意見�
 
 ```bash
 npm install
-uv venv && uv pip install -r requirements.txt
+uv venv && uv pip install -r requirements-dev.txt   # 本番の依存は requirements.txt
 
 # イラスト素材の取得(Loose Drawing公式サイトから。リポジトリには非同梱)
 npm run setup:assets
@@ -66,8 +66,16 @@ node --env-file=.env.local scripts/seed.mjs
 - `src/app/actions.ts` — テーマ提案・意見投稿・投票・通報のServer Actions
 - `src/lib/recompute.ts` — 投票後の再計算オーケストレーション(最短30分間隔。自分の点はクライアント側でライブ投影)
 - `api/_logic.py` — red-dwarf呼び出し本体(エンドポイントから分離、単体テスト可)
+- `api/_http.py` — Python Function共通のHTTP層(内部鍵の検証・JSON読み取り・応答)
 - `src/app/api/cron/recompute/route.ts` — 日次バックストップ(vercel.json の crons)
 - 参加者は匿名cookie(`gk_pid`)のみで識別。個人情報は保存しない
+
+## Pythonの依存
+
+VercelのPythonビルダーは `requirements.txt` を見るため、`pyproject.toml` /
+`uv.lock` は置かない(置くと解決方法が二重になる)。開発用の追加依存
+(pytest)は `requirements-dev.txt` にまとめ、本番の `requirements.txt` を
+`-r` で取り込む形にしてある。
 
 ## デプロイ
 

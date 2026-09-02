@@ -6,6 +6,7 @@ red-dwarf (Polis準拠の再実装, MPL 2.0) をデフォルトパラメータ�
 """
 
 from collections import Counter
+from typing import Any, NotRequired, TypedDict
 
 import pandas as pd
 
@@ -24,15 +25,76 @@ MIN_CLUSTERABLE_PARTICIPANTS = 15
 RANDOM_STATE = 42
 
 
-def compute_clusters(payload: dict) -> dict:
+class VoteRow(TypedDict):
+    """1票。red-dwarf の run_pipeline がそのまま受け取る形"""
+
+    participant_id: int
+    statement_id: int
+    vote: int  # -1 | 0 | 1
+    modified: int  # 更新時刻(同一参加者×意見の最新票の判定に使う)
+
+
+class ComputePayload(TypedDict):
+    votes: list[VoteRow]
+    statement_count: int  # 可視の意見数
+    mod_out_statement_ids: NotRequired[list[int]]  # 削除済み意見(計算から除外)
+
+
+def _validate(payload: Any) -> ComputePayload:
+    """入口で形を検証する。
+
+    壊れた入力は red-dwarf の内部で分かりにくい例外(KeyError等)になり、
+    500として扱われてしまう。呼び出し側で直せる不備なので ValueError
+    (=エンドポイントでは400)に寄せておく。
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("payload must be an object")
+
+    votes = payload.get("votes")
+    if not isinstance(votes, list):
+        raise ValueError("votes must be a list")
+    for i, v in enumerate(votes):
+        if not isinstance(v, dict):
+            raise ValueError(f"votes[{i}] must be an object")
+        # bool は int のサブクラスなので明示的に除く
+        for key in ("participant_id", "statement_id", "modified"):
+            value = v.get(key)
+            if not isinstance(value, int) or isinstance(value, bool):
+                raise ValueError(f"votes[{i}].{key} must be an int")
+        if v.get("vote") not in (-1, 0, 1) or isinstance(v.get("vote"), bool):
+            raise ValueError(f"votes[{i}].vote must be -1, 0 or 1")
+
+    statement_count = payload.get("statement_count", 0)
+    if (
+        not isinstance(statement_count, int)
+        or isinstance(statement_count, bool)
+        or statement_count < 0
+    ):
+        raise ValueError("statement_count must be a non-negative int")
+
+    mod_out = payload.get("mod_out_statement_ids", [])
+    if not isinstance(mod_out, list) or not all(
+        isinstance(x, int) and not isinstance(x, bool) for x in mod_out
+    ):
+        raise ValueError("mod_out_statement_ids must be a list of ints")
+
+    return {
+        "votes": votes,
+        "statement_count": statement_count,
+        "mod_out_statement_ids": mod_out,
+    }
+
+
+def compute_clusters(payload: Any) -> dict[str, Any]:
     """payload:
       votes: [{participant_id:int, statement_id:int, vote:int(-1|0|1), modified:int}]
       statement_count: int  可視の意見数
       mod_out_statement_ids: [int]  削除済み意見(計算から除外)
     """
-    votes = payload["votes"]
-    statement_count = payload.get("statement_count", 0)
-    mod_out = payload.get("mod_out_statement_ids", [])
+    validated = _validate(payload)
+    votes = validated["votes"]
+    statement_count = validated["statement_count"]
+    mod_out = validated["mod_out_statement_ids"]
 
     n_participants = len({v["participant_id"] for v in votes})
     if n_participants < 3 or statement_count < 2 or len(votes) < 6:
@@ -89,7 +151,7 @@ def compute_clusters(payload: dict) -> dict:
     clustered = [p for p in participants if p["cluster"] is not None]
     group_count = len({p["cluster"] for p in clustered})
 
-    def serialize_consensus(items):
+    def serialize_consensus(items: Any) -> list[dict[str, Any]]:
         out = []
         for s in items or []:
             out.append(

@@ -2,3 +2,5 @@ red-dwarf==0.4.0
 onnxruntime==1.29.0
 tokenizers==0.23.1
 numpy>=1.26
+# _logic.py が直接importする。red-dwarfの依存として入るが、明示しておく
+pandas>=2.0
