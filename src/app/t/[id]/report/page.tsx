@@ -56,8 +56,16 @@ const total = (s: { agree: number; disagree: number; pass: number }) =>
   s.agree + s.disagree + s.pass;
 const pct = (n: number, t: number) => (t > 0 ? Math.round((n / t) * 100) : 0);
 
-// 賛成/反対/パスの割合バー(1本)
-function VoteBar({ s }: { s: { agree: number; disagree: number; pass: number } }) {
+// 賛成/反対/パスの割合バー(1本)。
+// scale(0〜1)を渡すと色付き部分の全長をその比率にする。「すべての意見」では
+// 最多得票の意見を1として票数比にし、棒の長さで票数の多寡も読めるようにする
+function VoteBar({
+  s,
+  scale = 1,
+}: {
+  s: { agree: number; disagree: number; pass: number };
+  scale?: number;
+}) {
   const t = total(s);
   return (
     <div className="h-2 rounded-full bg-stone-100">
@@ -66,6 +74,7 @@ function VoteBar({ s }: { s: { agree: number; disagree: number; pass: number } }
           className="flex h-2 overflow-hidden rounded-full"
           role="img"
           aria-label={`賛成${pct(s.agree, t)}パーセント、反対${pct(s.disagree, t)}パーセント、パス${pct(s.pass, t)}パーセント、計${t}票`}
+          style={scale < 1 ? { width: `${Math.max(2, scale * 100)}%` } : undefined}
         >
           <div className="bg-emerald-600" style={{ width: `${(s.agree / t) * 100}%` }} />
           <div className="bg-rose-600" style={{ width: `${(s.disagree / t) * 100}%` }} />
@@ -91,18 +100,29 @@ function VoteNumbers({ s }: { s: { agree: number; disagree: number; pass: number
 
 // 本家レポート式の横並び比較: 全体 + 各グループの内訳を1行に並べる。
 // highlightGroup はそのグループのセクション内で自分の列を目立たせるのに使う
+// 列ごとの最大票数(全体・各グループ)。渡すと棒の長さを票数比にする
+type BarMaxima = { overall: number; groups: number[] };
+
 function CompareBars({
   s,
   groups,
   highlightGroup,
+  maxima,
 }: {
   s: Stat;
   groups: { counts: GroupVoteCounts; size: number }[] | null;
   highlightGroup?: number;
+  maxima?: BarMaxima;
 }) {
-  const cols: { label: string; color?: string; counts: GroupVoteCounts; highlight: boolean }[] = [
-    { label: "全体", counts: s, highlight: false },
-  ];
+  const scaleOf = (counts: GroupVoteCounts, max?: number) =>
+    maxima && max && max > 0 ? Math.min(1, total(counts) / max) : 1;
+  const cols: {
+    label: string;
+    color?: string;
+    counts: GroupVoteCounts;
+    highlight: boolean;
+    scale: number;
+  }[] = [{ label: "全体", counts: s, highlight: false, scale: scaleOf(s, maxima?.overall) }];
   if (groups) {
     for (const [g, { counts }] of groups.entries()) {
       cols.push({
@@ -110,6 +130,7 @@ function CompareBars({
         color: GROUP_COLORS[g % GROUP_COLORS.length],
         counts,
         highlight: highlightGroup === g,
+        scale: scaleOf(counts, maxima?.groups[g]),
       });
     }
   }
@@ -126,7 +147,7 @@ function CompareBars({
           >
             {c.label}
           </p>
-          <VoteBar s={c.counts} />
+          <VoteBar s={c.counts} scale={c.scale} />
           <VoteNumbers s={c.counts} />
         </div>
       ))}
@@ -175,15 +196,23 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
         }))
       : null;
 
-  const card = (s: Stat, highlightGroup?: number) => (
+  const card = (s: Stat, highlightGroup?: number, maxima?: BarMaxima) => (
     <li
       key={s.id}
       className="rounded-md border border-stone-400 bg-white px-3 py-2 text-sm"
     >
       <p>{s.text}</p>
-      <CompareBars s={s} groups={groupsFor(s.id)} highlightGroup={highlightGroup} />
+      <CompareBars s={s} groups={groupsFor(s.id)} highlightGroup={highlightGroup} maxima={maxima} />
     </li>
   );
+
+  // 「すべての意見」用: 列ごとの最大票数。最多得票の意見を1として棒の長さを票数比にする
+  const allMaxima: BarMaxima = {
+    overall: Math.max(0, ...stats.map((s) => total(s))),
+    groups: (groupsFor(stats[0]?.id ?? -1) ?? []).map((_, g) =>
+      Math.max(0, ...stats.map((s) => total(groupsFor(s.id)?.[g]?.counts ?? { agree: 0, disagree: 0, pass: 0 }))),
+    ),
+  };
 
   // 先頭数件+残りは折りたたみ
   const previewList = (items: Stat[]) => (
@@ -383,7 +412,7 @@ export default async function ResultsPage({ params }: PageProps<"/t/[id]/report"
 
       <section className="flex flex-col gap-3">
         <SectionHeading title="すべての意見" note="このテーマに投稿された意見の一覧です。" />
-        <ul className="flex flex-col gap-3">{stats.map((s) => card(s))}</ul>
+        <ul className="flex flex-col gap-3">{stats.map((s) => card(s, undefined, allMaxima))}</ul>
       </section>
     </div>
   );
