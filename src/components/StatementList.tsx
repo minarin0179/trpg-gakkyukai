@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { castVoteAction } from "@/app/actions";
+import { castVoteAction } from "@/app/actions/statements";
 import { ReportButton } from "./ReportButton";
 import { usePersonalization } from "./ThemePersonalization";
 

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { addThemeTagAction } from "@/app/actions";
+import { addThemeTagAction } from "@/app/actions/themes";
 import { TagSelector } from "@/components/TagSelector";
 import { TagReportButton } from "@/components/TagReportButton";
 import { TAGS_PER_THEME } from "@/lib/config";

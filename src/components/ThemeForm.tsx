@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import Script from "next/script";
-import { createThemeAction, findSimilarThemesAction, type FormState } from "@/app/actions";
+import { createThemeAction, findSimilarThemesAction } from "@/app/actions/themes";
+import { type FormState } from "@/lib/action-result";
 import { AiSeedAssist } from "@/components/AiSeedAssist";
 import { TagPicker } from "@/components/TagPicker";
 import {

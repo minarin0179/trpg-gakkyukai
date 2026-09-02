@@ -2,7 +2,8 @@
 
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createStatementAction, type FormState } from "@/app/actions";
+import { createStatementAction } from "@/app/actions/statements";
+import { type FormState } from "@/lib/action-result";
 import { STATEMENT_MAX } from "@/lib/config";
 
 export function StatementForm({ themeId }: { themeId: string }) {

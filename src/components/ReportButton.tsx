@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { submitReportAction, type FormState } from "@/app/actions";
+import { submitReportAction } from "@/app/actions/reports";
+import { type FormState } from "@/lib/action-result";
 import { REMOVAL_CRITERIA_SHORT } from "@/lib/rules";
 
 export function ReportButton({

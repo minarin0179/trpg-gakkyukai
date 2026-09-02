@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { submitReportAction, type FormState } from "@/app/actions";
+import { submitReportAction } from "@/app/actions/reports";
+import { type FormState } from "@/lib/action-result";
 
 // タグの通報(削除依頼)。どのタグかを選んで理由を送る。
 // タグの削除はユーザーには開放していないため、これが唯一の削除経路
