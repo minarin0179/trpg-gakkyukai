@@ -232,6 +232,34 @@ export function OpinionMap({
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-stone-400 bg-white p-4">
+        {/* 図のなわばりはマウス操作が前提になるため、同じ選択をキーボード・支援技術から
+            行えるボタン列を図の上に置く。押すと下の図に同じ吹き出しが出る */}
+        {clusters.length > 0 && (
+          <div className="mb-2 flex flex-wrap justify-center gap-1.5">
+            {[...clusters]
+              .sort((a, b) => a.cid - b.cid)
+              .map(({ cid, members }) => (
+                <button
+                  key={cid}
+                  type="button"
+                  aria-pressed={activeGroup === cid}
+                  onClick={() => setActiveGroup((v) => (v === cid ? null : cid))}
+                  className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 ${
+                    activeGroup === cid
+                      ? "border-stone-600 bg-stone-100 text-stone-900"
+                      : "border-stone-300 bg-white text-stone-700 hover:border-stone-500"
+                  }`}
+                >
+                  <span
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ backgroundColor: GROUP_COLORS[cid % GROUP_COLORS.length] }}
+                  />
+                  グループ{GROUP_NAMES[cid] ?? cid}
+                  <span className="font-normal text-stone-500">{members.length}人</span>
+                </button>
+              ))}
+          </div>
+        )}
         <div className="relative mx-auto w-full max-w-lg">
           <svg
             viewBox={`0 0 ${W} ${H}`}
@@ -266,7 +294,21 @@ export function OpinionMap({
                     e.stopPropagation();
                     setActiveGroup(cid);
                   }}
-                  className="cursor-pointer"
+                  // キーボード操作。フォーカスはホバーと同じ扱いにし、
+                  // Enter・スペースはクリックと同じ扱いにする
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`グループ${GROUP_NAMES[cid] ?? cid}(${members.length}人)の特徴的な意見を表示`}
+                  onFocus={() => setActiveGroup(cid)}
+                  onBlur={() => setActiveGroup(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setActiveGroup(cid);
+                    }
+                  }}
+                  className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900"
                 >
                   {hull.length >= 3 ? (
                     <polygon points={hull.map((p) => `${p.x},${p.y}`).join(" ")} strokeLinejoin="round" {...common} />
@@ -287,6 +329,8 @@ export function OpinionMap({
             <MapPoints css={pointsCss} dots={dots} />
 
             {/* グループラベル(近接時は縦にずらして重なりを避ける) */}
+            {/* ラベルはなわばりと同じ選択を行うだけなので、キーボードのタブ位置は
+                二重に作らずマウス操作のみとする(上のボタン列となわばりで到達できる) */}
             {clusters.map(({ cid, members }) => {
               const { cx, cy } = labelPos.get(cid)!;
               const color = GROUP_COLORS[cid % GROUP_COLORS.length];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useEffectEvent, useState } from "react";
+import { useActionState, useEffect, useEffectEvent, useId, useState } from "react";
 import { submitReportAction } from "@/app/actions/reports";
 import { type FormState } from "@/lib/action-result";
 import { REMOVAL_CRITERIA_SHORT } from "@/lib/rules";
@@ -17,6 +17,8 @@ export function ReportButton({
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
+  // 開閉するフォームと開くボタンを支援技術で結びつけるためのid
+  const panelId = useId();
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     submitReportAction,
     {},
@@ -36,6 +38,8 @@ export function ReportButton({
     return (
       <button
         onClick={() => setOpen(true)}
+        aria-expanded={open}
+        aria-controls={panelId}
         className="shrink-0 whitespace-nowrap text-xs text-stone-500 underline hover:text-stone-700 dark:text-stone-600 dark:hover:text-stone-300"
       >
         通報
@@ -48,7 +52,7 @@ export function ReportButton({
   }
 
   return (
-    <form action={formAction} className="mt-2 flex flex-col gap-2 rounded-md border border-stone-400 bg-stone-50 p-3 dark:border-stone-700 dark:bg-stone-800">
+    <form id={panelId} action={formAction} className="mt-2 flex flex-col gap-2 rounded-md border border-stone-400 bg-stone-50 p-3 dark:border-stone-700 dark:bg-stone-800">
       <input type="hidden" name="targetType" value={targetType} />
       <input type="hidden" name="targetId" value={targetId} />
       <p className="text-xs text-stone-700 dark:text-stone-300">

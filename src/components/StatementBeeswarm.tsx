@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MiniBar, type Counts } from "./StatementMap";
+import { MiniBar, StatementSelect, type Counts } from "./StatementMap";
 import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
 
 // 本家Polisレポートのbeeswarm(意見の割れ方)に相当する1次元プロット。
@@ -54,6 +54,9 @@ export function StatementBeeswarm({ items }: { items: BeeswarmItem[] }) {
   const midY = H / 2;
   const byId = new Map(items.map((s) => [s.id, s]));
   const sel = selected !== null ? byId.get(selected) : undefined;
+  // 図に入るためのタブ位置(選択中の点。未選択なら先頭の点)。
+  // 点は数百個になり得るため、全部をタブ順に入れると図を通り抜けられなくなる
+  const focusId = selected ?? placed[0]?.id ?? null;
 
   return (
     // 図・選択カードを1つの白枠に収める(意見マップ・コンパスの囲いと同じ流儀)
@@ -68,6 +71,8 @@ export function StatementBeeswarm({ items }: { items: BeeswarmItem[] }) {
           const s = byId.get(p.id);
           const color =
             !s || s.agree === s.disagree ? "#a8a29e" : s.agree > s.disagree ? "#059669" : "#e11d48";
+          const label = s ? (s.text.length > 30 ? `${s.text.slice(0, 30)}…` : s.text) : "";
+          const toggle = () => setSelected(p.id === selected ? null : p.id);
           return (
             <circle
               key={p.id}
@@ -77,10 +82,20 @@ export function StatementBeeswarm({ items }: { items: BeeswarmItem[] }) {
               fill={color}
               stroke={p.id === selected ? "#f59e0b" : "none"}
               strokeWidth={0.5}
-              className="cursor-pointer"
+              className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900"
               opacity={selected === null || p.id === selected ? 0.9 : 0.4}
-              onClick={() => setSelected(p.id === selected ? null : p.id)}
+              onClick={toggle}
               onMouseEnter={() => setSelected(p.id)}
+              tabIndex={p.id === focusId ? 0 : -1}
+              role="button"
+              aria-label={`意見「${label}」を表示`}
+              onFocus={() => setSelected(p.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  toggle();
+                }
+              }}
             />
           );
         })}
@@ -89,6 +104,7 @@ export function StatementBeeswarm({ items }: { items: BeeswarmItem[] }) {
         <span>← 合意的な意見(全員が同じ方向)</span>
         <span>分断的な意見(賛否が二分)→</span>
       </div>
+      <StatementSelect items={items} selected={selected} onSelect={setSelected} />
       <div className="mt-2 min-h-16 rounded-md border border-stone-300 bg-stone-50 px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-800">
         {sel ? (
           <>

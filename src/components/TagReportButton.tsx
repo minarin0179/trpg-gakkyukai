@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import { submitReportAction } from "@/app/actions/reports";
 import { type FormState } from "@/lib/action-result";
 
@@ -10,6 +10,8 @@ export function TagReportButton({ tags }: { tags: { id: number; tag: string }[] 
   const [open, setOpen] = useState(false);
   const [targetId, setTargetId] = useState(String(tags[0]?.id ?? ""));
   const [reason, setReason] = useState("");
+  // 開閉するフォームと開くボタンを支援技術で結びつけるためのid
+  const panelId = useId();
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     submitReportAction,
     {},
@@ -21,6 +23,8 @@ export function TagReportButton({ tags }: { tags: { id: number; tag: string }[] 
     return (
       <button
         onClick={() => setOpen(true)}
+        aria-expanded={open}
+        aria-controls={panelId}
         className="text-xs text-stone-500 underline hover:text-stone-700 dark:text-stone-600 dark:hover:text-stone-300"
       >
         タグを通報
@@ -38,6 +42,7 @@ export function TagReportButton({ tags }: { tags: { id: number; tag: string }[] 
 
   return (
     <form
+      id={panelId}
       action={formAction}
       className="mt-1 flex w-full flex-col gap-2 rounded-md border border-stone-400 bg-stone-50 p-3 dark:border-stone-700 dark:bg-stone-800"
     >
