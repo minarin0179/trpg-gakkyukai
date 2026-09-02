@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
 
 // 本家Polisレポートの「グラフ」に相当する意見の散布図。
@@ -103,6 +103,8 @@ export function StatementMap({
   withBreakdown?: boolean;
 }) {
   const [selected, setSelected] = useState<number | null>(null);
+  // 直前の入力デバイス。タッチでは hover 模倣と focus を無効化するために見る
+  const pointerType = useRef<string>("mouse");
 
   // 原点(グループ構造と無相関な位置)を描画の中心に据えた放射レイアウト
   // (本家レポートの放射状グラフと同じ構図。中心からの距離 = グループ判別力)。
@@ -270,7 +272,12 @@ export function StatementMap({
           // 点は数百個になり得るため、全部をタブ順に入れると図を通り抜けられなくなる。
           // ほかの意見へはプルダウンで移動する
           const focusable = s.id === focusId;
-          const toggle = () => setSelected(s.id === selected ? null : s.id);
+          // マウス: hover で先に選択され、クリックはトグル(従来どおり)。
+          // タッチ: hover 模倣で先に選択されると直後のクリックで解除されて
+          // 「タップしても選ばれない」ので、タップ前の状態に対してトグルする。
+          // また pointerdown を止めてタップで focus させない(focus の輪郭が
+          // 黒い点として残るのを防ぐ。キーボードの focus はそのまま)
+          const toggle = () => setSelected((v) => (v === s.id ? null : s.id));
           const dot = (key: string, x: number, y: number, fill: number | string, keyboard: boolean) => (
             <circle
               key={key}
@@ -282,18 +289,26 @@ export function StatementMap({
               strokeWidth={0.7}
               className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900"
               opacity={selected === null || s.id === selected ? 0.85 : 0.35}
+              onPointerDown={(e) => {
+                pointerType.current = e.pointerType;
+                if (e.pointerType !== "mouse") e.preventDefault();
+              }}
+              onMouseEnter={() => {
+                if (pointerType.current === "mouse") setSelected(s.id);
+              }}
               onClick={toggle}
-              onMouseEnter={() => setSelected(s.id)}
               {...(keyboard
                 ? {
                     tabIndex: focusable ? 0 : -1,
                     role: "button" as const,
                     "aria-label": `意見「${s.text.length > 30 ? `${s.text.slice(0, 30)}…` : s.text}」を表示`,
-                    onFocus: () => setSelected(s.id),
+                    // Enter/Space は選択(押すたびに解除されないよう冪等)、Escape で解除
                     onKeyDown: (e: React.KeyboardEvent<SVGCircleElement>) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        toggle();
+                        setSelected(s.id);
+                      } else if (e.key === "Escape") {
+                        setSelected(null);
                       }
                     },
                   }

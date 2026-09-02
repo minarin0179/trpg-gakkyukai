@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, useRef } from "react";
 import { usePersonalizationOptional } from "./ThemePersonalization";
 
 // red-dwarfの計算結果を2D散布図として描画する。
@@ -99,6 +99,8 @@ export function OpinionMap({
       ? { myIndex: null, votes: {} as Record<number, number> }
       : personalization;
   const [activeGroup, setActiveGroup] = useState<number | null>(null);
+  // 直前の入力デバイス(タッチでは hover 模倣と focus を無効化する)
+  const pointerType = useRef<string>("mouse");
   const [showAllConsensus, setShowAllConsensus] = useState(false);
 
   const pts = result?.pts ?? EMPTY_PTS;
@@ -287,7 +289,15 @@ export function OpinionMap({
               return (
                 <g
                   key={`hull-${cid}`}
-                  onMouseEnter={() => setActiveGroup(cid)}
+                  // タッチではタップで focus させない(focus の輪郭が黒く残る)。
+                  // hover 模倣も無視し、選択は onClick だけで行う
+                  onPointerDown={(e) => {
+                    pointerType.current = e.pointerType;
+                    if (e.pointerType !== "mouse") e.preventDefault();
+                  }}
+                  onMouseEnter={() => {
+                    if (pointerType.current === "mouse") setActiveGroup(cid);
+                  }}
                   onClick={(e) => {
                     // トグルにするとiOSのhover疑似発火(mouseenter→click)で開いた直後に
                     // 閉じてしまうため、常にそのグループを選択する(閉じるは空白タップ)。

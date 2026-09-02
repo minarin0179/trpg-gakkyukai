@@ -56,8 +56,10 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         )
       : await listThemesForTab(currentTab, participantId, 0);
 
+  // タブは縮めない・折り返さない(狭い画面では行ごと横スクロール)。
+  // 縮められると「新着」が1文字ずつ縦に折れる
   const tabClass = (active: boolean) =>
-    `px-4 py-2 text-sm font-medium ${active ? "border-b-2 border-stone-900" : "text-stone-600"}`;
+    `shrink-0 whitespace-nowrap px-4 py-2 text-sm font-medium ${active ? "border-b-2 border-stone-900" : "text-stone-600"}`;
 
   return (
     <div>
@@ -184,6 +186,17 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         </>
       ) : (
         <>
+          {/* ランダムに1テーマ開く(要望#4575)。リダイレクト先が毎回変わるため
+              Linkのプリフェッチを避けて素のアンカーにする。
+              タブ行と同じ行に置くとスマホで横幅が足りないので、タブの上に右寄せで置く */}
+          <div className="mb-1 flex justify-end">
+            <a
+              href="/themes/random"
+              className="px-2 py-1 text-xs text-stone-600 underline hover:text-stone-800"
+            >
+              ランダムに開く
+            </a>
+          </div>
           <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-stone-400">
             <Link href="/themes" className={tabClass(currentTab === "fresh")}>
               新着
@@ -200,14 +213,6 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
             <Link href="/themes?tab=proposed" className={tabClass(currentTab === "proposed")}>
               提案済み
             </Link>
-            {/* ランダムに1テーマ開く(要望#4575)。リダイレクト先が毎回変わるため
-                Linkのプリフェッチを避けて素のアンカーにする */}
-            <a
-              href="/themes/random"
-              className="ml-auto shrink-0 whitespace-nowrap px-2 py-2 text-xs text-stone-600 underline hover:text-stone-800"
-            >
-              ランダムに開く
-            </a>
           </div>
 
           {initialItems.length === 0 ? (

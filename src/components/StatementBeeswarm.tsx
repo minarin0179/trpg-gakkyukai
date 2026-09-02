@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { MiniBar, StatementSelect, type Counts } from "./StatementMap";
 import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
 
@@ -43,6 +43,7 @@ function layout(items: { id: number; x: number }[]) {
 
 export function StatementBeeswarm({ items }: { items: BeeswarmItem[] }) {
   const [selected, setSelected] = useState<number | null>(null);
+  const pointerType = useRef<string>("mouse");
 
   const points = items.map((s) => ({
     id: s.id,
@@ -72,7 +73,9 @@ export function StatementBeeswarm({ items }: { items: BeeswarmItem[] }) {
           const color =
             !s || s.agree === s.disagree ? "#a8a29e" : s.agree > s.disagree ? "#059669" : "#e11d48";
           const label = s ? (s.text.length > 30 ? `${s.text.slice(0, 30)}…` : s.text) : "";
-          const toggle = () => setSelected(p.id === selected ? null : p.id);
+          // タッチでは hover 模倣と focus を無効化し、タップ前の状態に対してトグルする
+          // (理由は StatementMap の同じ箇所を参照)
+          const toggle = () => setSelected((v) => (v === p.id ? null : p.id));
           return (
             <circle
               key={p.id}
@@ -84,16 +87,23 @@ export function StatementBeeswarm({ items }: { items: BeeswarmItem[] }) {
               strokeWidth={0.5}
               className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900"
               opacity={selected === null || p.id === selected ? 0.9 : 0.4}
+              onPointerDown={(e) => {
+                pointerType.current = e.pointerType;
+                if (e.pointerType !== "mouse") e.preventDefault();
+              }}
+              onMouseEnter={() => {
+                if (pointerType.current === "mouse") setSelected(p.id);
+              }}
               onClick={toggle}
-              onMouseEnter={() => setSelected(p.id)}
               tabIndex={p.id === focusId ? 0 : -1}
               role="button"
               aria-label={`意見「${label}」を表示`}
-              onFocus={() => setSelected(p.id)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  toggle();
+                  setSelected(p.id);
+                } else if (e.key === "Escape") {
+                  setSelected(null);
                 }
               }}
             />
