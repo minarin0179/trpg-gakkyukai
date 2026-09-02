@@ -528,7 +528,8 @@ export async function getStatementVoteStats(themeId: string) {
       pass: sql<number>`count(*) filter (where ${votes.value} = 0)::int`,
     })
     .from(statements)
-    .leftJoin(votes, eq(votes.statementId, statements.id))
+    // themeIdも結合条件に入れる(多重防御。他テーマ名義で入った票を集計に混ぜない)
+    .leftJoin(votes, and(eq(votes.statementId, statements.id), eq(votes.themeId, themeId)))
     .where(and(eq(statements.themeId, themeId), eq(statements.status, "visible")))
     .groupBy(statements.id, statements.text)
     .orderBy(statements.id);

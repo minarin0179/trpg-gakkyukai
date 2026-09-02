@@ -245,11 +245,33 @@ export async function createStatementAction(
 }
 
 export async function castVoteAction(
-  themeId: string,
+  // themeIdはクライアント由来で信用できない。互換のため引数には残すが、
+  // 実際のテーマは意見IDからDBで導出した値だけを使う
+  _clientThemeId: string,
   statementId: number,
   value: number,
 ): Promise<{ ok: boolean; error?: string }> {
   if (![1, 0, -1].includes(value)) return { ok: false };
+  if (!Number.isSafeInteger(statementId)) return { ok: false };
+
+  // 投票先のテーマは意見IDから導出する。クライアントの申告するthemeIdを信じると、
+  // 別テーマ名義でIP×テーマのレート制限を素通りでき(枠が分散する)、
+  // さらにテーマ横断の票がレポートの集計を汚染できてしまうため。
+  // ついでに、非表示の意見・終了したテーマへの投票もここで弾く
+  const [target] = await db
+    .select({ themeId: statements.themeId })
+    .from(statements)
+    .innerJoin(themes, eq(themes.id, statements.themeId))
+    .where(
+      and(
+        eq(statements.id, statementId),
+        eq(statements.status, "visible"),
+        eq(themes.status, "active"),
+      ),
+    )
+    .limit(1);
+  if (!target) return { ok: false, error: "この意見には投票できません" };
+  const themeId = target.themeId;
 
   // 水増し対策: IP×テーマ単位のレート制限。Cookie側はリセットで逃れられる
   // (別参加者になり主キー制約ごと回避できる)ため設けない。
