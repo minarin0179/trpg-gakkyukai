@@ -102,6 +102,9 @@ function VoteNumbers({ s }: { s: { agree: number; disagree: number; pass: number
 // highlightGroup はそのグループのセクション内で自分の列を目立たせるのに使う
 // 列ごとの最大票数(全体・各グループ)。渡すと棒の長さを票数比にする
 type BarMaxima = { overall: number; groups: number[] };
+// 見え方の検討用の切り替え(確定後に片方へ固定する)
+const GROUP_BAR_BASE: "overall" | "largest-group" = "largest-group";
+const SCALE_ACROSS_STATEMENTS = true;
 
 function CompareBars({
   s,
@@ -114,15 +117,25 @@ function CompareBars({
   highlightGroup?: number;
   maxima?: BarMaxima;
 }) {
-  const scaleOf = (counts: GroupVoteCounts, max?: number) =>
-    maxima && max && max > 0 ? Math.min(1, total(counts) / max) : 1;
+  // グループの棒の長さの基準。
+  //   "overall": 全体の棒を100%とし、各グループは全体に占める票数の割合(グループの棒が全体の分割に見える)
+  //   "largest-group": 最大グループを100%とし、他グループはその比
+  // どちらもグループ同士の長さの比 = 票数(≒人数)の比になる
+  const overallTotal = total(s);
+  const groupMax = groups ? Math.max(0, ...groups.map((g) => total(g.counts))) : 0;
+  const groupBase = GROUP_BAR_BASE === "overall" ? overallTotal : groupMax;
+  // 全体の棒: 意見間の票数比(maxima があるとき)
+  const overallScale =
+    SCALE_ACROSS_STATEMENTS && maxima && maxima.overall > 0
+      ? Math.min(1, overallTotal / maxima.overall)
+      : 1;
   const cols: {
     label: string;
     color?: string;
     counts: GroupVoteCounts;
     highlight: boolean;
     scale: number;
-  }[] = [{ label: "全体", counts: s, highlight: false, scale: scaleOf(s, maxima?.overall) }];
+  }[] = [{ label: "全体", counts: s, highlight: false, scale: overallScale }];
   if (groups) {
     for (const [g, { counts }] of groups.entries()) {
       cols.push({
@@ -130,7 +143,8 @@ function CompareBars({
         color: GROUP_COLORS[g % GROUP_COLORS.length],
         counts,
         highlight: highlightGroup === g,
-        scale: scaleOf(counts, maxima?.groups[g]),
+        // グループの棒は全体の棒と同じ縮尺に載せる(全体が縮んでいればグループも縮む)
+        scale: groupBase > 0 ? Math.min(1, total(counts) / groupBase) * overallScale : 1,
       });
     }
   }
