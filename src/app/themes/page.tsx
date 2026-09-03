@@ -56,8 +56,10 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         )
       : await listThemesForTab(currentTab, participantId, 0);
 
+  // タブは縮めない・折り返さない(狭い画面では行ごと横スクロール)。
+  // 縮められると「新着」が1文字ずつ縦に折れる
   const tabClass = (active: boolean) =>
-    `px-4 py-2 text-sm font-medium ${active ? "border-b-2 border-stone-900" : "text-stone-600"}`;
+    `shrink-0 whitespace-nowrap px-4 py-2 text-sm font-medium ${active ? "border-b-2 border-stone-900" : "text-stone-600"}`;
 
   return (
     <div>
@@ -81,9 +83,20 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
 
       {/* タグ絞り込み: 複数選択可(チップの再クリックで解除)。
           「いずれか(OR)/すべて(かつ)」はトグルで切り替える */}
-      {tagVocabulary.length > 0 && (
-        <details className="mb-4" open={tagPanelOpen}>
-          <summary className="cursor-pointer text-sm text-stone-600 underline">
+      {/* 「タグで絞り込み」の行の右端に「ランダムに開く」を重ねて置く。
+          リンクは絶対配置なので、絞り込みを開いたときのタグ一覧は全幅を使える
+          (横並びにするとチップの折り返し幅が狭まりパネルが縦に伸びる)。
+          ランダムに開くはリダイレクト先が毎回変わるため Link のプリフェッチを避けて素のアンカーにする(要望#4575) */}
+      <div className="relative mb-4">
+        <a
+          href="/themes/random"
+          className="absolute right-0 top-0 whitespace-nowrap text-sm text-stone-600 underline hover:text-stone-800"
+        >
+          ランダムに開く
+        </a>
+      {tagVocabulary.length > 0 ? (
+        <details open={tagPanelOpen}>
+          <summary className="cursor-pointer pr-28 text-sm text-stone-600 underline">
             タグで絞り込み{selectedTags.length > 0 ? `: ${selectedTags.join("、")}` : ""}
           </summary>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -108,14 +121,14 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
               );
             })}
           </div>
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-stone-600">
-            複数タグの条件:
+          <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-stone-600">
+            <span className="shrink-0">複数タグの条件:</span>
               {(["or", "and"] as const).map((m) => (
                 <Link
                   key={m}
                   prefetch={false}
                   href={tagUrl(selectedTags, m)}
-                  className={`rounded-md border px-2 py-0.5 transition ${
+                  className={`whitespace-nowrap rounded-md border px-2 py-0.5 transition ${
                     tagMode === m
                       ? "border-stone-900 bg-stone-900 text-white"
                       : "border-stone-300 text-stone-600 hover:border-stone-500"
@@ -126,7 +139,10 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
               ))}
           </p>
         </details>
+      ) : (
+        <div className="h-5" />
       )}
+      </div>
 
       {tagFilter ? (
         <>
@@ -200,14 +216,6 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
             <Link href="/themes?tab=proposed" className={tabClass(currentTab === "proposed")}>
               提案済み
             </Link>
-            {/* ランダムに1テーマ開く(要望#4575)。リダイレクト先が毎回変わるため
-                Linkのプリフェッチを避けて素のアンカーにする */}
-            <a
-              href="/themes/random"
-              className="ml-auto shrink-0 whitespace-nowrap px-2 py-2 text-xs text-stone-600 underline hover:text-stone-800"
-            >
-              ランダムに開く
-            </a>
           </div>
 
           {initialItems.length === 0 ? (
