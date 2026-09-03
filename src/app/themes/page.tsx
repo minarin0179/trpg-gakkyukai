@@ -83,13 +83,20 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
 
       {/* タグ絞り込み: 複数選択可(チップの再クリックで解除)。
           「いずれか(OR)/すべて(かつ)」はトグルで切り替える */}
-      {/* 「タグで絞り込み」と「ランダムに開く」を同じ行に置く(左右に振り分け)。
-          絞り込みを開いても右のリンクは行頭の高さに留まる。
+      {/* 「タグで絞り込み」の行の右端に「ランダムに開く」を重ねて置く。
+          リンクは絶対配置なので、絞り込みを開いたときのタグ一覧は全幅を使える
+          (横並びにするとチップの折り返し幅が狭まりパネルが縦に伸びる)。
           ランダムに開くはリダイレクト先が毎回変わるため Link のプリフェッチを避けて素のアンカーにする(要望#4575) */}
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="relative mb-4">
+        <a
+          href="/themes/random"
+          className="absolute right-0 top-0 whitespace-nowrap text-sm text-stone-600 underline hover:text-stone-800"
+        >
+          ランダムに開く
+        </a>
       {tagVocabulary.length > 0 ? (
-        <details className="min-w-0 flex-1" open={tagPanelOpen}>
-          <summary className="cursor-pointer text-sm text-stone-600 underline">
+        <details open={tagPanelOpen}>
+          <summary className="cursor-pointer pr-28 text-sm text-stone-600 underline">
             タグで絞り込み{selectedTags.length > 0 ? `: ${selectedTags.join("、")}` : ""}
           </summary>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -114,14 +121,14 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
               );
             })}
           </div>
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-stone-600">
-            複数タグの条件:
+          <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-stone-600">
+            <span className="shrink-0">複数タグの条件:</span>
               {(["or", "and"] as const).map((m) => (
                 <Link
                   key={m}
                   prefetch={false}
                   href={tagUrl(selectedTags, m)}
-                  className={`rounded-md border px-2 py-0.5 transition ${
+                  className={`whitespace-nowrap rounded-md border px-2 py-0.5 transition ${
                     tagMode === m
                       ? "border-stone-900 bg-stone-900 text-white"
                       : "border-stone-300 text-stone-600 hover:border-stone-500"
@@ -133,14 +140,8 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
           </p>
         </details>
       ) : (
-        <div />
+        <div className="h-5" />
       )}
-        <a
-          href="/themes/random"
-          className="shrink-0 whitespace-nowrap text-sm text-stone-600 underline hover:text-stone-800"
-        >
-          ランダムに開く
-        </a>
       </div>
 
       {tagFilter ? (
