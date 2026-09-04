@@ -57,6 +57,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               >
                 テーマ一覧
               </Link>
+              <Link
+                href="/digest"
+                prefetch={false}
+                className="whitespace-nowrap text-stone-700 hover:text-stone-900"
+              >
+                <span className="sm:hidden">ダイジェスト</span>
+                <span className="hidden sm:inline">週間ダイジェスト</span>
+              </Link>
               {/* 全ページのヘッダに出る静的ルートは毎PVで全量prefetchされるため止める。
                   ISR済みなのでクリック時に取得しても十分速い */}
               <Link

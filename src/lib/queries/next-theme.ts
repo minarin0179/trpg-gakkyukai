@@ -29,6 +29,18 @@ export async function getNextThemeSuggestion(
   currentThemeId: string,
   participantId: string | null,
 ): Promise<NextThemeSuggestion | null> {
+  const [first] = await getRelatedThemes(currentThemeId, participantId, 1);
+  return first ?? null;
+}
+
+// 同じ並び順で複数件返す版。テーマページ下部の「ほかのテーマ」欄(全員共通・ISR)は
+// participantId を null にして呼ぶ(個人の投票状況では絞らない。ページを開いた時点で
+// 投票せずに回遊したい人にも次の行き先を見せるため)
+export async function getRelatedThemes(
+  currentThemeId: string,
+  participantId: string | null,
+  limit: number,
+): Promise<NextThemeSuggestion[]> {
   const { rows } = await db.execute<{
     id: string;
     title: string;
@@ -45,7 +57,7 @@ export async function getNextThemeSuggestion(
       group by theme_id
     ),
     picked as (
-      select t.id, t.title
+      select t.id, t.title, row_number() over () as rn
       from themes t
       left join recent r on r.theme_id = t.id
       where t.status = 'active'
@@ -60,7 +72,7 @@ export async function getNextThemeSuggestion(
           where tt.theme_id = t.id) desc,
         coalesce(r.n, 0) desc,
         t.created_at desc
-      limit 1
+      limit ${limit}
     )
     select p.id, p.title,
       (select count(distinct v.participant_id)::int from votes v where v.theme_id = p.id)
@@ -68,14 +80,13 @@ export async function getNextThemeSuggestion(
       (select count(*)::int from statements s
         where s.theme_id = p.id and s.status = 'visible') as statement_count
     from picked p
+    order by p.rn
   `);
 
-  const row = rows[0];
-  if (!row) return null;
-  return {
+  return rows.map((row) => ({
     id: row.id,
     title: row.title,
     voterCount: Number(row.voter_count),
     statementCount: Number(row.statement_count),
-  };
+  }));
 }

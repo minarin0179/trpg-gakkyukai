@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getTheme, getThemeCounts, getVisibleStatements, getMathResult, getGroupVoteBreakdown, getThemeTags, getTagVocabulary } from "@/lib/queries";
+import { getTheme, getThemeCounts, getVisibleStatements, getMathResult, getGroupVoteBreakdown, getThemeTags, getTagVocabulary, getRelatedThemes } from "@/lib/queries";
 import { StatementMap } from "@/components/StatementMap";
 import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
 import { OpinionMap } from "@/components/OpinionMap";
 import { toMapPayload, toPublicMathResult } from "@/lib/math-result";
-import { MAP_MIN_VOTES, CHART_MIN_ITEMS } from "@/lib/config";
+import { MAP_MIN_VOTES, CHART_MIN_ITEMS, RELATED_THEMES_COUNT } from "@/lib/config";
 import { StatementList } from "@/components/StatementList";
 import { ReportButton } from "@/components/ReportButton";
 import { ShareTheme } from "@/components/ShareTheme";
@@ -71,12 +71,14 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
   const theme = await getTheme(id);
   if (!theme) notFound();
 
-  const [counts, allStatements, mathRow, tags, tagVocabulary] = await Promise.all([
+  const [counts, allStatements, mathRow, tags, tagVocabulary, relatedThemes] = await Promise.all([
     getThemeCounts(id),
     getVisibleStatements(id),
     getMathResult(id),
     getThemeTags(id),
     getTagVocabulary(),
+    // 「ほかのテーマ」欄(全員共通)。個人の投票状況では絞らない(ISRのため cookie は読めない)
+    getRelatedThemes(id, null, RELATED_THEMES_COUNT),
   ]);
 
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない。
@@ -243,6 +245,40 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
               <StatementList themeId={theme.id} statements={items} />
             </div>
           </details>
+        </section>
+
+        {/* 投票せずに回遊したい人のための行き先。ページを開いた時点で常に出す
+            (投票を終えた人向けの「次のテーマ」は VoteDeck 側で個人に合わせて出す) */}
+        <section aria-labelledby="related-heading">
+          <h2 id="related-heading" className="text-base font-bold">
+            ほかのテーマ
+          </h2>
+          <p className="mt-0.5 text-xs leading-relaxed text-stone-600">
+            このテーマとタグの近いものや、いま意見が動いているテーマです。
+          </p>
+          {relatedThemes.length > 0 && (
+            <ul className="mt-3 flex flex-col gap-2">
+              {relatedThemes.map((r) => (
+                <li key={r.id} className="rounded-lg border border-stone-400 bg-white px-4 py-3">
+                  <Link
+                    href={`/t/${r.id}`}
+                    prefetch={false}
+                    className="text-sm font-semibold underline decoration-stone-400 underline-offset-2 hover:decoration-stone-800"
+                  >
+                    {r.title}
+                  </Link>
+                  <p className="mt-0.5 text-xs text-stone-600">
+                    {r.voterCount}人が投票 · 意見{r.statementCount}件
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 text-sm">
+            <Link href="/themes" prefetch={false} className="text-stone-600 underline hover:text-stone-800">
+              テーマ一覧へ
+            </Link>
+          </p>
         </section>
       </div>
     </ThemePersonalization>
