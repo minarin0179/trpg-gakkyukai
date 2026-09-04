@@ -2,7 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   X_MAX_UNITS,
+  agreePercent,
   composeDigestText,
+  disagreePercent,
+  isDigestBody,
+  legacyTotals,
+  splitDistance,
+  voteTotal,
+  weekEndKey,
   formatWeekRange,
   isoWeekKey,
   parseWeekKey,
@@ -84,35 +91,48 @@ test("truncateToUnits は単位数で切って「…」を付ける", () => {
 
 function bodyOf(titles: string[], consensus: string[]): DigestBody {
   return {
+    version: 2,
     weekStart: "2026-08-31",
-    weekKey: "2026-W36",
-    range: "8/31〜9/6",
-    mostVoted: titles.map((title, i) => ({
+    weekEnd: "2026-09-06",
+    totals: { votes: 100, statements: 10, newThemes: 2, voters: 20 },
+    featured: titles.map((title, i) => ({
       id: `theme${i}`,
       title,
-      voterCount: 10,
-      statementCount: 5,
+      weekVoters: 10,
+      weekStatements: 2,
+      totalVoters: 30,
+      totalStatements: 12,
+      groups: null,
+      consensus: null,
+      divisive: null,
     })),
     newConsensus: consensus.map((text, i) => ({
       themeId: `theme${i}`,
       themeTitle: "テーマ",
       statementId: i,
       text,
-      agreeRatio: 0.8,
+      agree: 40,
+      disagree: 5,
+      pass: 3,
+      agreeRatio: 40 / 45,
     })),
-    quietNew: [],
-    totals: { votes: 100, statements: 10, themes: 2, voters: 20 },
+    contested: [],
+    newThemes: { count: 2, items: [] },
   };
 }
 
 const URL = "https://trpg-gakkyukai.com/digest/2026-W36";
 
+test("週の終わりは同じ週の日曜(閉区間)", () => {
+  assert.equal(weekEndKey(weekStartFromKey("2026-08-31")), "2026-09-06");
+});
+
 test("投稿の下書きは見出し・本文・URLで構成され、上限に収まる", () => {
   const text = composeDigestText(bodyOf(["遅刻の扱い", "キャラシの提出期限"], ["雑談は歓迎"]), URL);
   const lines = text.split("\n");
   assert.equal(lines[0], "今週のTRPG学級会(8/31〜9/6)");
-  assert.equal(lines[1], "投票が多かったテーマ:「遅刻の扱い」「キャラシの提出期限」");
-  assert.equal(lines[2], "新しく見つかった合意:「雑談は歓迎」");
+  assert.equal(lines[1], "今週のテーマ:「遅刻の扱い」「キャラシの提出期限」");
+  assert.equal(lines[2], "賛成が集まった意見:「雑談は歓迎」");
   assert.equal(lines[3], URL);
   assert.ok(xLength(text) <= X_MAX_UNITS);
 });
@@ -128,4 +148,68 @@ test("長いタイトルは切り詰め、それでも入らない行は落と�
 test("該当が無いセクションは行ごと出さない", () => {
   const text = composeDigestText(bodyOf([], []), URL);
   assert.equal(text, `今週のTRPG学級会(8/31〜9/6)\n${URL}`);
+});
+
+test("isDigestBody は version 2 の形だけを通す", () => {
+  const body = bodyOf(["遅刻の扱い"], ["雑談は歓迎"]);
+  assert.equal(isDigestBody(body), true);
+  // 版が違う・版が無い(旧形式)行は通さない
+  assert.equal(isDigestBody({ ...body, version: 1 }), false);
+  assert.equal(isDigestBody({ ...body, version: undefined }), false);
+  // 旧形式の実物に近い形(mostVoted / quietNew / totals.themes)も弾く
+  assert.equal(
+    isDigestBody({
+      weekStart: "2026-08-31",
+      weekKey: "2026-W36",
+      range: "8/31〜9/6",
+      mostVoted: [],
+      newConsensus: [],
+      quietNew: [],
+      totals: { votes: 1, statements: 1, themes: 1, voters: 1 },
+    }),
+    false,
+  );
+  // 必須の項目が欠けている・型が違うものも弾く
+  assert.equal(isDigestBody({ ...body, featured: null }), false);
+  assert.equal(isDigestBody({ ...body, contested: undefined }), false);
+  assert.equal(isDigestBody({ ...body, newThemes: { count: "2", items: [] } }), false);
+  assert.equal(isDigestBody({ ...body, totals: { votes: 1 } }), false);
+  assert.equal(isDigestBody(null), false);
+  assert.equal(isDigestBody([]), false);
+});
+
+test("旧形式からは合計だけを拾う(themes は newThemes として読む)", () => {
+  assert.deepEqual(
+    legacyTotals({ totals: { votes: 100, statements: 10, themes: 2, voters: 20 } }),
+    { votes: 100, statements: 10, newThemes: 2, voters: 20 },
+  );
+  // 壊れた値は0として扱い、表示だけは成立させる
+  assert.deepEqual(legacyTotals({ totals: {} }), {
+    votes: 0,
+    statements: 0,
+    newThemes: 0,
+    voters: 0,
+  });
+  assert.equal(legacyTotals({}), null);
+  assert.equal(legacyTotals("x"), null);
+});
+
+test("割合はパスを母数から外し、賛成と反対の合計は必ず100%になる", () => {
+  const s = { agree: 87, disagree: 13, pass: 20 };
+  assert.equal(voteTotal(s), 120);
+  assert.equal(agreePercent(s), 87);
+  assert.equal(disagreePercent(s), 13);
+  // 個別に丸めると101%になる組み合わせでも合計は100%
+  const odd = { agree: 5, disagree: 4, pass: 0 };
+  assert.equal(agreePercent(odd) + disagreePercent(odd), 100);
+  // 全員パス(賛否0)は0%として扱い、ゼロ除算を出さない
+  assert.equal(agreePercent({ agree: 0, disagree: 0 }), 0);
+});
+
+test("50:50 からの隔たりは真っ二つで0、一方的なほど1に近づく", () => {
+  assert.equal(splitDistance({ agree: 50, disagree: 50 }), 0);
+  assert.equal(splitDistance({ agree: 100, disagree: 0 }), 1);
+  assert.ok(splitDistance({ agree: 6, disagree: 4 }) < splitDistance({ agree: 8, disagree: 2 }));
+  // 賛否が1票も無い意見は「割れている」とは言えないので最も遠い扱い
+  assert.equal(splitDistance({ agree: 0, disagree: 0 }), 1);
 });

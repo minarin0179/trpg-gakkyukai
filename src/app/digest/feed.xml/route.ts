@@ -1,10 +1,4 @@
-import {
-  formatWeekRange,
-  isDigestBody,
-  isoWeekKey,
-  listDigestRows,
-  weekStartFromKey,
-} from "@/lib/digest";
+import { listDigestRows, weekKeyOf, weekRangeOf } from "@/lib/digest";
 import { SITE_URL } from "@/lib/site";
 
 // 週に1回しか増えないので、ISRで1時間キャッシュする
@@ -29,10 +23,9 @@ export async function GET() {
 
   const items = rows
     .map((row) => {
-      const weekStart = weekStartFromKey(row.weekStart);
-      const body = isDigestBody(row.body) ? row.body : null;
-      const weekKey = body?.weekKey ?? isoWeekKey(weekStart);
-      const range = body?.range ?? formatWeekRange(weekStart);
+      // 期間・週キーは主キー(週の月曜)から導く(bodyの形式に依存させない)
+      const weekKey = weekKeyOf(row.weekStart);
+      const range = weekRangeOf(row.weekStart);
       const url = `${SITE_URL}/digest/${weekKey}`;
       return [
         "    <item>",
@@ -52,7 +45,7 @@ export async function GET() {
     "  <channel>",
     "    <title>TRPG学級会 週間ダイジェスト</title>",
     `    <link>${SITE_URL}/digest</link>`,
-    "    <description>TRPG学級会の1週間のまとめ(投票が多かったテーマ・新しく見つかった合意・まだ人が少ないテーマ)</description>",
+    "    <description>TRPG学級会の1週間のまとめ(今週のテーマ・グループを越えて賛成が集まった意見・今週の争点・今週始まったテーマ)</description>",
     "    <language>ja</language>",
     items,
     "  </channel>",

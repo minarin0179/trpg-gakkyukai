@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { isDigestBody, listDigestRows, weekStartFromKey, isoWeekKey, formatWeekRange } from "@/lib/digest";
+import { isDigestBody, listDigestRows, weekKeyOf, weekRangeOf } from "@/lib/digest";
 import { SITE_URL } from "@/lib/site";
 
 // 週に1回しか増えないため、時間ベースの再生成は1時間で足りる
@@ -40,12 +40,14 @@ export default async function DigestIndexPage() {
       ) : (
         <ul className="flex flex-col gap-2">
           {rows.map((row) => {
-            // 表示に使う期間・週キーは保存済みのbodyから取るが、
-            // 壊れた行でも一覧が落ちないよう主キー(週の月曜)から組み直せるようにする
-            const weekStart = weekStartFromKey(row.weekStart);
+            // 期間・週キーは主キー(週の月曜)から導く。bodyの形式が古い行でも
+            // 一覧のリンクと日付は必ず出せるようにするため
+            const weekKey = weekKeyOf(row.weekStart);
+            const range = weekRangeOf(row.weekStart);
             const body = isDigestBody(row.body) ? row.body : null;
-            const weekKey = body?.weekKey ?? isoWeekKey(weekStart);
-            const range = body?.range ?? formatWeekRange(weekStart);
+            // 一言の内容紹介。開く前に「その週に何があったか」が分かるよう、
+            // いちばん人が集まったテーマの名前と投票数だけを出す
+            const teaser = body?.featured[0]?.title;
             return (
               <li key={row.weekStart} className="rounded-lg border border-stone-400 bg-white p-4">
                 <Link prefetch={false} href={`/digest/${weekKey}`} className="font-medium underline">
@@ -53,8 +55,8 @@ export default async function DigestIndexPage() {
                 </Link>
                 {body && (
                   <p className="mt-1 text-xs text-stone-600">
-                    投票{body.totals.votes}件 · 新しいテーマ{body.totals.themes}件 ·
-                    投票した人{body.totals.voters}人
+                    {teaser ? `「${teaser}」ほか · ` : ""}
+                    投票{body.totals.votes}件
                   </p>
                 )}
               </li>

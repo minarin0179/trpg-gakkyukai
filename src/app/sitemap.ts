@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { desc, eq } from "drizzle-orm";
 import { db, themes, digests } from "@/db";
 import { SITE_URL } from "@/lib/site";
-import { isDigestBody, isoWeekKey, weekStartFromKey } from "@/lib/digest";
+import { weekKeyOf } from "@/lib/digest";
 
 // 1時間ごとの再生成。テーマ一覧の反映が最大1時間遅れても実害はなく、
 // クローラの取得ごとに関数実行しない
@@ -39,10 +39,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const digestPages: MetadataRoute.Sitemap = digestRows.map((row) => {
-    const body = isDigestBody(row.body) ? row.body : null;
-    const weekKey = body?.weekKey ?? isoWeekKey(weekStartFromKey(row.weekStart));
+    // 週キーは主キー(週の月曜)から導く(bodyの形式に依存させない)
     return {
-      url: `${SITE_URL}/digest/${weekKey}`,
+      url: `${SITE_URL}/digest/${weekKeyOf(row.weekStart)}`,
       lastModified: row.createdAt,
       changeFrequency: "yearly" as const,
       priority: 0.4,
