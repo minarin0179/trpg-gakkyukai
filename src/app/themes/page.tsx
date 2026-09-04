@@ -90,6 +90,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
       <div className="relative mb-4">
         <a
           href="/themes/random"
+          rel="nofollow"
           className="absolute right-0 top-0 whitespace-nowrap text-sm text-stone-600 underline hover:text-stone-800"
         >
           ランダムに開く
@@ -109,6 +110,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
                 <Link
                   key={tag}
                   prefetch={false}
+                  rel="nofollow"
                   href={tagUrl(next, tagMode)}
                   className={`rounded-full border px-2.5 py-0.5 text-xs transition ${
                     active
@@ -127,6 +129,7 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
                 <Link
                   key={m}
                   prefetch={false}
+                  rel="nofollow"
                   href={tagUrl(selectedTags, m)}
                   className={`whitespace-nowrap rounded-md border px-2 py-0.5 transition ${
                     tagMode === m
