@@ -3,3 +3,4 @@
 export * from "./queries/themes-list"; // テーマ一覧(タブ・検索・タグ絞り込み)
 export * from "./queries/theme"; // 単一テーマ(本体・意見・投票・計算結果・タグ)
 export * from "./queries/report"; // 結果レポートの集計
+export * from "./queries/next-theme"; // 投票を終えた人への次のテーマ提示

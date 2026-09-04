@@ -6,7 +6,7 @@ import { getCache } from "@vercel/functions";
 import { nanoid } from "nanoid";
 import { db, themes, statements, themeTags } from "@/db";
 import { revalidateTheme } from "@/lib/revalidate";
-import { getOrCreateParticipantId, actorHash } from "@/lib/participant";
+import { getOrCreateParticipantId, getParticipantId, actorHash } from "@/lib/participant";
 import { ipActor } from "@/lib/request";
 import { checkAndRecordRate } from "@/lib/rate-limit";
 import { embedTexts } from "@/lib/embedding";
@@ -14,6 +14,7 @@ import { verifyTurnstile } from "@/lib/turnstile";
 import { findContentViolation } from "@/lib/content-filter";
 import { normalizeTag } from "@/lib/tags";
 import { isThemeId } from "@/lib/validate";
+import { getNextThemeSuggestion, type NextThemeSuggestion } from "@/lib/queries";
 import type { ActionResult, FormState } from "@/lib/action-result";
 import {
   THEME_TITLE_MAX,
@@ -216,4 +217,16 @@ export async function addThemeTagAction(
   // (revalidateThemeは他の閲覧者向けのキャッシュ更新)
   revalidateTheme(themeId);
   return { ok: true, data: { id: row?.id, tag } };
+}
+
+// 投票を終えた画面から呼ぶ「次のテーマ」の提示(読み取りのみ)。
+// cookieが無い訪問者にも出す(その場合は未参加の除外が効かないだけ)。
+// 候補が無ければ null を返し、UIは一覧への導線だけを出す
+export async function suggestNextThemeAction(
+  themeId: string,
+): Promise<ActionResult<NextThemeSuggestion | null>> {
+  if (!isThemeId(themeId)) return { ok: false, error: "不正なリクエストです" };
+  const participantId = await getParticipantId();
+  const next = await getNextThemeSuggestion(themeId, participantId);
+  return { ok: true, data: next };
 }
