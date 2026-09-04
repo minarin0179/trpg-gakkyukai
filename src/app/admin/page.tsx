@@ -10,7 +10,7 @@ import {
   regenerateDigestAction,
   postDigestAction,
 } from "./actions";
-import { listDigestRows, weekKeyOf, weekRangeOf } from "@/lib/digest";
+import { listDigestRows, weekRangeOf } from "@/lib/digest";
 import { isXConfigured } from "@/lib/x-post";
 import { REMOVAL_CRITERIA } from "@/lib/rules";
 import { requireAdmin } from "@/lib/admin-auth";
@@ -328,20 +328,13 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         )}
 
         {digestRows.map((row) => {
-          // 期間・週キーは主キー(週の月曜)から導く(bodyの形式に依存させない)。
+          // 期間は主キー(週の月曜)から導く(bodyの形式に依存させない)。
           // Xへの投稿の下書き(row.text)は保存済みの文字列をそのまま出す
-          const weekKey = weekKeyOf(row.weekStart);
           const range = weekRangeOf(row.weekStart);
           return (
             <div key={row.weekStart} className="rounded-lg border border-stone-400 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-medium">
-                  {range}（
-                  <Link href={`/digest/${weekKey}`} className="underline">
-                    ページを見る
-                  </Link>
-                  ）
-                </p>
+                <p className="text-sm font-medium">{range}</p>
                 <span className="shrink-0 text-xs text-stone-600">
                   {row.postedAt
                     ? `投稿済み · ${row.postedAt.toLocaleString("ja-JP")}`

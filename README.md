@@ -68,21 +68,21 @@ node --env-file=.env.local scripts/seed.mjs
 - `api/_logic.py` — red-dwarf呼び出し本体(エンドポイントから分離、単体テスト可)
 - `api/_http.py` — Python Function共通のHTTP層(内部鍵の検証・JSON読み取り・応答)
 - `src/app/api/cron/recompute/route.ts` — 日次バックストップ(vercel.json の crons)
-- `src/lib/digest.ts` / `src/lib/digest-text.ts` — 週間ダイジェストの集計と、
+- `src/lib/digest.ts` / `src/lib/digest-text.ts` — 週次のX投稿の集計と、
   週の区切り・投稿文の組み立て(後者はDBに触れないので単体テストの対象)
-- `src/app/digest/` — ダイジェストの週ページ・一覧・RSS(`feed.xml`)
 - `src/lib/x-post.ts` — Xへの投稿(OAuth 1.0a・依存なし)
 - 参加者は匿名cookie(`gk_pid`)のみで識別。個人情報は保存しない
 
-## 週間ダイジェスト
+## 週間ダイジェスト(Xへの投稿)
 
-1週間(日本時間の月曜0:00〜翌月曜0:00)の動きをまとめて `digests` に保存し、
-`/digest/<ISO週>` で公開する。集計は週に一度だけ走らせ、ページは保存済みの値を
-読むだけにしてある(閲覧のたびに集計しない)。
+1週間(日本時間の月曜0:00〜翌月曜0:00)の動きを集計し、週に一度Xへ投稿する。
+公開ページは持たず、集計結果と投稿文は `digests` テーブルに保存して、
+管理画面から下書きと投稿状況を確認する。
 
 - cron: `vercel.json` の `/api/cron/digest`(`0 11 * * 1` = 毎週月曜11:00 UTC)。
   日本時間では月曜20:00で、対象は「直前に終わった週」。週が終わった直後ではなく
   月曜の夜にしているのは、週明けに人が戻る時間帯に告知を出すため。
+  cronは集計して保存したあと、その週がまだ未投稿ならXへ投稿する。
 - 手動での作り直し(週を指定):
 
   ```bash
@@ -90,8 +90,9 @@ node --env-file=.env.local scripts/seed.mjs
     "https://trpg-gakkyukai.com/api/cron/digest?week=2026-W36"
   ```
 
-- 管理画面(`/admin`)の「週間ダイジェスト」からも、進行中の今週・過去の週の
-  再生成と、Xへの投稿ができる。
+- 管理画面(`/admin`)の「週間ダイジェスト」に直近4週が並ぶ。下書きの全文と
+  投稿状況(未投稿・投稿済み・失敗の理由)が見え、「今週分を再生成」
+  「この週を再生成」で作り直し、「投稿する」で手動投稿できる。
 - Xの資格情報(`X_API_KEY` ほか4つ)が未設定の環境では投稿せず、下書きの保存で止まる。
   下書きは管理画面からコピーして手で投稿できる。
 

@@ -43,7 +43,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 レスバより、セッションを。
               </span>
             </Link>
-            {/* スマホ幅(360px)でも4項目が1行に収まるよう、狭い画面では短い表記と狭い間隔にする */}
+            {/* スマホ幅(360px)でも1行に収まるよう、狭い画面では短い表記と狭い間隔にする */}
             <nav className="flex shrink-0 items-center gap-2 text-[11px] sm:gap-4 sm:text-sm">
               <Link
                 href="/about"
@@ -58,14 +58,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               >
                 <span className="sm:hidden">一覧</span>
                 <span className="hidden sm:inline">テーマ一覧</span>
-              </Link>
-              <Link
-                href="/digest"
-                prefetch={false}
-                className="whitespace-nowrap text-stone-700 hover:text-stone-900"
-              >
-                <span className="sm:hidden">ダイジェスト</span>
-                <span className="hidden sm:inline">週間ダイジェスト</span>
               </Link>
               {/* 全ページのヘッダに出る静的ルートは毎PVで全量prefetchされるため止める。
                   ISR済みなのでクリック時に取得しても十分速い */}
@@ -85,10 +77,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <p>
             <Link href="/about" className="underline">
               ルールと仕組み
-            </Link>
-            {" · "}
-            <Link href="/digest" prefetch={false} className="underline">
-              週間ダイジェスト
             </Link>
             {" · "}
             <Link href="/terms" className="underline">
