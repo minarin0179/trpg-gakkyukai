@@ -38,3 +38,22 @@ export function internalApiKey(): string {
 export function adminKey(): string | undefined {
   return secret("ADMIN_KEY", undefined);
 }
+
+// X(旧Twitter)への自動投稿の資格情報。4つ揃っているときだけ投稿機能を有効にするため、
+// STRICT環境でも未設定を例外にしない(未設定なら週間ダイジェストは下書きの保存までで止まる)。
+// 値はここから外へ出さない(ログにも出力しない)
+export type XCredentials = {
+  apiKey: string;
+  apiSecret: string;
+  accessToken: string;
+  accessTokenSecret: string;
+};
+
+export function xCredentials(): XCredentials | undefined {
+  const apiKey = process.env.X_API_KEY;
+  const apiSecret = process.env.X_API_SECRET;
+  const accessToken = process.env.X_ACCESS_TOKEN;
+  const accessTokenSecret = process.env.X_ACCESS_TOKEN_SECRET;
+  if (!apiKey || !apiSecret || !accessToken || !accessTokenSecret) return undefined;
+  return { apiKey, apiSecret, accessToken, accessTokenSecret };
+}

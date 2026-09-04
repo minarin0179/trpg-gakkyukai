@@ -111,6 +111,10 @@ GitHub連携により `main` へのpushで本番へ自動デプロイされる(�
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Vercel | Turnstile のサイトキー | ローカルは `1x00000000000000000000AA` |
 | `NEXT_PUBLIC_SITE_URL` | 任意 | canonical・OGP・sitemap の生成 | 未設定なら本番ドメイン |
 | `DISCORD_WEBHOOK_URL` | 任意 | 通報・問い合わせの運営通知 | 未設定なら通知しない |
+| `X_API_KEY` | 任意 | X(旧Twitter)投稿のAPIキー | 4つ揃わなければ週間ダイジェストは下書きのみ |
+| `X_API_SECRET` | 任意 | 同上(シークレット) | ログには出さない |
+| `X_ACCESS_TOKEN` | 任意 | 同上(運営アカウントのトークン) | Read and write 権限が必要 |
+| `X_ACCESS_TOKEN_SECRET` | 任意 | 同上(トークンシークレット) | ログには出さない |
 | `COMPUTE_URL` | ローカルのみ | クラスタリング計算の呼び出し先 | 本番は同一デプロイの `/api/compute` |
 | `EMBED_URL` | ローカルのみ | 埋め込み生成の呼び出し先 | 本番は同一デプロイの `/api/embed` |
 | `DEV_ALLOWED_ORIGINS` | ローカルのみ・任意 | 開発サーバーへのアクセスを許可するオリジン | カンマ区切り。LAN内の実機確認に使う |
