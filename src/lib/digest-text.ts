@@ -1,0 +1,200 @@
+// 週間ダイジェストのうち、DBに触れない部分(週の区切り・型・投稿文の組み立て)。
+// digest.ts はDB(@/db)を読み込むため単体テストから import できない。
+// 純関数だけをここに分けて、node --test で直接確かめられるようにしてある。
+// digest.ts がこのモジュールを再輸出するので、利用側は "@/lib/digest" だけを見ればよい
+
+export const DAY_MS = 86_400_000;
+// 週の区切りは日本時間の月曜0:00。サーバーはUTCで動くため、JSTの壁時計を
+// 「UTCとして読める形」に9時間ずらして日付計算する(ローカルタイムゾーンに依存しない)
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+function toJstWallClock(d: Date): Date {
+  return new Date(d.getTime() + JST_OFFSET_MS);
+}
+
+// その日時が属する週(JSTの月曜0:00)の開始時刻を実時刻(UTC)で返す
+export function startOfWeekJst(d: Date): Date {
+  const j = toJstWallClock(d);
+  const mondayBased = (j.getUTCDay() + 6) % 7; // 月曜=0 … 日曜=6
+  const midnight = Date.UTC(j.getUTCFullYear(), j.getUTCMonth(), j.getUTCDate());
+  return new Date(midnight - mondayBased * DAY_MS - JST_OFFSET_MS);
+}
+
+// 週の窓 [weekStart, weekEnd)。weekEnd は翌週の月曜0:00 JST
+export function weekWindow(weekStart: Date): { weekStart: Date; weekEnd: Date } {
+  return { weekStart, weekEnd: new Date(weekStart.getTime() + 7 * DAY_MS) };
+}
+
+// 直前に終わった週(cronが月曜夜に集計する対象)
+export function previousWeekStart(now: Date): Date {
+  return startOfWeekJst(new Date(startOfWeekJst(now).getTime() - DAY_MS));
+}
+
+// DBの主キーに使う 'YYYY-MM-DD'(JSTの月曜の日付)
+export function weekStartKey(weekStart: Date): string {
+  return toJstWallClock(weekStart).toISOString().slice(0, 10);
+}
+
+// 'YYYY-MM-DD'(JSTの月曜)から実時刻に戻す
+export function weekStartFromKey(dateKey: string): Date {
+  return new Date(`${dateKey}T00:00:00+09:00`);
+}
+
+// URLに使うISO週番号 'YYYY-Www'。ISO 8601では「その週の木曜が属する年」の週になる
+export function isoWeekKey(weekStart: Date): string {
+  const monday = toJstWallClock(weekStart);
+  const thursday = new Date(monday.getTime() + 3 * DAY_MS);
+  const year = thursday.getUTCFullYear();
+  const week1Monday = isoWeek1Monday(year);
+  const week = Math.floor((monday.getTime() - week1Monday) / (7 * DAY_MS)) + 1;
+  return `${year}-W${String(week).padStart(2, "0")}`;
+}
+
+// その年の第1週の月曜(1月4日を含む週)
+function isoWeek1Monday(year: number): number {
+  const jan4 = Date.UTC(year, 0, 4);
+  const mondayBased = (new Date(jan4).getUTCDay() + 6) % 7;
+  return jan4 - mondayBased * DAY_MS;
+}
+
+// 'YYYY-Www' から週の開始時刻へ。存在しない週(第53週が無い年など)はnull
+export function parseWeekKey(key: string): Date | null {
+  const m = /^(\d{4})-W(\d{2})$/.exec(key);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const week = Number(m[2]);
+  if (week < 1 || week > 53) return null;
+  const monday = isoWeek1Monday(year) + (week - 1) * 7 * DAY_MS;
+  const weekStart = new Date(monday - JST_OFFSET_MS);
+  // 往復して一致しない指定(その年に第53週が無い等)は無効として扱う
+  return isoWeekKey(weekStart) === key ? weekStart : null;
+}
+
+// 表示用の期間 「9/1〜9/7」(週の月曜〜日曜、JST)
+export function formatWeekRange(weekStart: Date): string {
+  const s = toJstWallClock(weekStart);
+  const e = new Date(s.getTime() + 6 * DAY_MS);
+  return `${s.getUTCMonth() + 1}/${s.getUTCDate()}〜${e.getUTCMonth() + 1}/${e.getUTCDate()}`;
+}
+
+// ダイジェストの中身(digests.body に保存するJSON)
+export type DigestTheme = {
+  id: string;
+  title: string;
+  voterCount: number;
+  statementCount: number;
+};
+export type DigestConsensus = {
+  themeId: string;
+  themeTitle: string;
+  statementId: number;
+  text: string;
+  agreeRatio: number;
+};
+export type DigestTotals = {
+  votes: number;
+  statements: number;
+  themes: number;
+  voters: number;
+};
+export type DigestBody = {
+  weekStart: string; // 'YYYY-MM-DD'(JSTの月曜)
+  weekKey: string; // 'YYYY-Www'
+  range: string; // 「9/1〜9/7」
+  mostVoted: DigestTheme[];
+  newConsensus: DigestConsensus[];
+  quietNew: DigestTheme[];
+  totals: DigestTotals;
+};
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+// jsonbの中身は型では保証されないので、ページで使う前に形を確かめる
+// (math-result.ts の isMathResultJson と同じ方針。壊れた値がUIに流れるのを防ぐ)
+export function isDigestBody(v: unknown): v is DigestBody {
+  if (!isRecord(v)) return false;
+  if (typeof v.weekKey !== "string" || typeof v.range !== "string") return false;
+  if (!Array.isArray(v.mostVoted) || !Array.isArray(v.newConsensus)) return false;
+  if (!Array.isArray(v.quietNew)) return false;
+  if (!isRecord(v.totals)) return false;
+  return true;
+}
+
+// Xの文字数。上限は「重み付き280」で、全角は2・半角は1として数える
+// (=全角140字)。URLはt.coで短縮されるため、実際の長さに関係なく23文字扱い
+export const X_MAX_UNITS = 280;
+const X_URL_UNITS = 23;
+const URL_RE = /https?:\/\/\S+/g;
+
+export function xLength(text: string): number {
+  const urls = text.match(URL_RE) ?? [];
+  let units = urls.length * X_URL_UNITS;
+  for (const ch of text.replace(URL_RE, "")) {
+    // Xの重み付けは概ね「ラテン文字など(U+0000〜U+10FF)が1、それ以外が2」。
+    // 日本語・絵文字はすべて2として数える(安全側)
+    units += (ch.codePointAt(0) ?? 0) <= 0x10ff ? 1 : 2;
+  }
+  return units;
+}
+
+// 単位数(xLengthの数え方)で切り詰める。切ったときは末尾に「…」を付ける
+export function truncateToUnits(text: string, maxUnits: number): string {
+  if (xLength(text) <= maxUnits) return text;
+  const ellipsis = "…";
+  const budget = maxUnits - xLength(ellipsis);
+  if (budget <= 0) return "";
+  let out = "";
+  let used = 0;
+  for (const ch of text) {
+    const w = (ch.codePointAt(0) ?? 0) <= 0x10ff ? 1 : 2;
+    if (used + w > budget) break;
+    out += ch;
+    used += w;
+  }
+  return out.length > 0 ? out + ellipsis : "";
+}
+
+// タイトル1件に割く上限(全角20字)と、これ未満なら載せる意味が無い下限(全角4字)
+const TITLE_MAX_UNITS = 40;
+const TITLE_MIN_UNITS = 8;
+
+// Xへの投稿の下書き。URLは必ず入れる(ダイジェストのページに送るのが目的)ため、
+// URLと見出しを先に確保し、残りの枠に本文の行を上から入れていく。
+// 枠に入らない行は落とす(途中で切れた文を出さない)
+export function composeDigestText(body: DigestBody, url: string): string {
+  const header = `今週のTRPG学級会(${body.range})`;
+  const lines: string[] = [header];
+  // 見出し + (URLの前の改行1つ) + URL。行を足すたびに「改行1つ + その行」を加算する
+  let used = xLength(header) + 1 + xLength(url);
+
+  const addLine = (prefix: string, items: string[], max: number): void => {
+    let line = prefix;
+    for (const item of items.slice(0, max)) {
+      // 残り = 上限 - 確定分 - この行の改行 - ここまでの行 - 「」の2文字
+      const remaining = X_MAX_UNITS - used - 1 - xLength(line) - 2;
+      if (remaining < TITLE_MIN_UNITS) break;
+      const trimmed = truncateToUnits(item, Math.min(remaining, TITLE_MAX_UNITS));
+      if (!trimmed) break;
+      line += `「${trimmed}」`;
+    }
+    if (line === prefix) return; // 1件も入らなければ行ごと落とす
+    lines.push(line);
+    used += 1 + xLength(line);
+  };
+
+  addLine(
+    "投票が多かったテーマ:",
+    body.mostVoted.map((t) => t.title),
+    2,
+  );
+  addLine(
+    "新しく見つかった合意:",
+    body.newConsensus.map((c) => c.text),
+    1,
+  );
+
+  lines.push(url);
+  return lines.join("\n");
+}

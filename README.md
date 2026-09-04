@@ -62,13 +62,38 @@ node --env-file=.env.local scripts/seed.mjs
 ## 構成メモ
 
 - `src/db/schema.ts` — themes / participants / statements / votes / theme_tags /
-  math_results / reports / rate_events
+  math_results / reports / rate_events / digests
 - `src/app/actions/` — Server Actions(`themes.ts` テーマ提案・タグ / `statements.ts` 意見投稿・投票 / `reports.ts` 通報・問い合わせ)
 - `src/lib/recompute.ts` — 投票後の再計算オーケストレーション(最短30分間隔。自分の点はクライアント側でライブ投影)
 - `api/_logic.py` — red-dwarf呼び出し本体(エンドポイントから分離、単体テスト可)
 - `api/_http.py` — Python Function共通のHTTP層(内部鍵の検証・JSON読み取り・応答)
 - `src/app/api/cron/recompute/route.ts` — 日次バックストップ(vercel.json の crons)
+- `src/lib/digest.ts` / `src/lib/digest-text.ts` — 週間ダイジェストの集計と、
+  週の区切り・投稿文の組み立て(後者はDBに触れないので単体テストの対象)
+- `src/app/digest/` — ダイジェストの週ページ・一覧・RSS(`feed.xml`)
+- `src/lib/x-post.ts` — Xへの投稿(OAuth 1.0a・依存なし)
 - 参加者は匿名cookie(`gk_pid`)のみで識別。個人情報は保存しない
+
+## 週間ダイジェスト
+
+1週間(日本時間の月曜0:00〜翌月曜0:00)の動きをまとめて `digests` に保存し、
+`/digest/<ISO週>` で公開する。集計は週に一度だけ走らせ、ページは保存済みの値を
+読むだけにしてある(閲覧のたびに集計しない)。
+
+- cron: `vercel.json` の `/api/cron/digest`(`0 11 * * 1` = 毎週月曜11:00 UTC)。
+  日本時間では月曜20:00で、対象は「直前に終わった週」。週が終わった直後ではなく
+  月曜の夜にしているのは、週明けに人が戻る時間帯に告知を出すため。
+- 手動での作り直し(週を指定):
+
+  ```bash
+  curl -H "Authorization: Bearer $CRON_SECRET" \
+    "https://trpg-gakkyukai.com/api/cron/digest?week=2026-W36"
+  ```
+
+- 管理画面(`/admin`)の「週間ダイジェスト」からも、進行中の今週・過去の週の
+  再生成と、Xへの投稿ができる。
+- Xの資格情報(`X_API_KEY` ほか4つ)が未設定の環境では投稿せず、下書きの保存で止まる。
+  下書きは管理画面からコピーして手で投稿できる。
 
 ## テスト
 

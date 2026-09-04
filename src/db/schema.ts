@@ -1,5 +1,6 @@
 import {
   pgTable,
+  date,
   text,
   timestamp,
   integer,
@@ -140,3 +141,19 @@ export const rateEvents = pgTable(
   },
   (t) => [index("rate_events_actor_idx").on(t.actorHash, t.kind, t.createdAt)],
 );
+
+// 週間ダイジェスト。週ごとに1行(週の始まり=JSTの月曜の日付が主キー)。
+// 集計結果(body)と、Xへの投稿用の下書き(text)を計算した時点で保存する。
+// 集計は週が終わってから走るcronの1回きりなので、ページは保存済みの値を読むだけにする
+// (毎回集計し直すとダイジェストのページが重いままになる)
+export const digests = pgTable("digests", {
+  weekStart: date("week_start").primaryKey(), // 'YYYY-MM-DD'(JSTの月曜)
+  // 集計内容。形は src/lib/digest.ts の DigestBody(読み出し時に isDigestBody で確かめる)
+  body: jsonb("body").notNull(),
+  text: text("text").notNull(), // Xへの投稿の下書き(140全角字相当に収めてある)
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // 投稿の結果。未投稿は postedAt が null。失敗した場合は postError に理由が入る
+  postedAt: timestamp("posted_at", { withTimezone: true }),
+  postId: text("post_id"),
+  postError: text("post_error"),
+});

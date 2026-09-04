@@ -77,6 +77,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               ルールと仕組み
             </Link>
             {" · "}
+            <Link href="/digest" prefetch={false} className="underline">
+              週間ダイジェスト
+            </Link>
+            {" · "}
             <Link href="/terms" className="underline">
               利用規約
             </Link>

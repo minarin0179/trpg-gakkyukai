@@ -14,6 +14,14 @@ import { checkAndRecordRate } from "@/lib/rate-limit";
 import { ipActor } from "@/lib/request";
 import { notFound } from "next/navigation";
 import { isTargetType, toIntId } from "@/lib/validate";
+import {
+  generateAndStoreDigest,
+  getDigestRow,
+  postDigestToX,
+  startOfWeekJst,
+  weekStartFromKey,
+} from "@/lib/digest";
+import { isXConfigured } from "@/lib/x-post";
 import type { ActionResult } from "@/lib/action-result";
 
 type TargetType = "theme" | "statement" | "contact" | "tag";
@@ -165,4 +173,31 @@ export async function adminLoginAction(formData: FormData) {
 export async function adminLogoutAction() {
   await logoutAdmin();
   redirect("/admin/login");
+}
+
+// 週間ダイジェストの主キー('YYYY-MM-DD' = JSTの月曜)
+const WEEK_START_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// ダイジェストの再生成。cronと同じ generateAndStoreDigest を使う
+// (集計の定義が管理画面と自動実行で食い違わないようにするため)。
+// weekStart の指定が無ければ、進行中の今週を作り直す
+export async function regenerateDigestAction(formData: FormData) {
+  if (!(await isAdmin())) notFound();
+  const raw = String(formData.get("weekStart") ?? "");
+  const weekStart = WEEK_START_RE.test(raw) ? weekStartFromKey(raw) : startOfWeekJst(new Date());
+  await generateAndStoreDigest(weekStart);
+  redirect("/admin");
+}
+
+// 下書きをXへ投稿する。二重投稿を避けるため、投稿済みの週には何もしない。
+// 失敗の理由は postDigestToX がDBに記録し、管理画面に表示される
+export async function postDigestAction(formData: FormData) {
+  if (!(await isAdmin())) notFound();
+  if (!isXConfigured()) notFound();
+  const raw = String(formData.get("weekStart") ?? "");
+  if (!WEEK_START_RE.test(raw)) notFound();
+  const row = await getDigestRow(raw);
+  if (!row) notFound();
+  if (!row.postedAt) await postDigestToX(row);
+  redirect("/admin");
 }

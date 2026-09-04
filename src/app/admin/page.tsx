@@ -7,7 +7,17 @@ import {
   dismissTargetAction,
   dismissReportAction,
   adminLogoutAction,
+  regenerateDigestAction,
+  postDigestAction,
 } from "./actions";
+import {
+  formatWeekRange,
+  isDigestBody,
+  isoWeekKey,
+  listDigestRows,
+  weekStartFromKey,
+} from "@/lib/digest";
+import { isXConfigured } from "@/lib/x-post";
 import { REMOVAL_CRITERIA } from "@/lib/rules";
 import { requireAdmin } from "@/lib/admin-auth";
 
@@ -45,6 +55,10 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   ]);
   const openCount = openCountRow?.n ?? 0;
   const resolvedCount = resolvedCountRow?.n ?? 0;
+
+  // 週間ダイジェスト(直近4週)。下書きのコピーと投稿状況の確認に使う
+  const digestRows = await listDigestRows(4);
+  const xConfigured = isXConfigured();
 
   // 対象ごとにグループ化(rowsは新しい順なので、初出順=表示順が保たれる)
   const groupMap = new Map<string, Group>();
@@ -298,6 +312,91 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
           </div>
         );
       })}
+
+      {/* 週間ダイジェスト: 下書きの確認・コピーと、投稿状況の把握 */}
+      <section className="mt-6 flex flex-col gap-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-lg font-bold">週間ダイジェスト</h2>
+          <form action={regenerateDigestAction}>
+            <button
+              type="submit"
+              className="rounded-md border border-stone-400 px-3 py-1 text-xs font-medium text-stone-700"
+            >
+              今週分を再生成
+            </button>
+          </form>
+        </div>
+
+        {digestRows.length === 0 && (
+          <p className="rounded-lg border border-dashed border-stone-400 p-6 text-center text-sm text-stone-600">
+            まだダイジェストがありません。
+          </p>
+        )}
+
+        {digestRows.map((row) => {
+          const weekStart = weekStartFromKey(row.weekStart);
+          const body = isDigestBody(row.body) ? row.body : null;
+          const weekKey = body?.weekKey ?? isoWeekKey(weekStart);
+          const range = body?.range ?? formatWeekRange(weekStart);
+          return (
+            <div key={row.weekStart} className="rounded-lg border border-stone-400 bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-medium">
+                  {range}（
+                  <Link href={`/digest/${weekKey}`} className="underline">
+                    ページを見る
+                  </Link>
+                  ）
+                </p>
+                <span className="shrink-0 text-xs text-stone-600">
+                  {row.postedAt
+                    ? `投稿済み · ${row.postedAt.toLocaleString("ja-JP")}`
+                    : row.postError
+                      ? "投稿に失敗"
+                      : "未投稿"}
+                </span>
+              </div>
+
+              {/* 下書きはコピーして使うため、編集不可のまま全文を出す */}
+              <textarea
+                readOnly
+                rows={6}
+                value={row.text}
+                className="mt-2 w-full rounded-md border border-stone-300 bg-stone-50 p-2 text-xs"
+              />
+
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <form action={regenerateDigestAction}>
+                  <input type="hidden" name="weekStart" value={row.weekStart} />
+                  <button
+                    type="submit"
+                    className="rounded-md border border-stone-400 px-3 py-1 text-xs font-medium text-stone-700"
+                  >
+                    この週を再生成
+                  </button>
+                </form>
+                {xConfigured && !row.postedAt && (
+                  <form action={postDigestAction}>
+                    <input type="hidden" name="weekStart" value={row.weekStart} />
+                    <button
+                      type="submit"
+                      className="rounded-md bg-stone-900 px-3 py-1 text-xs font-medium text-white"
+                    >
+                      投稿する
+                    </button>
+                  </form>
+                )}
+              </div>
+
+              {row.postError && (
+                <p className="mt-2 break-all text-xs text-rose-700">
+                  投稿エラー: {row.postError}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </section>
     </div>
   );
 }
