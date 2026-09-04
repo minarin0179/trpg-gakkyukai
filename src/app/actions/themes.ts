@@ -14,7 +14,8 @@ import { verifyTurnstile } from "@/lib/turnstile";
 import { findContentViolation } from "@/lib/content-filter";
 import { normalizeTag } from "@/lib/tags";
 import { isThemeId } from "@/lib/validate";
-import { getNextThemeSuggestion, type NextThemeSuggestion } from "@/lib/queries";
+import { getNextThemeSuggestion } from "@/lib/queries";
+import type { RelatedTheme } from "@/lib/related-theme";
 import type { ActionResult, FormState } from "@/lib/action-result";
 import {
   THEME_TITLE_MAX,
@@ -220,11 +221,13 @@ export async function addThemeTagAction(
 }
 
 // 投票を終えた画面から呼ぶ「次のテーマ」の提示(読み取りのみ)。
+// 「関連・注目・おまかせ」の3枠のうち、先に埋まった枠のものを1件だけ返す
+// (どの枠かは reason に入れて渡し、画面側で見出しを出し分ける)。
 // cookieが無い訪問者にも出す(その場合は未参加の除外が効かないだけ)。
 // 候補が無ければ null を返し、UIは一覧への導線だけを出す
 export async function suggestNextThemeAction(
   themeId: string,
-): Promise<ActionResult<NextThemeSuggestion | null>> {
+): Promise<ActionResult<RelatedTheme | null>> {
   if (!isThemeId(themeId)) return { ok: false, error: "不正なリクエストです" };
   const participantId = await getParticipantId();
   const next = await getNextThemeSuggestion(themeId, participantId);

@@ -7,7 +7,7 @@ import { VoteDeck } from "@/components/VoteDeck";
 import { StatementForm } from "@/components/StatementForm";
 import { OpinionMap } from "@/components/OpinionMap";
 import { toMapPayload, toPublicMathResult } from "@/lib/math-result";
-import { MAP_MIN_VOTES, CHART_MIN_ITEMS, RELATED_THEMES_COUNT } from "@/lib/config";
+import { MAP_MIN_VOTES, CHART_MIN_ITEMS } from "@/lib/config";
 import { StatementList } from "@/components/StatementList";
 import { ReportButton } from "@/components/ReportButton";
 import { ShareTheme } from "@/components/ShareTheme";
@@ -18,6 +18,7 @@ import { LiveVoterCount } from "@/components/LiveVoterCount";
 import { ThemeTagsRow } from "@/components/ThemeTagsRow";
 import { formatRelativeDate } from "@/lib/format";
 import { GROUP_COLORS, GROUP_NAMES } from "@/lib/group-style";
+import { RELATED_REASON_LABELS } from "@/lib/related-theme";
 import { groupsLackingAgreeRepness } from "@/lib/repness";
 
 // テーマページはエッジキャッシュ可能にして Origin Transfer を大幅削減する。
@@ -77,8 +78,10 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
     getMathResult(id),
     getThemeTags(id),
     getTagVocabulary(),
-    // 「ほかのテーマ」欄(全員共通)。個人の投票状況では絞らない(ISRのため cookie は読めない)
-    getRelatedThemes(id, null, RELATED_THEMES_COUNT),
+    // 「ほかのテーマ」欄(全員共通)。個人の投票状況では絞らない(ISRのため cookie は読めない)。
+    // 「おまかせ」枠が入るため、ISRの再生成のたびに並びが変わる(全員に同じ3件が
+    // 出続けるより回遊先が散るので、これは意図した挙動)
+    getRelatedThemes(id, null),
   ]);
 
   // pidMap(参加者UUID→行列index)はサーバー内でのみ使い、クライアントには渡さない。
@@ -254,16 +257,19 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
             ほかのテーマ
           </h2>
           <p className="mt-0.5 text-xs leading-relaxed text-stone-600">
-            このテーマとタグの近いものや、いま意見が動いているテーマです。
+            このテーマに近いもの、いま意見が動いているもの、おまかせで1つずつ選んでいます。
           </p>
           {relatedThemes.length > 0 && (
             <ul className="mt-3 flex flex-col gap-2">
               {relatedThemes.map((r) => (
                 <li key={r.id} className="rounded-lg border border-stone-400 bg-white px-4 py-3">
+                  {/* どの枠で選ばれたかを先に出す(同じ顔ぶれに見えないようにするための欄なので、
+                      選ばれ方が読み手に分かることがこの欄の意味そのもの) */}
+                  <p className="text-xs text-stone-500">{RELATED_REASON_LABELS[r.reason]}</p>
                   <Link
                     href={`/t/${r.id}`}
                     prefetch={false}
-                    className="text-sm font-semibold underline decoration-stone-400 underline-offset-2 hover:decoration-stone-800"
+                    className="mt-0.5 block text-sm font-semibold underline decoration-stone-400 underline-offset-2 hover:decoration-stone-800"
                   >
                     {r.title}
                   </Link>
