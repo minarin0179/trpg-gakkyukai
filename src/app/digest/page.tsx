@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { isDigestBody, listDigestRows, weekStartFromKey, isoWeekKey, formatWeekRange } from "@/lib/digest";
+import { SITE_URL } from "@/lib/site";
 
 // 週に1回しか増えないため、時間ベースの再生成は1時間で足りる
 // (新しい週が入ったときは cron が revalidatePath で即時に反映する)
@@ -10,6 +11,11 @@ export const metadata: Metadata = {
   title: "週間ダイジェスト",
   description:
     "TRPG学級会の1週間のまとめ。投票が多かったテーマ、新しく見つかった合意、まだ人が少ないテーマを週ごとに振り返れます。",
+  // RSSはフィードリーダー向けに残すが、人に見せる導線は置かない
+  // (購読リンクを踏んだ人に生のXMLが表示されて戸惑わせるため)。
+  // 代わりに自動検出用の <link rel="alternate"> をこのページの<head>に出し、
+  // リーダーにはこのページのURLを登録してもらう
+  alternates: { types: { "application/rss+xml": `${SITE_URL}/digest/feed.xml` } },
 };
 
 // 一覧に出す週の数(1年分あれば振り返りには十分)
@@ -58,10 +64,7 @@ export default async function DigestIndexPage() {
       )}
 
       <p className="text-xs text-stone-600">
-        <a href="/digest/feed.xml" className="underline">
-          RSS
-        </a>
-        {" で購読できます。"}
+        フィードリーダーをお使いの方は、このページのURLを登録すると自動で更新を受け取れます。
       </p>
     </div>
   );

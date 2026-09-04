@@ -8,6 +8,7 @@ import {
   weekStartKey,
   type DigestBody,
 } from "@/lib/digest";
+import { SITE_URL } from "@/lib/site";
 
 // 内容は週が終わった時点で確定し、以後ほとんど変わらない。
 // cron・管理画面からの再生成では revalidatePath で即時に更新するため、
@@ -39,6 +40,9 @@ export async function generateMetadata({
   return {
     title,
     description,
+    // フィードの自動検出用。人向けの購読リンクは置かず(生のXMLを見せないため)、
+    // リーダーがページから見つけられるようにだけしておく
+    alternates: { types: { "application/rss+xml": `${SITE_URL}/digest/feed.xml` } },
     openGraph: { type: "article", siteName: "TRPG学級会", locale: "ja_JP", title, description },
     twitter: { card: "summary_large_image", title, description },
   };
