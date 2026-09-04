@@ -43,7 +43,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 レスバより、セッションを。
               </span>
             </Link>
-            <nav className="flex shrink-0 items-center gap-3 text-xs sm:gap-4 sm:text-sm">
+            {/* スマホ幅(360px)でも4項目が1行に収まるよう、狭い画面では短い表記と狭い間隔にする */}
+            <nav className="flex shrink-0 items-center gap-2 text-[11px] sm:gap-4 sm:text-sm">
               <Link
                 href="/about"
                 className="whitespace-nowrap text-stone-700 hover:text-stone-900"
@@ -55,7 +56,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 href="/themes"
                 className="whitespace-nowrap text-stone-700 hover:text-stone-900"
               >
-                テーマ一覧
+                <span className="sm:hidden">一覧</span>
+                <span className="hidden sm:inline">テーマ一覧</span>
               </Link>
               <Link
                 href="/digest"
@@ -70,7 +72,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link
                 href="/new"
                 prefetch={false}
-                className="whitespace-nowrap rounded-md bg-stone-900 px-3.5 py-1.5 font-medium text-white hover:bg-stone-700 sm:px-4"
+                className="whitespace-nowrap rounded-md bg-stone-900 px-3 py-1.5 font-medium text-white hover:bg-stone-700 sm:px-4"
               >
                 テーマを提案
               </Link>
