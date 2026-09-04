@@ -89,9 +89,30 @@ function pickConsensus(rows: StatRow[]): DigestStatement | null {
   return best ? toDigestStatement(best) : null;
 }
 
+// 「割れた」と呼べるのは少数側がこの割合以上のときだけ(17%対83%のような
+// 偏った意見を「割れた」として見せない)
+const DIVISIVE_MIN_MINORITY = 0.35;
+function isDivisive(r: StatRow): boolean {
+  const decided = r.agree + r.disagree;
+  return decided > 0 && Math.min(r.agree, r.disagree) / decided >= DIVISIVE_MIN_MINORITY;
+}
+
 function pickDivisive(rows: StatRow[]): DigestStatement | null {
-  const best = digestCandidates(rows).sort(bySplit)[0];
+  const best = digestCandidates(rows).filter(isDivisive).sort(bySplit)[0];
   return best ? toDigestStatement(best) : null;
+}
+
+// サイト横断の一覧は同じテーマばかりにならないよう、テーマごとに1件まで
+function onePerTheme<T extends { themeId: string }>(items: T[], limit: number): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const it of items) {
+    if (seen.has(it.themeId)) continue;
+    seen.add(it.themeId);
+    out.push(it);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 // 前の週のダイジェストに載った意見のID。
@@ -220,7 +241,7 @@ export async function buildDigest(weekStart: Date, weekEnd: Date): Promise<Diges
     where t.status = 'active'
       and t.created_at >= ${start}::timestamptz and t.created_at < ${end}::timestamptz
     order by voters desc, t.created_at desc
-    limit ${NEW_THEME_LIMIT}
+    limit ${NEW_THEME_LIMIT + FEATURED_LIMIT}
   `);
 
   // 4) 週の総量。1本のクエリにまとめて往復を減らす(neon-httpは1クエリ=1往復)
@@ -316,8 +337,8 @@ export async function buildDigest(weekStart: Date, weekEnd: Date): Promise<Diges
         !previousIds.has(c.row.id),
     )
     .sort((a, b) => byAgreeCount(a.row, b.row))
-    .slice(0, NEW_CONSENSUS_LIMIT)
     .map((c) => ({ ...toThemeStatement(c), agreeRatio: agreeRatioOf(c.row) }));
+  const newConsensusPicked = onePerTheme(newConsensus, NEW_CONSENSUS_LIMIT);
 
   // 今週の争点。テーマごとの「割れた意見」で既に出した意見は繰り返さない
   const shownDivisive = new Set(
@@ -327,12 +348,12 @@ export async function buildDigest(weekStart: Date, weekEnd: Date): Promise<Diges
     .filter(
       (c) =>
         voteTotal(c.row) >= DIGEST_MIN_VOTES &&
-        c.row.agree + c.row.disagree > 0 &&
+        isDivisive(c.row) &&
         !shownDivisive.has(c.row.id),
     )
     .sort((a, b) => bySplit(a.row, b.row))
-    .slice(0, CONTESTED_LIMIT)
     .map(toThemeStatement);
+  const contestedPicked = onePerTheme(contested, CONTESTED_LIMIT);
 
   const t = totalsResult.rows[0];
   const totals: DigestTotals = {
@@ -342,12 +363,17 @@ export async function buildDigest(weekStart: Date, weekEnd: Date): Promise<Diges
     voters: Number(t?.voters ?? 0),
   };
 
-  const newThemeItems: DigestNewTheme[] = newThemes.rows.map((r) => ({
-    id: r.id,
-    title: r.title,
-    voters: Number(r.voters),
-    statements: Number(r.statements),
-  }));
+  // 「今週のテーマ」に既に出ているものは繰り返さない(候補は多めに取ってから絞る)
+  const featuredIds = new Set(featured.map((f) => f.id));
+  const newThemeItems: DigestNewTheme[] = newThemes.rows
+    .filter((r) => !featuredIds.has(r.id))
+    .slice(0, NEW_THEME_LIMIT)
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      voters: Number(r.voters),
+      statements: Number(r.statements),
+    }));
 
   return {
     version: DIGEST_BODY_VERSION,
@@ -355,8 +381,8 @@ export async function buildDigest(weekStart: Date, weekEnd: Date): Promise<Diges
     weekEnd: weekEndKey(weekStart),
     totals,
     featured,
-    newConsensus,
-    contested,
+    newConsensus: newConsensusPicked,
+    contested: contestedPicked,
     // 件数は「その週に作られたactiveなテーマ」で totals と同じ定義なので使い回す
     newThemes: { count: totals.newThemes, items: newThemeItems },
   };
