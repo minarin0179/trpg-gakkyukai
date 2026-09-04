@@ -1,4 +1,4 @@
-// 週間ダイジェストのうち、DBに触れない部分(週の区切り・型・投稿文の組み立て)。
+// 週次のX投稿のうち、DBに触れない部分(週の区切り・型・投稿文の組み立て)。
 // digest.ts はDB(@/db)を読み込むため単体テストから import できない。
 // 純関数だけをここに分けて、node --test で直接確かめられるようにしてある。
 // digest.ts がこのモジュールを再輸出するので、利用側は "@/lib/digest" だけを見ればよい
@@ -96,52 +96,18 @@ export function weekKeyOf(weekStartKeyValue: string): string {
   return isoWeekKey(weekStartFromKey(weekStartKeyValue));
 }
 
-// ダイジェストの中身(digests.body に保存するJSON)。
+// digests.body に保存する集計結果。投稿文そのものは text 列に保存するので、
+// body は「その週に何があったか」を後から見返すための記録として持つ。
 // 形は version で明示的に版管理する。読み出し側は isDigestBody で版を確かめ、
-// 古い版の行は「詳細なし」の表示に落とす(再生成すれば最新の形式になる)
-export const DIGEST_BODY_VERSION = 2;
+// 古い版の行は下書き(text)だけを表示に使う(再生成すれば最新の形式になる)
+export const DIGEST_BODY_VERSION = 3;
 
-// 意見1件ぶんの投票内訳。割合はここから毎回計算する(丸めた値を保存しない)
-export type DigestStatement = {
-  statementId: number;
-  text: string;
-  agree: number;
-  disagree: number;
-  pass: number;
-};
-
-// サイト全体のセクション(合意・争点)で使う。どのテーマの意見かを添える
-export type DigestThemeStatement = DigestStatement & {
-  themeId: string;
-  themeTitle: string;
-};
-
-export type DigestConsensus = DigestThemeStatement & {
-  // 賛成率(賛成 /(賛成 + 反対))。並び順の根拠を保存しておく
-  agreeRatio: number;
-};
-
-// 意見マップのグループ。name は GROUP_NAMES(A・B・…)、並びはグループIDの順
-export type DigestGroup = { name: string; size: number };
-
-// 今週の主役のテーマ1件。これだけ読めば、そのテーマの1週間が分かる量を入れる
-export type DigestFeatured = {
+// 投稿に載せるテーマ。タイトルだけを読ませる投稿なので、
+// 中身ではなく並び順の根拠(その週に投票した人数)だけを添える
+export type DigestTheme = {
   id: string;
   title: string;
-  weekVoters: number; // その週に投票した人数
-  weekStatements: number; // その週に増えた意見の数
-  totalVoters: number; // 累計
-  totalStatements: number;
-  groups: DigestGroup[] | null; // 意見マップがまだ無いテーマは null
-  consensus: DigestStatement | null; // 賛成が集まった意見
-  divisive: DigestStatement | null; // 最も割れた意見
-};
-
-export type DigestNewTheme = {
-  id: string;
-  title: string;
-  voters: number;
-  statements: number;
+  weekVoters: number; // その週に投票した人数(重複なし)
 };
 
 export type DigestTotals = {
@@ -152,23 +118,20 @@ export type DigestTotals = {
 };
 
 export type DigestBody = {
-  version: 2;
+  version: 3;
   weekStart: string; // 'YYYY-MM-DD'(JSTの月曜)
   weekEnd: string; // 'YYYY-MM-DD'(JSTの日曜。閉区間の終わり)
   totals: DigestTotals;
-  featured: DigestFeatured[];
-  newConsensus: DigestConsensus[];
-  contested: DigestThemeStatement[];
-  newThemes: { count: number; items: DigestNewTheme[] };
+  themes: DigestTheme[];
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-// jsonbの中身は型では保証されないので、ページで使う前に形を確かめる
-// (math-result.ts の isMathResultJson と同じ方針。壊れた値がUIに流れるのを防ぐ)。
-// version が合わない行(旧形式)もここで弾き、ページ側は簡易表示に落とす
+// jsonbの中身は型では保証されないので、使う前に形を確かめる
+// (math-result.ts の isMathResultJson と同じ方針)。
+// version が合わない行(旧形式)もここで弾く
 export function isDigestBody(v: unknown): v is DigestBody {
   if (!isRecord(v)) return false;
   if (v.version !== DIGEST_BODY_VERSION) return false;
@@ -177,51 +140,7 @@ export function isDigestBody(v: unknown): v is DigestBody {
   for (const key of ["votes", "statements", "newThemes", "voters"]) {
     if (typeof v.totals[key] !== "number") return false;
   }
-  if (!Array.isArray(v.featured)) return false;
-  if (!Array.isArray(v.newConsensus) || !Array.isArray(v.contested)) return false;
-  if (!isRecord(v.newThemes)) return false;
-  if (typeof v.newThemes.count !== "number" || !Array.isArray(v.newThemes.items)) return false;
-  return true;
-}
-
-// 旧形式(version 2 より前)の行から、合計値だけを拾えるだけ拾う。
-// 週ページは詳細を出せない代わりに、この数字と再生成の案内を出す
-export function legacyTotals(body: unknown): DigestTotals | null {
-  if (!isRecord(body) || !isRecord(body.totals)) return null;
-  const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
-  const t = body.totals;
-  return {
-    votes: num(t.votes),
-    statements: num(t.statements),
-    // 旧形式では「新しいテーマ」の項目名が themes だった
-    newThemes: num(t.newThemes ?? t.themes),
-    voters: num(t.voters),
-  };
-}
-
-// 表示用の割合。賛成率の分母は賛成+反対(パスは「意見が無い」ので母数から外す)
-export function voteTotal(s: Pick<DigestStatement, "agree" | "disagree" | "pass">): number {
-  return s.agree + s.disagree + s.pass;
-}
-
-export function agreeRatioOf(s: Pick<DigestStatement, "agree" | "disagree">): number {
-  const sided = s.agree + s.disagree;
-  return sided > 0 ? s.agree / sided : 0;
-}
-
-export function agreePercent(s: Pick<DigestStatement, "agree" | "disagree">): number {
-  return Math.round(agreeRatioOf(s) * 100);
-}
-
-// 反対の割合は 100 から引いて出す。個別に丸めると合計が101%になることがあるため
-export function disagreePercent(s: Pick<DigestStatement, "agree" | "disagree">): number {
-  return 100 - agreePercent(s);
-}
-
-// 50:50 からの隔たり(0 = 真っ二つ、1 = 全員が同じ側)。争点の並び順に使う
-export function splitDistance(s: Pick<DigestStatement, "agree" | "disagree">): number {
-  const sided = s.agree + s.disagree;
-  return sided > 0 ? Math.abs(s.agree - s.disagree) / sided : 1;
+  return Array.isArray(v.themes);
 }
 
 // Xの文字数。上限は「重み付き280」で、全角は2・半角は1として数える
@@ -258,45 +177,35 @@ export function truncateToUnits(text: string, maxUnits: number): string {
   return out.length > 0 ? out + ellipsis : "";
 }
 
-// タイトル1件に割く上限(全角20字)と、これ未満なら載せる意味が無い下限(全角4字)
-const TITLE_MAX_UNITS = 40;
-const TITLE_MIN_UNITS = 8;
+// 投稿に載せるテーマの上限。集計側のSQLもこの件数だけ取る
+export const DIGEST_THEME_LIMIT = 5;
+// タイトル1件に割く上限(全角24字)。テーマのタイトルは最大100字なので、
+// 長いものは「…」で切って1行に収める
+const TITLE_MAX_UNITS = 48;
 
-// Xへの投稿の下書き。ページ本体は長くなったが、投稿文は今までどおり短いまま
-// (読みたい人をページへ送るのが目的で、投稿文で全部を伝えるわけではない)。
-// URLは必ず入れるため、URLと見出しを先に確保し、残りの枠に本文の行を上から入れていく。
-// 枠に入らない行は落とす(途中で切れた文を出さない)
+const THEMES_HEADER = "投票が多かったテーマ";
+const NO_THEMES_LINE = "今週は投票の多いテーマがありませんでした。";
+
+// Xへの投稿の下書き。伝えるのは「先週よく話されたテーマの名前」だけにして、
+// 続きは人気タブで読んでもらう。見出し2行とURLは必ず入れ、
+// 残った枠にタイトルを上から詰める(枠に入らないタイトルは落とす)
 export function composeDigestText(body: DigestBody, url: string): string {
   const header = `今週のTRPG学級会(${weekRangeOf(body.weekStart)})`;
-  const lines: string[] = [header];
-  // 見出し + (URLの前の改行1つ) + URL。行を足すたびに「改行1つ + その行」を加算する
-  let used = xLength(header) + 1 + xLength(url);
+  const lines: string[] = [header, THEMES_HEADER];
+  // 行を足すたびに「改行1つ + その行」を加算する。URLの前の改行も先に確保しておく
+  let used = xLength(header) + 1 + xLength(THEMES_HEADER) + 1 + xLength(url);
 
-  const addLine = (prefix: string, items: string[], max: number): void => {
-    let line = prefix;
-    for (const item of items.slice(0, max)) {
-      // 残り = 上限 - 確定分 - この行の改行 - ここまでの行 - 「」の2文字
-      const remaining = X_MAX_UNITS - used - 1 - xLength(line) - 2;
-      if (remaining < TITLE_MIN_UNITS) break;
-      const trimmed = truncateToUnits(item, Math.min(remaining, TITLE_MAX_UNITS));
-      if (!trimmed) break;
-      line += `「${trimmed}」`;
-    }
-    if (line === prefix) return; // 1件も入らなければ行ごと落とす
+  for (const theme of body.themes.slice(0, DIGEST_THEME_LIMIT)) {
+    const title = truncateToUnits(theme.title, TITLE_MAX_UNITS);
+    if (!title) continue;
+    const line = `「${title}」`;
+    if (used + 1 + xLength(line) > X_MAX_UNITS) break;
     lines.push(line);
     used += 1 + xLength(line);
-  };
+  }
 
-  addLine(
-    "今週のテーマ:",
-    body.featured.map((t) => t.title),
-    2,
-  );
-  addLine(
-    "賛成が集まった意見:",
-    body.newConsensus.map((c) => c.text),
-    1,
-  );
+  // 1件も載らない週は、見出しだけが浮かないよう理由を書く
+  if (lines.length === 2) lines.push(NO_THEMES_LINE);
 
   lines.push(url);
   return lines.join("\n");

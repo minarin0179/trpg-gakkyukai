@@ -1,14 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  DIGEST_THEME_LIMIT,
   X_MAX_UNITS,
-  agreePercent,
   composeDigestText,
-  disagreePercent,
   isDigestBody,
-  legacyTotals,
-  splitDistance,
-  voteTotal,
   weekEndKey,
   formatWeekRange,
   isoWeekKey,
@@ -60,6 +56,10 @@ test("週の日付から実時刻に戻せる", () => {
   assert.equal(formatWeekRange(weekStartFromKey("2026-08-31")), "8/31〜9/6");
 });
 
+test("週の終わりは同じ週の日曜(閉区間)", () => {
+  assert.equal(weekEndKey(weekStartFromKey("2026-08-31")), "2026-09-06");
+});
+
 test("cronは直前に終わった週を対象にする", () => {
   // 月曜11:00 UTC(=20:00 JST)に走るcronの時刻
   const weekStart = previousWeekStart(new Date("2026-09-07T11:00:00Z"));
@@ -72,11 +72,8 @@ test("xLength は全角2・半角1で数え、URLは23文字扱い", () => {
   assert.equal(xLength("a あ"), 4); // 半角1 + 空白1 + 全角2
   // URLは長さに関係なく23。短いURLでも23で数える(t.coの短縮に合わせる)
   assert.equal(xLength("https://a.example"), 23);
-  assert.equal(
-    xLength("https://trpg-gakkyukai.com/digest/2026-W36"),
-    23,
-  );
-  assert.equal(xLength("今週 https://trpg-gakkyukai.com/digest/2026-W36"), 4 + 1 + 23);
+  assert.equal(xLength("https://trpg-gakkyukai.com/themes?tab=active"), 23);
+  assert.equal(xLength("今週 https://trpg-gakkyukai.com/themes?tab=active"), 4 + 1 + 23);
   // 上限280は全角140字ぶん
   assert.equal(xLength("あ".repeat(140)), X_MAX_UNITS);
 });
@@ -89,127 +86,92 @@ test("truncateToUnits は単位数で切って「…」を付ける", () => {
   assert.equal(truncateToUnits("あいうえお", 1), "");
 });
 
-function bodyOf(titles: string[], consensus: string[]): DigestBody {
+const URL = "https://trpg-gakkyukai.com/themes?tab=active";
+
+function bodyOf(titles: string[]): DigestBody {
   return {
-    version: 2,
+    version: 3,
     weekStart: "2026-08-31",
     weekEnd: "2026-09-06",
     totals: { votes: 100, statements: 10, newThemes: 2, voters: 20 },
-    featured: titles.map((title, i) => ({
-      id: `theme${i}`,
-      title,
-      weekVoters: 10,
-      weekStatements: 2,
-      totalVoters: 30,
-      totalStatements: 12,
-      groups: null,
-      consensus: null,
-      divisive: null,
-    })),
-    newConsensus: consensus.map((text, i) => ({
-      themeId: `theme${i}`,
-      themeTitle: "テーマ",
-      statementId: i,
-      text,
-      agree: 40,
-      disagree: 5,
-      pass: 3,
-      agreeRatio: 40 / 45,
-    })),
-    contested: [],
-    newThemes: { count: 2, items: [] },
+    themes: titles.map((title, i) => ({ id: `theme${i}`, title, weekVoters: 10 - i })),
   };
 }
 
-const URL = "https://trpg-gakkyukai.com/digest/2026-W36";
-
-test("週の終わりは同じ週の日曜(閉区間)", () => {
-  assert.equal(weekEndKey(weekStartFromKey("2026-08-31")), "2026-09-06");
-});
-
-test("投稿の下書きは見出し・本文・URLで構成され、上限に収まる", () => {
-  const text = composeDigestText(bodyOf(["遅刻の扱い", "キャラシの提出期限"], ["雑談は歓迎"]), URL);
-  const lines = text.split("\n");
-  assert.equal(lines[0], "今週のTRPG学級会(8/31〜9/6)");
-  assert.equal(lines[1], "今週のテーマ:「遅刻の扱い」「キャラシの提出期限」");
-  assert.equal(lines[2], "賛成が集まった意見:「雑談は歓迎」");
-  assert.equal(lines[3], URL);
+test("投稿は見出し2行・テーマのタイトル・URLで構成される", () => {
+  const text = composeDigestText(bodyOf(["遅刻の扱い", "キャラシの提出期限"]), URL);
+  assert.equal(
+    text,
+    [
+      "今週のTRPG学級会(8/31〜9/6)",
+      "投票が多かったテーマ",
+      "「遅刻の扱い」",
+      "「キャラシの提出期限」",
+      URL,
+    ].join("\n"),
+  );
   assert.ok(xLength(text) <= X_MAX_UNITS);
 });
 
-test("長いタイトルは切り詰め、それでも入らない行は落とす", () => {
+test("載せるタイトルは5件まで", () => {
+  const titles = ["あ", "い", "う", "え", "お", "か"].map((c) => `テーマ${c}`);
+  const lines = composeDigestText(bodyOf(titles), URL).split("\n");
+  // 見出し2行 + タイトル5行 + URL
+  assert.equal(lines.length, 2 + DIGEST_THEME_LIMIT + 1);
+  assert.equal(lines[2], "「テーマあ」");
+  assert.equal(lines[6], "「テーマお」");
+  assert.equal(lines.at(-1), URL);
+});
+
+test("長いタイトルは全角24字で切り詰め、上限を超える行は落とす", () => {
   const long = "あ".repeat(100);
-  const text = composeDigestText(bodyOf([long, long], [long]), URL);
+  const text = composeDigestText(bodyOf(Array(5).fill(long)), URL);
+  const lines = text.split("\n");
+  // 「…」を含めて全角24字(=48単位)。「」を足して52単位の行になる
+  assert.equal(lines[2], `「${"あ".repeat(23)}…」`);
+  assert.equal(xLength(lines[2]!), 52);
+  // 枠に入らない行は落とすので、5件すべては載らない
+  assert.ok(lines.length < 2 + 5 + 1);
   assert.ok(xLength(text) <= X_MAX_UNITS, `over limit: ${xLength(text)}`);
-  assert.ok(text.includes("…"));
   assert.ok(text.endsWith(URL));
 });
 
-test("該当が無いセクションは行ごと出さない", () => {
-  const text = composeDigestText(bodyOf([], []), URL);
-  assert.equal(text, `今週のTRPG学級会(8/31〜9/6)\n${URL}`);
+test("該当するテーマが無い週も見出しとURLは出す", () => {
+  assert.equal(
+    composeDigestText(bodyOf([]), URL),
+    [
+      "今週のTRPG学級会(8/31〜9/6)",
+      "投票が多かったテーマ",
+      "今週は投票の多いテーマがありませんでした。",
+      URL,
+    ].join("\n"),
+  );
 });
 
-test("isDigestBody は version 2 の形だけを通す", () => {
-  const body = bodyOf(["遅刻の扱い"], ["雑談は歓迎"]);
+test("isDigestBody は version 3 の形だけを通す", () => {
+  const body = bodyOf(["遅刻の扱い"]);
   assert.equal(isDigestBody(body), true);
   // 版が違う・版が無い(旧形式)行は通さない
-  assert.equal(isDigestBody({ ...body, version: 1 }), false);
+  assert.equal(isDigestBody({ ...body, version: 2 }), false);
   assert.equal(isDigestBody({ ...body, version: undefined }), false);
-  // 旧形式の実物に近い形(mostVoted / quietNew / totals.themes)も弾く
+  // 旧形式の実物に近い形(featured / newConsensus を持つ version 2)も弾く
   assert.equal(
     isDigestBody({
+      version: 2,
       weekStart: "2026-08-31",
-      weekKey: "2026-W36",
-      range: "8/31〜9/6",
-      mostVoted: [],
+      weekEnd: "2026-09-06",
+      totals: { votes: 1, statements: 1, newThemes: 1, voters: 1 },
+      featured: [],
       newConsensus: [],
-      quietNew: [],
-      totals: { votes: 1, statements: 1, themes: 1, voters: 1 },
+      contested: [],
+      newThemes: { count: 1, items: [] },
     }),
     false,
   );
   // 必須の項目が欠けている・型が違うものも弾く
-  assert.equal(isDigestBody({ ...body, featured: null }), false);
-  assert.equal(isDigestBody({ ...body, contested: undefined }), false);
-  assert.equal(isDigestBody({ ...body, newThemes: { count: "2", items: [] } }), false);
+  assert.equal(isDigestBody({ ...body, themes: null }), false);
+  assert.equal(isDigestBody({ ...body, weekEnd: undefined }), false);
   assert.equal(isDigestBody({ ...body, totals: { votes: 1 } }), false);
   assert.equal(isDigestBody(null), false);
   assert.equal(isDigestBody([]), false);
-});
-
-test("旧形式からは合計だけを拾う(themes は newThemes として読む)", () => {
-  assert.deepEqual(
-    legacyTotals({ totals: { votes: 100, statements: 10, themes: 2, voters: 20 } }),
-    { votes: 100, statements: 10, newThemes: 2, voters: 20 },
-  );
-  // 壊れた値は0として扱い、表示だけは成立させる
-  assert.deepEqual(legacyTotals({ totals: {} }), {
-    votes: 0,
-    statements: 0,
-    newThemes: 0,
-    voters: 0,
-  });
-  assert.equal(legacyTotals({}), null);
-  assert.equal(legacyTotals("x"), null);
-});
-
-test("割合はパスを母数から外し、賛成と反対の合計は必ず100%になる", () => {
-  const s = { agree: 87, disagree: 13, pass: 20 };
-  assert.equal(voteTotal(s), 120);
-  assert.equal(agreePercent(s), 87);
-  assert.equal(disagreePercent(s), 13);
-  // 個別に丸めると101%になる組み合わせでも合計は100%
-  const odd = { agree: 5, disagree: 4, pass: 0 };
-  assert.equal(agreePercent(odd) + disagreePercent(odd), 100);
-  // 全員パス(賛否0)は0%として扱い、ゼロ除算を出さない
-  assert.equal(agreePercent({ agree: 0, disagree: 0 }), 0);
-});
-
-test("50:50 からの隔たりは真っ二つで0、一方的なほど1に近づく", () => {
-  assert.equal(splitDistance({ agree: 50, disagree: 50 }), 0);
-  assert.equal(splitDistance({ agree: 100, disagree: 0 }), 1);
-  assert.ok(splitDistance({ agree: 6, disagree: 4 }) < splitDistance({ agree: 8, disagree: 2 }));
-  // 賛否が1票も無い意見は「割れている」とは言えないので最も遠い扱い
-  assert.equal(splitDistance({ agree: 0, disagree: 0 }), 1);
 });

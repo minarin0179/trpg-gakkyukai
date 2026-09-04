@@ -320,6 +320,9 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
             </button>
           </form>
         </div>
+        <p className="text-xs text-stone-600">
+          毎週月曜20時に前週分を X に自動投稿します。下書きはここで確認できます。
+        </p>
 
         {digestRows.length === 0 && (
           <p className="rounded-lg border border-dashed border-stone-400 p-6 text-center text-sm text-stone-600">
