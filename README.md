@@ -38,6 +38,21 @@ npm run dev           # Next.js (localhost:3000)
 node --env-file=.env.local scripts/seed.mjs
 ```
 
+## Codespaces / Dev Container
+
+`.devcontainer/` に定義がある。GitHub の「Code → Codespaces → Create codespace」で、
+Node 24 / Python 3.12 + uv / Playwright / vercel / neonctl / gh / Claude Code が入った環境が立ち上がり、
+`post-create.sh` が依存の導入・イラスト取得・`.env.local` 生成・開発用DBの準備までを行う。
+
+- **運営者**: Codespaces secrets に `VERCEL_TOKEN` と `NEON_API_KEY` を登録しておくと、
+  `vercel env pull` で環境変数を取得し、本番のコピーを Neon ブランチ(`cs-<codespace名>`、30日で失効)として
+  作成して接続する。本番DBには接続しない(差し替えに失敗したときは `DATABASE_URL` を空にする)。
+- **コントリビューター**: secrets なしでも動く。`.env.example` から開発既定値を生成し、
+  Neon アカウント不要の使い捨てDB(Claimable Postgres、72時間)を作ってマイグレーションと seed を流す。
+  残したい場合は `neonctl claim accept --no-open` で表示される URL から自分の Neon アカウントに移せる。
+- 起動は `npm run dev:all`(計算サーバー + Next.js)。ポート 3000 が自動で転送される。
+- 使い捨てDBが切れたら `.env.local` の `DATABASE_URL` を消して `bash .devcontainer/post-create.sh` を再実行する。
+
 ## マイグレーション
 
 スキーマの変更は `drizzle-kit` の generate/migrate で運用する(SQLをリポジトリで管理する)。
