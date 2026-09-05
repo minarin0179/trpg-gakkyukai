@@ -43,8 +43,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 レスバより、セッションを。
               </span>
             </Link>
-            {/* スマホ幅(360px)でも1行に収まるよう、狭い画面では短い表記と狭い間隔にする */}
-            <nav className="flex shrink-0 items-center gap-2 text-[11px] sm:gap-4 sm:text-sm">
+            <nav className="flex shrink-0 items-center gap-3 text-xs sm:gap-4 sm:text-sm">
               <Link
                 href="/about"
                 className="whitespace-nowrap text-stone-700 hover:text-stone-900"
@@ -56,15 +55,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 href="/themes"
                 className="whitespace-nowrap text-stone-700 hover:text-stone-900"
               >
-                <span className="sm:hidden">一覧</span>
-                <span className="hidden sm:inline">テーマ一覧</span>
+                テーマ一覧
               </Link>
               {/* 全ページのヘッダに出る静的ルートは毎PVで全量prefetchされるため止める。
                   ISR済みなのでクリック時に取得しても十分速い */}
               <Link
                 href="/new"
                 prefetch={false}
-                className="whitespace-nowrap rounded-md bg-stone-900 px-3 py-1.5 font-medium text-white hover:bg-stone-700 sm:px-4"
+                className="whitespace-nowrap rounded-md bg-stone-900 px-3.5 py-1.5 font-medium text-white hover:bg-stone-700 sm:px-4"
               >
                 テーマを提案
               </Link>
