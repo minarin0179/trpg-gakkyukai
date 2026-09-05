@@ -254,11 +254,8 @@ export default async function ThemePage({ params }: PageProps<"/t/[id]">) {
             ISR のためランダムの結果は再生成ごとに変わる */}
         <section aria-labelledby="related-heading">
           <h2 id="related-heading" className="text-base font-bold">
-            ほかのテーマ
+            ほかのテーマも見てみませんか
           </h2>
-          <p className="mt-0.5 text-xs leading-relaxed text-stone-600">
-            ランダムに選んだテーマです。
-          </p>
           {relatedThemes.length > 0 && (
             <ul className="mt-3 flex flex-col gap-2">
               {relatedThemes.map((r) => (
