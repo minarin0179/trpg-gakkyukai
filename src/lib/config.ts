@@ -113,5 +113,5 @@ export const RATE_LIMITS = {
 // DBのkind列の enum もこの表から導出する(schema.ts)
 export type RateKind = keyof typeof RATE_LIMITS;
 
-// 「ほかのテーマ」の件数は枠(関連・注目・おまかせ)の数そのものなので、
-// 定数ではなく src/lib/related-theme.ts の枠の定義が唯一の真実になった
+// テーマページ下部の「ほかのテーマ」欄に出す件数(ランダム。回遊用)
+export const OTHER_THEMES_COUNT = 3;

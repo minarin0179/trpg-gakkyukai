@@ -14,8 +14,7 @@ import { verifyTurnstile } from "@/lib/turnstile";
 import { findContentViolation } from "@/lib/content-filter";
 import { normalizeTag } from "@/lib/tags";
 import { isThemeId } from "@/lib/validate";
-import { getNextThemeSuggestion } from "@/lib/queries";
-import type { RelatedTheme } from "@/lib/related-theme";
+import { getNextThemeSuggestion, type OtherTheme } from "@/lib/queries";
 import type { ActionResult, FormState } from "@/lib/action-result";
 import {
   THEME_TITLE_MAX,
@@ -227,7 +226,7 @@ export async function addThemeTagAction(
 // 候補が無ければ null を返し、UIは一覧への導線だけを出す
 export async function suggestNextThemeAction(
   themeId: string,
-): Promise<ActionResult<RelatedTheme | null>> {
+): Promise<ActionResult<OtherTheme | null>> {
   if (!isThemeId(themeId)) return { ok: false, error: "不正なリクエストです" };
   const participantId = await getParticipantId();
   const next = await getNextThemeSuggestion(themeId, participantId);

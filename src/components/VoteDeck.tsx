@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { castVoteAction } from "@/app/actions/statements";
 import { suggestNextThemeAction } from "@/app/actions/themes";
-import { RELATED_REASON_LABELS, type RelatedTheme } from "@/lib/related-theme";
+import type { OtherTheme } from "@/lib/queries";
 import { ReportButton } from "./ReportButton";
 import { usePersonalization } from "./ThemePersonalization";
 import { weightedShuffle } from "@/lib/weighted-shuffle";
@@ -173,7 +173,7 @@ export function VoteDeck({
 // 離脱を防ぐ要になるため、デッキ完了時にだけサーバーアクションを1回呼ぶ。
 // 取得に失敗した場合・候補が無い場合は、一覧への導線だけを残す
 function NextThemeCard({ themeId }: { themeId: string }) {
-  const [next, setNext] = useState<RelatedTheme | null>(null);
+  const [next, setNext] = useState<OtherTheme | null>(null);
 
   useEffect(() => {
     // アンマウント後にstateを触らないためのキャンセル判定(LiveVoterCountと同じ形)
@@ -192,9 +192,7 @@ function NextThemeCard({ themeId }: { themeId: string }) {
     <div className="rounded-lg border border-stone-400 bg-white p-4">
       {next && (
         <>
-          {/* 「関連・注目・おまかせ」のどの枠から来たかを見出しに出す
-              (テーマページ下部の「ほかのテーマ」欄と同じラベルを使う) */}
-          <p className="text-xs text-stone-500">{RELATED_REASON_LABELS[next.reason]}</p>
+          <p className="text-xs text-stone-500">次のテーマ</p>
           {/* 一覧カードと同じ理由で先読みしない(遷移先はISRキャッシュ済み) */}
           <Link
             prefetch={false}
