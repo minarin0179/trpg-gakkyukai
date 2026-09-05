@@ -15,6 +15,20 @@
       "when": 1788337876990,
       "tag": "0001_complex_blonde_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788550213694,
+      "tag": "0002_sticky_karnak",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788588551169,
+      "tag": "0003_dusty_swarm",
+      "breakpoints": true
     }
   ]
 }

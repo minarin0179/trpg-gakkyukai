@@ -14,6 +14,9 @@ import { checkAndRecordRate } from "@/lib/rate-limit";
 import { ipActor } from "@/lib/request";
 import { notFound } from "next/navigation";
 import { isTargetType, toIntId } from "@/lib/validate";
+import { buildWeeklyPostText, previousWeekStart } from "@/lib/digest";
+import { markPosted } from "@/lib/x-post-guard";
+import { isXConfigured, postToX } from "@/lib/x-post";
 import type { ActionResult } from "@/lib/action-result";
 
 type TargetType = "theme" | "statement" | "contact" | "tag";
@@ -165,4 +168,27 @@ export async function adminLoginAction(formData: FormData) {
 export async function adminLogoutAction() {
   await logoutAdmin();
   redirect("/admin/login");
+}
+
+// 前週分のX投稿を今すぐ出す。cronと同じ流れ(その場で集計 → 投稿 → 目印を残す)で、
+// 自動投稿が飛んだときの手当てに使う。結果はクエリ文字列で返す
+// (このページは他の管理画面と同じく素のformで組んでいる)
+export async function postWeeklyXAction() {
+  if (!(await isAdmin())) notFound();
+  if (!isXConfigured()) notFound();
+
+  const weekStart = previousWeekStart(new Date());
+  let query: string;
+  try {
+    const { text } = await buildWeeklyPostText(weekStart);
+    const { id } = await postToX(text);
+    await markPosted(weekStart, id);
+    query = `xpost=ok&id=${encodeURIComponent(id)}`;
+  } catch (e) {
+    // 失敗の理由はそのまま画面に出す。秘密は x-post.ts の中だけで扱うため含まれない
+    const error = e instanceof Error ? e.message : String(e);
+    query = `xpost=error&msg=${encodeURIComponent(error.slice(0, 300))}`;
+  }
+  // redirect は例外で制御を移すため、try の外で呼ぶ(catchに捕まえさせない)
+  redirect(`/admin?${query}`);
 }

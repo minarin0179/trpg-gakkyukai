@@ -112,3 +112,6 @@ export const RATE_LIMITS = {
 
 // DBのkind列の enum もこの表から導出する(schema.ts)
 export type RateKind = keyof typeof RATE_LIMITS;
+
+// テーマページ下部の「ほかのテーマ」欄に出す件数(ランダム。回遊用)
+export const OTHER_THEMES_COUNT = 3;

@@ -7,7 +7,15 @@ import {
   dismissTargetAction,
   dismissReportAction,
   adminLogoutAction,
+  postWeeklyXAction,
 } from "./actions";
+import {
+  buildWeeklyPostText,
+  previousWeekStart,
+  startOfWeekJst,
+  weekRangeOf,
+} from "@/lib/digest";
+import { isXConfigured } from "@/lib/x-post";
 import { REMOVAL_CRITERIA } from "@/lib/rules";
 import { requireAdmin } from "@/lib/admin-auth";
 
@@ -30,8 +38,13 @@ type Group = {
 export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   await requireAdmin();
 
-  const { tab } = await searchParams;
+  const { tab, xpost, id, msg } = await searchParams;
   const resolvedView = tab === "resolved";
+  // クエリ文字列は同じキーが複数回来ることがあるため、先頭の1つだけを見る
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const xpostResult = one(xpost);
+  const xpostId = one(id);
+  const xpostError = one(msg);
 
   const [rows, [openCountRow], [resolvedCountRow]] = await Promise.all([
     db
@@ -45,6 +58,15 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   ]);
   const openCount = openCountRow?.n ?? 0;
   const resolvedCount = resolvedCountRow?.n ?? 0;
+
+  // 週次のX投稿の下書き。保存はしていないので、この画面を開くたびに数え直す
+  // (このページは force-dynamic なので常に今の値が出る)
+  const now = new Date();
+  const [previousWeek, currentWeek] = await Promise.all([
+    buildWeeklyPostText(previousWeekStart(now)),
+    buildWeeklyPostText(startOfWeekJst(now)),
+  ]);
+  const xConfigured = isXConfigured();
 
   // 対象ごとにグループ化(rowsは新しい順なので、初出順=表示順が保たれる)
   const groupMap = new Map<string, Group>();
@@ -298,6 +320,64 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
           </div>
         );
       })}
+
+      {/* 週次のX投稿: 自動投稿の中身の確認と、飛んだときの手動投稿 */}
+      <section className="mt-6 flex flex-col gap-3">
+        <h2 className="text-lg font-bold">週次のX投稿</h2>
+
+        {xpostResult === "ok" && (
+          <p className="rounded-lg border border-stone-400 bg-white p-3 text-sm">
+            投稿しました。{xpostId && <span className="text-stone-600">投稿ID: {xpostId}</span>}
+          </p>
+        )}
+        {xpostResult === "error" && (
+          <p className="break-all rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">
+            投稿に失敗しました{xpostError ? `: ${xpostError}` : "。"}
+          </p>
+        )}
+
+        <p className="text-xs text-stone-600">毎週月曜20時に前週分を自動投稿します。</p>
+        {!xConfigured && (
+          <p className="text-xs text-stone-600">Xの資格情報が未設定のため投稿はできません</p>
+        )}
+
+        <div className="rounded-lg border border-stone-400 bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium">前週（{weekRangeOf(previousWeek.weekStart)}）</p>
+            {xConfigured && (
+              <form action={postWeeklyXAction}>
+                <button
+                  type="submit"
+                  className="rounded-md bg-stone-900 px-3 py-1 text-xs font-medium text-white"
+                >
+                  前週分を今すぐ投稿する
+                </button>
+              </form>
+            )}
+          </div>
+          <textarea
+            readOnly
+            rows={8}
+            value={previousWeek.text}
+            className="mt-2 w-full rounded-md border border-stone-300 bg-stone-50 p-2 text-xs"
+          />
+        </div>
+
+        <div className="rounded-lg border border-stone-400 bg-white p-4">
+          <p className="text-sm font-medium">
+            今週（{weekRangeOf(currentWeek.weekStart)}・進行中）
+          </p>
+          <p className="mt-1 text-xs text-stone-600">
+            まだ終わっていない週の下書きです。投稿は来週の月曜になります。
+          </p>
+          <textarea
+            readOnly
+            rows={8}
+            value={currentWeek.text}
+            className="mt-2 w-full rounded-md border border-stone-300 bg-stone-50 p-2 text-xs"
+          />
+        </div>
+      </section>
     </div>
   );
 }

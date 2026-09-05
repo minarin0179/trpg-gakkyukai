@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { castVoteAction } from "@/app/actions/statements";
+import { suggestNextThemeAction } from "@/app/actions/themes";
+import type { OtherTheme } from "@/lib/queries";
 import { ReportButton } from "./ReportButton";
 import { usePersonalization } from "./ThemePersonalization";
 import { weightedShuffle } from "@/lib/weighted-shuffle";
@@ -89,11 +92,14 @@ export function VoteDeck({
 
   if (done) {
     return (
-      <p className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-700">
-        このテーマの意見にはすべて投票しました。
-        <br />
-        あなたの投票は下の意見マップに反映されます。新しい意見が増えれば、続けて投票できます。
-      </p>
+      <div className="flex flex-col gap-3">
+        <p className="rounded-lg border border-stone-400 bg-white p-6 text-center text-sm text-stone-700">
+          このテーマの意見にはすべて投票しました。
+          <br />
+          あなたの投票は下の意見マップに反映されます。新しい意見が増えれば、続けて投票できます。
+        </p>
+        <NextThemeCard themeId={themeId} />
+      </div>
     );
   }
 
@@ -159,6 +165,52 @@ export function VoteDeck({
           してみませんか? それも立派な参加です。
         </p>
       )}
+    </div>
+  );
+}
+
+// 投票を終えた人に「次のテーマ」を1件だけ出す。ここで一覧へ戻さずに次へ送ることが
+// 離脱を防ぐ要になるため、デッキ完了時にだけサーバーアクションを1回呼ぶ。
+// 取得に失敗した場合・候補が無い場合は、一覧への導線だけを残す
+function NextThemeCard({ themeId }: { themeId: string }) {
+  const [next, setNext] = useState<OtherTheme | null>(null);
+
+  useEffect(() => {
+    // アンマウント後にstateを触らないためのキャンセル判定(LiveVoterCountと同じ形)
+    let aborted = false;
+    suggestNextThemeAction(themeId)
+      .then((res) => {
+        if (!aborted && res.ok) setNext(res.data);
+      })
+      .catch(() => {});
+    return () => {
+      aborted = true;
+    };
+  }, [themeId]);
+
+  return (
+    <div className="rounded-lg border border-stone-400 bg-white p-4">
+      {next && (
+        <>
+          <p className="text-xs text-stone-500">次のテーマ</p>
+          {/* 一覧カードと同じ理由で先読みしない(遷移先はISRキャッシュ済み) */}
+          <Link
+            prefetch={false}
+            href={`/t/${next.id}`}
+            className="mt-1 block font-semibold underline decoration-stone-400 underline-offset-2 hover:decoration-stone-900"
+          >
+            {next.title}
+          </Link>
+          <p className="mt-1 text-xs text-stone-600">
+            {next.voterCount}人が投票 · 意見{next.statementCount}件
+          </p>
+        </>
+      )}
+      <p className={next ? "mt-3 text-xs" : "text-center text-xs"}>
+        <Link prefetch={false} href="/themes?tab=unread" className="text-stone-600 underline">
+          ほかのテーマを見る
+        </Link>
+      </p>
     </div>
   );
 }
