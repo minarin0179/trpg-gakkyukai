@@ -14,14 +14,9 @@ import { checkAndRecordRate } from "@/lib/rate-limit";
 import { ipActor } from "@/lib/request";
 import { notFound } from "next/navigation";
 import { isTargetType, toIntId } from "@/lib/validate";
-import {
-  generateAndStoreDigest,
-  getDigestRow,
-  postDigestToX,
-  startOfWeekJst,
-  weekStartFromKey,
-} from "@/lib/digest";
-import { isXConfigured } from "@/lib/x-post";
+import { buildWeeklyPostText, previousWeekStart } from "@/lib/digest";
+import { markPosted } from "@/lib/x-post-guard";
+import { isXConfigured, postToX } from "@/lib/x-post";
 import type { ActionResult } from "@/lib/action-result";
 
 type TargetType = "theme" | "statement" | "contact" | "tag";
@@ -175,29 +170,25 @@ export async function adminLogoutAction() {
   redirect("/admin/login");
 }
 
-// 週間ダイジェストの主キー('YYYY-MM-DD' = JSTの月曜)
-const WEEK_START_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-// ダイジェストの再生成。cronと同じ generateAndStoreDigest を使う
-// (集計の定義が管理画面と自動実行で食い違わないようにするため)。
-// weekStart の指定が無ければ、進行中の今週を作り直す
-export async function regenerateDigestAction(formData: FormData) {
-  if (!(await isAdmin())) notFound();
-  const raw = String(formData.get("weekStart") ?? "");
-  const weekStart = WEEK_START_RE.test(raw) ? weekStartFromKey(raw) : startOfWeekJst(new Date());
-  await generateAndStoreDigest(weekStart);
-  redirect("/admin");
-}
-
-// 下書きをXへ投稿する。二重投稿を避けるため、投稿済みの週には何もしない。
-// 失敗の理由は postDigestToX がDBに記録し、管理画面に表示される
-export async function postDigestAction(formData: FormData) {
+// 前週分のX投稿を今すぐ出す。cronと同じ流れ(その場で集計 → 投稿 → 目印を残す)で、
+// 自動投稿が飛んだときの手当てに使う。結果はクエリ文字列で返す
+// (このページは他の管理画面と同じく素のformで組んでいる)
+export async function postWeeklyXAction() {
   if (!(await isAdmin())) notFound();
   if (!isXConfigured()) notFound();
-  const raw = String(formData.get("weekStart") ?? "");
-  if (!WEEK_START_RE.test(raw)) notFound();
-  const row = await getDigestRow(raw);
-  if (!row) notFound();
-  if (!row.postedAt) await postDigestToX(row);
-  redirect("/admin");
+
+  const weekStart = previousWeekStart(new Date());
+  let query: string;
+  try {
+    const { text } = await buildWeeklyPostText(weekStart);
+    const { id } = await postToX(text);
+    await markPosted(weekStart, id);
+    query = `xpost=ok&id=${encodeURIComponent(id)}`;
+  } catch (e) {
+    // 失敗の理由はそのまま画面に出す。秘密は x-post.ts の中だけで扱うため含まれない
+    const error = e instanceof Error ? e.message : String(e);
+    query = `xpost=error&msg=${encodeURIComponent(error.slice(0, 300))}`;
+  }
+  // redirect は例外で制御を移すため、try の外で呼ぶ(catchに捕まえさせない)
+  redirect(`/admin?${query}`);
 }

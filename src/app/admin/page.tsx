@@ -7,10 +7,14 @@ import {
   dismissTargetAction,
   dismissReportAction,
   adminLogoutAction,
-  regenerateDigestAction,
-  postDigestAction,
+  postWeeklyXAction,
 } from "./actions";
-import { listDigestRows, weekRangeOf } from "@/lib/digest";
+import {
+  buildWeeklyPostText,
+  previousWeekStart,
+  startOfWeekJst,
+  weekRangeOf,
+} from "@/lib/digest";
 import { isXConfigured } from "@/lib/x-post";
 import { REMOVAL_CRITERIA } from "@/lib/rules";
 import { requireAdmin } from "@/lib/admin-auth";
@@ -34,8 +38,13 @@ type Group = {
 export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   await requireAdmin();
 
-  const { tab } = await searchParams;
+  const { tab, xpost, id, msg } = await searchParams;
   const resolvedView = tab === "resolved";
+  // クエリ文字列は同じキーが複数回来ることがあるため、先頭の1つだけを見る
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const xpostResult = one(xpost);
+  const xpostId = one(id);
+  const xpostError = one(msg);
 
   const [rows, [openCountRow], [resolvedCountRow]] = await Promise.all([
     db
@@ -50,8 +59,13 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const openCount = openCountRow?.n ?? 0;
   const resolvedCount = resolvedCountRow?.n ?? 0;
 
-  // 週間ダイジェスト(直近4週)。下書きのコピーと投稿状況の確認に使う
-  const digestRows = await listDigestRows(4);
+  // 週次のX投稿の下書き。保存はしていないので、この画面を開くたびに数え直す
+  // (このページは force-dynamic なので常に今の値が出る)
+  const now = new Date();
+  const [previousWeek, currentWeek] = await Promise.all([
+    buildWeeklyPostText(previousWeekStart(now)),
+    buildWeeklyPostText(startOfWeekJst(now)),
+  ]);
   const xConfigured = isXConfigured();
 
   // 対象ごとにグループ化(rowsは新しい順なので、初出順=表示順が保たれる)
@@ -307,85 +321,62 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         );
       })}
 
-      {/* 週間ダイジェスト: 下書きの確認・コピーと、投稿状況の把握 */}
+      {/* 週次のX投稿: 自動投稿の中身の確認と、飛んだときの手動投稿 */}
       <section className="mt-6 flex flex-col gap-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-lg font-bold">週間ダイジェスト</h2>
-          <form action={regenerateDigestAction}>
-            <button
-              type="submit"
-              className="rounded-md border border-stone-400 px-3 py-1 text-xs font-medium text-stone-700"
-            >
-              今週分を再生成
-            </button>
-          </form>
-        </div>
-        <p className="text-xs text-stone-600">
-          毎週月曜20時に前週分を X に自動投稿します。下書きはここで確認できます。
-        </p>
+        <h2 className="text-lg font-bold">週次のX投稿</h2>
 
-        {digestRows.length === 0 && (
-          <p className="rounded-lg border border-dashed border-stone-400 p-6 text-center text-sm text-stone-600">
-            まだダイジェストがありません。
+        {xpostResult === "ok" && (
+          <p className="rounded-lg border border-stone-400 bg-white p-3 text-sm">
+            投稿しました。{xpostId && <span className="text-stone-600">投稿ID: {xpostId}</span>}
+          </p>
+        )}
+        {xpostResult === "error" && (
+          <p className="break-all rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">
+            投稿に失敗しました{xpostError ? `: ${xpostError}` : "。"}
           </p>
         )}
 
-        {digestRows.map((row) => {
-          // 期間は主キー(週の月曜)から導く(bodyの形式に依存させない)。
-          // Xへの投稿の下書き(row.text)は保存済みの文字列をそのまま出す
-          const range = weekRangeOf(row.weekStart);
-          return (
-            <div key={row.weekStart} className="rounded-lg border border-stone-400 bg-white p-4">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-medium">{range}</p>
-                <span className="shrink-0 text-xs text-stone-600">
-                  {row.postedAt
-                    ? `投稿済み · ${row.postedAt.toLocaleString("ja-JP")}`
-                    : row.postError
-                      ? "投稿に失敗"
-                      : "未投稿"}
-                </span>
-              </div>
+        <p className="text-xs text-stone-600">毎週月曜20時に前週分を自動投稿します。</p>
+        {!xConfigured && (
+          <p className="text-xs text-stone-600">Xの資格情報が未設定のため投稿はできません</p>
+        )}
 
-              {/* 下書きはコピーして使うため、編集不可のまま全文を出す */}
-              <textarea
-                readOnly
-                rows={6}
-                value={row.text}
-                className="mt-2 w-full rounded-md border border-stone-300 bg-stone-50 p-2 text-xs"
-              />
+        <div className="rounded-lg border border-stone-400 bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium">前週（{weekRangeOf(previousWeek.weekStart)}）</p>
+            {xConfigured && (
+              <form action={postWeeklyXAction}>
+                <button
+                  type="submit"
+                  className="rounded-md bg-stone-900 px-3 py-1 text-xs font-medium text-white"
+                >
+                  前週分を今すぐ投稿する
+                </button>
+              </form>
+            )}
+          </div>
+          <textarea
+            readOnly
+            rows={8}
+            value={previousWeek.text}
+            className="mt-2 w-full rounded-md border border-stone-300 bg-stone-50 p-2 text-xs"
+          />
+        </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <form action={regenerateDigestAction}>
-                  <input type="hidden" name="weekStart" value={row.weekStart} />
-                  <button
-                    type="submit"
-                    className="rounded-md border border-stone-400 px-3 py-1 text-xs font-medium text-stone-700"
-                  >
-                    この週を再生成
-                  </button>
-                </form>
-                {xConfigured && !row.postedAt && (
-                  <form action={postDigestAction}>
-                    <input type="hidden" name="weekStart" value={row.weekStart} />
-                    <button
-                      type="submit"
-                      className="rounded-md bg-stone-900 px-3 py-1 text-xs font-medium text-white"
-                    >
-                      投稿する
-                    </button>
-                  </form>
-                )}
-              </div>
-
-              {row.postError && (
-                <p className="mt-2 break-all text-xs text-rose-700">
-                  投稿エラー: {row.postError}
-                </p>
-              )}
-            </div>
-          );
-        })}
+        <div className="rounded-lg border border-stone-400 bg-white p-4">
+          <p className="text-sm font-medium">
+            今週（{weekRangeOf(currentWeek.weekStart)}・進行中）
+          </p>
+          <p className="mt-1 text-xs text-stone-600">
+            まだ終わっていない週の下書きです。投稿は来週の月曜になります。
+          </p>
+          <textarea
+            readOnly
+            rows={8}
+            value={currentWeek.text}
+            className="mt-2 w-full rounded-md border border-stone-300 bg-stone-50 p-2 text-xs"
+          />
+        </div>
       </section>
     </div>
   );

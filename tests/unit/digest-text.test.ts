@@ -4,7 +4,6 @@ import {
   DIGEST_THEME_LIMIT,
   X_MAX_UNITS,
   composeDigestText,
-  isDigestBody,
   weekEndKey,
   formatWeekRange,
   isoWeekKey,
@@ -15,7 +14,7 @@ import {
   weekStartFromKey,
   weekStartKey,
   xLength,
-  type DigestBody,
+  type WeeklyPost,
 } from "@/lib/digest-text";
 
 // 週の区切りは日本時間の月曜0:00(=前日15:00 UTC)。実行環境のタイムゾーンに
@@ -88,18 +87,16 @@ test("truncateToUnits は単位数で切って「…」を付ける", () => {
 
 const URL = "https://trpg-gakkyukai.com/themes?tab=active";
 
-function bodyOf(titles: string[]): DigestBody {
+function postOf(titles: string[]): WeeklyPost {
   return {
-    version: 3,
     weekStart: "2026-08-31",
     weekEnd: "2026-09-06",
-    totals: { votes: 100, statements: 10, newThemes: 2, voters: 20 },
     themes: titles.map((title, i) => ({ id: `theme${i}`, title, weekVoters: 10 - i })),
   };
 }
 
 test("投稿は見出し2行・テーマのタイトル・URLで構成される", () => {
-  const text = composeDigestText(bodyOf(["遅刻の扱い", "キャラシの提出期限"]), URL);
+  const text = composeDigestText(postOf(["遅刻の扱い", "キャラシの提出期限"]), URL);
   assert.equal(
     text,
     [
@@ -115,7 +112,7 @@ test("投稿は見出し2行・テーマのタイトル・URLで構成される"
 
 test("載せるタイトルは5件まで", () => {
   const titles = ["あ", "い", "う", "え", "お", "か"].map((c) => `テーマ${c}`);
-  const lines = composeDigestText(bodyOf(titles), URL).split("\n");
+  const lines = composeDigestText(postOf(titles), URL).split("\n");
   // 見出し2行 + タイトル5行 + URL
   assert.equal(lines.length, 2 + DIGEST_THEME_LIMIT + 1);
   assert.equal(lines[2], "「テーマあ」");
@@ -125,7 +122,7 @@ test("載せるタイトルは5件まで", () => {
 
 test("長いタイトルは全角24字で切り詰め、上限を超える行は落とす", () => {
   const long = "あ".repeat(100);
-  const text = composeDigestText(bodyOf(Array(5).fill(long)), URL);
+  const text = composeDigestText(postOf(Array(5).fill(long)), URL);
   const lines = text.split("\n");
   // 「…」を含めて全角24字(=48単位)。「」を足して52単位の行になる
   assert.equal(lines[2], `「${"あ".repeat(23)}…」`);
@@ -138,7 +135,7 @@ test("長いタイトルは全角24字で切り詰め、上限を超える行は
 
 test("該当するテーマが無い週も見出しとURLは出す", () => {
   assert.equal(
-    composeDigestText(bodyOf([]), URL),
+    composeDigestText(postOf([]), URL),
     [
       "今週のTRPG学級会(8/31〜9/6)",
       "投票が多かったテーマ",
@@ -146,32 +143,4 @@ test("該当するテーマが無い週も見出しとURLは出す", () => {
       URL,
     ].join("\n"),
   );
-});
-
-test("isDigestBody は version 3 の形だけを通す", () => {
-  const body = bodyOf(["遅刻の扱い"]);
-  assert.equal(isDigestBody(body), true);
-  // 版が違う・版が無い(旧形式)行は通さない
-  assert.equal(isDigestBody({ ...body, version: 2 }), false);
-  assert.equal(isDigestBody({ ...body, version: undefined }), false);
-  // 旧形式の実物に近い形(featured / newConsensus を持つ version 2)も弾く
-  assert.equal(
-    isDigestBody({
-      version: 2,
-      weekStart: "2026-08-31",
-      weekEnd: "2026-09-06",
-      totals: { votes: 1, statements: 1, newThemes: 1, voters: 1 },
-      featured: [],
-      newConsensus: [],
-      contested: [],
-      newThemes: { count: 1, items: [] },
-    }),
-    false,
-  );
-  // 必須の項目が欠けている・型が違うものも弾く
-  assert.equal(isDigestBody({ ...body, themes: null }), false);
-  assert.equal(isDigestBody({ ...body, weekEnd: undefined }), false);
-  assert.equal(isDigestBody({ ...body, totals: { votes: 1 } }), false);
-  assert.equal(isDigestBody(null), false);
-  assert.equal(isDigestBody([]), false);
 });

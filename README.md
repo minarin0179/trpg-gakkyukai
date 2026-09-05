@@ -62,7 +62,7 @@ node --env-file=.env.local scripts/seed.mjs
 ## 構成メモ
 
 - `src/db/schema.ts` — themes / participants / statements / votes / theme_tags /
-  math_results / reports / rate_events / digests
+  math_results / reports / rate_events
 - `src/app/actions/` — Server Actions(`themes.ts` テーマ提案・タグ / `statements.ts` 意見投稿・投票 / `reports.ts` 通報・問い合わせ)
 - `src/lib/recompute.ts` — 投票後の再計算オーケストレーション(最短30分間隔。自分の点はクライアント側でライブ投影)
 - `api/_logic.py` — red-dwarf呼び出し本体(エンドポイントから分離、単体テスト可)
@@ -70,14 +70,15 @@ node --env-file=.env.local scripts/seed.mjs
 - `src/app/api/cron/recompute/route.ts` — 日次バックストップ(vercel.json の crons)
 - `src/lib/digest.ts` / `src/lib/digest-text.ts` — 週次のX投稿の集計と、
   週の区切り・投稿文の組み立て(後者はDBに触れないので単体テストの対象)
+- `src/lib/x-post-guard.ts` — 週次のX投稿の重複防止(Runtime Cacheの目印)
 - `src/lib/x-post.ts` — Xへの投稿(OAuth 1.0a・依存なし)
 - 参加者は匿名cookie(`gk_pid`)のみで識別。個人情報は保存しない
 
-## 週間ダイジェスト(Xへの投稿)
+## 週次のX投稿
 
-1週間(日本時間の月曜0:00〜翌月曜0:00)の動きを集計し、週に一度Xへ投稿する。
-公開ページは持たず、集計結果と投稿文は `digests` テーブルに保存して、
-管理画面から下書きと投稿状況を確認する。
+1週間(日本時間の月曜0:00〜翌月曜0:00)によく話されたテーマを、週に一度Xへ投稿する。
+公開ページは持たず、DBにも何も保存しない。投稿するそのときに前の週を数え直し、
+投稿したら結果は捨てる(週1回の投稿のために専用のテーブルを持たない)。
 
 投稿の中身は「その週に投票した人数が多かったテーマのタイトル(最大5件)」と、
 人気タブ(`/themes?tab=active`)へのリンクだけ。長いタイトルは全角24字で切り、
@@ -94,19 +95,25 @@ https://trpg-gakkyukai.com/themes?tab=active
 - cron: `vercel.json` の `/api/cron/digest`(`0 11 * * 1` = 毎週月曜11:00 UTC)。
   日本時間では月曜20:00で、対象は「直前に終わった週」。週が終わった直後ではなく
   月曜の夜にしているのは、週明けに人が戻る時間帯に告知を出すため。
-  cronは集計して保存したあと、その週がまだ未投稿ならXへ投稿する。
-- 手動での作り直し(週を指定):
+- 二重投稿の防止は Runtime Cache の目印だけ(`x-post` 名前空間・14日)。
+  同じ週をもう一度走らせたとき、キャッシュが覚えていればスキップする。
+  リージョンごと・ベストエフォートなので保証ではない(保証が要るならDBに記録する)。
+- 週の指定と、目印を無視した投稿し直し:
 
   ```bash
   curl -H "Authorization: Bearer $CRON_SECRET" \
-    "https://trpg-gakkyukai.com/api/cron/digest?week=2026-W36"
+    "https://trpg-gakkyukai.com/api/cron/digest?week=2026-W36&force=1"
   ```
 
-- 管理画面(`/admin`)の「週間ダイジェスト」に直近4週が並ぶ。下書きの全文と
-  投稿状況(未投稿・投稿済み・失敗の理由)が見え、「今週分を再生成」
-  「この週を再生成」で作り直し、「投稿する」で手動投稿できる。
-- Xの資格情報(`X_API_KEY` ほか4つ)が未設定の環境では投稿せず、下書きの保存で止まる。
-  下書きは管理画面からコピーして手で投稿できる。
+  応答は投稿できたとき `{"weekStart":"2026-08-31","posted":true,"id":"...","text":"..."}`、
+  目印がある週は `{"posted":false,"reason":"already-posted"}`、
+  Xの資格情報が無い環境は `{"posted":false,"reason":"x-not-configured","text":"..."}`。
+  投稿に失敗したときは 500 と `{"posted":false,"error":"..."}` を返し、
+  1回の実行につき1行を `console.log` に残す(Vercelのcronログで結果が読める)。
+- 管理画面(`/admin`)の「週次のX投稿」に、前週と今週(進行中)の下書きが出る。
+  下書きは画面を開くたびに数え直したもの。「前週分を今すぐ投稿する」で手動投稿でき、
+  結果はその場に表示される。
+- Xの資格情報(`X_API_KEY` ほか4つ)が未設定の環境では投稿せず、下書きの確認だけができる。
 
 ## テスト
 
@@ -149,7 +156,7 @@ GitHub連携により `main` へのpushで本番へ自動デプロイされる(�
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Vercel | Turnstile のサイトキー | ローカルは `1x00000000000000000000AA` |
 | `NEXT_PUBLIC_SITE_URL` | 任意 | canonical・OGP・sitemap の生成 | 未設定なら本番ドメイン |
 | `DISCORD_WEBHOOK_URL` | 任意 | 通報・問い合わせの運営通知 | 未設定なら通知しない |
-| `X_API_KEY` | 任意 | X(旧Twitter)投稿のAPIキー | 4つ揃わなければ週間ダイジェストは下書きのみ |
+| `X_API_KEY` | 任意 | X(旧Twitter)投稿のAPIキー | 4つ揃わなければ投稿せず下書きの確認のみ |
 | `X_API_SECRET` | 任意 | 同上(シークレット) | ログには出さない |
 | `X_ACCESS_TOKEN` | 任意 | 同上(運営アカウントのトークン) | Read and write 権限が必要 |
 | `X_ACCESS_TOKEN_SECRET` | 任意 | 同上(トークンシークレット) | ログには出さない |

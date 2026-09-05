@@ -30,7 +30,7 @@ export function previousWeekStart(now: Date): Date {
   return startOfWeekJst(new Date(startOfWeekJst(now).getTime() - DAY_MS));
 }
 
-// DBの主キーに使う 'YYYY-MM-DD'(JSTの月曜の日付)
+// 週を表す 'YYYY-MM-DD'(JSTの月曜の日付)。投稿の目印や表示に使う
 export function weekStartKey(weekStart: Date): string {
   return toJstWallClock(weekStart).toISOString().slice(0, 10);
 }
@@ -77,71 +77,38 @@ export function formatWeekRange(weekStart: Date): string {
   return `${s.getUTCMonth() + 1}/${s.getUTCDate()}〜${e.getUTCMonth() + 1}/${e.getUTCDate()}`;
 }
 
-// 週の最終日(日曜)の 'YYYY-MM-DD'(JST)。body に入れる期間の終わりは、
+// 週の最終日(日曜)の 'YYYY-MM-DD'(JST)。集計結果に持たせる期間の終わりは、
 // 読み手が見る「月曜〜日曜」に合わせて閉区間の日曜にする
 // (集計に使う窓は [weekStart, weekStart+7日) の半開区間で、こちらとは別)
 export function weekEndKey(weekStart: Date): string {
   return weekStartKey(new Date(weekStart.getTime() + 6 * DAY_MS));
 }
 
-// 保存済みの weekStart('YYYY-MM-DD')から表示用の期間を作る。
-// body には範囲の文字列も週キーも持たせず、主キーである週の月曜から毎回導く
-// (同じ値を2か所に持つと、片方だけ古い形式のまま残るため)
+// weekStart('YYYY-MM-DD')から表示用の期間を作る。同じ値を2か所に持つと
+// 片方だけ古い形式のまま残るため、範囲の文字列は持たず週の月曜から毎回導く
 export function weekRangeOf(weekStartKeyValue: string): string {
   return formatWeekRange(weekStartFromKey(weekStartKeyValue));
 }
 
-// 保存済みの weekStart('YYYY-MM-DD')からURLに使う週キー 'YYYY-Www' を作る
+// weekStart('YYYY-MM-DD')からURLに使う週キー 'YYYY-Www' を作る
 export function weekKeyOf(weekStartKeyValue: string): string {
   return isoWeekKey(weekStartFromKey(weekStartKeyValue));
 }
 
-// digests.body に保存する集計結果。投稿文そのものは text 列に保存するので、
-// body は「その週に何があったか」を後から見返すための記録として持つ。
-// 形は version で明示的に版管理する。読み出し側は isDigestBody で版を確かめ、
-// 古い版の行は下書き(text)だけを表示に使う(再生成すれば最新の形式になる)
-export const DIGEST_BODY_VERSION = 3;
-
 // 投稿に載せるテーマ。タイトルだけを読ませる投稿なので、
 // 中身ではなく並び順の根拠(その週に投票した人数)だけを添える
-export type DigestTheme = {
+export type WeeklyPostTheme = {
   id: string;
   title: string;
   weekVoters: number; // その週に投票した人数(重複なし)
 };
 
-export type DigestTotals = {
-  votes: number;
-  statements: number;
-  newThemes: number;
-  voters: number;
-};
-
-export type DigestBody = {
-  version: 3;
+// 1週間ぶんの集計結果。保存はせず、投稿するそのときに作って捨てる
+export type WeeklyPost = {
   weekStart: string; // 'YYYY-MM-DD'(JSTの月曜)
   weekEnd: string; // 'YYYY-MM-DD'(JSTの日曜。閉区間の終わり)
-  totals: DigestTotals;
-  themes: DigestTheme[];
+  themes: WeeklyPostTheme[];
 };
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-
-// jsonbの中身は型では保証されないので、使う前に形を確かめる
-// (math-result.ts の isMathResultJson と同じ方針)。
-// version が合わない行(旧形式)もここで弾く
-export function isDigestBody(v: unknown): v is DigestBody {
-  if (!isRecord(v)) return false;
-  if (v.version !== DIGEST_BODY_VERSION) return false;
-  if (typeof v.weekStart !== "string" || typeof v.weekEnd !== "string") return false;
-  if (!isRecord(v.totals)) return false;
-  for (const key of ["votes", "statements", "newThemes", "voters"]) {
-    if (typeof v.totals[key] !== "number") return false;
-  }
-  return Array.isArray(v.themes);
-}
 
 // Xの文字数。上限は「重み付き280」で、全角は2・半角は1として数える
 // (=全角140字)。URLはt.coで短縮されるため、実際の長さに関係なく23文字扱い
@@ -189,13 +156,13 @@ const NO_THEMES_LINE = "今週は投票の多いテーマがありませんで�
 // Xへの投稿の下書き。伝えるのは「先週よく話されたテーマの名前」だけにして、
 // 続きは人気タブで読んでもらう。見出し2行とURLは必ず入れ、
 // 残った枠にタイトルを上から詰める(枠に入らないタイトルは落とす)
-export function composeDigestText(body: DigestBody, url: string): string {
-  const header = `今週のTRPG学級会(${weekRangeOf(body.weekStart)})`;
+export function composeDigestText(post: WeeklyPost, url: string): string {
+  const header = `今週のTRPG学級会(${weekRangeOf(post.weekStart)})`;
   const lines: string[] = [header, THEMES_HEADER];
   // 行を足すたびに「改行1つ + その行」を加算する。URLの前の改行も先に確保しておく
   let used = xLength(header) + 1 + xLength(THEMES_HEADER) + 1 + xLength(url);
 
-  for (const theme of body.themes.slice(0, DIGEST_THEME_LIMIT)) {
+  for (const theme of post.themes.slice(0, DIGEST_THEME_LIMIT)) {
     const title = truncateToUnits(theme.title, TITLE_MAX_UNITS);
     if (!title) continue;
     const line = `「${title}」`;
