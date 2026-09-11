@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { SITE_URL } from "@/lib/site";
@@ -123,6 +124,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </p>
         </footer>
         <Analytics />
+        {/* Google AdSense の所有者コード。審査中は広告は出ない(広告枠は未設置)。
+            beforeInteractive で初期HTMLの head に入り、Google の確認クローラーが
+            JSなしでも検出できる。ads.txt は public/ads.txt */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3083871011770659"
+          crossOrigin="anonymous"
+          strategy="beforeInteractive"
+        />
       </body>
     </html>
   );
