@@ -2,7 +2,16 @@ import Link from "next/link";
 import type { ThemeWithCounts } from "@/lib/queries";
 import { formatRelativeDate } from "@/lib/format";
 
-export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
+// onHide を渡すと、カードの右下に小さな「非表示」ボタンを出す(一覧でのみ使う)。
+// カード全体がリンクなので、ボタンはリンクの外に絶対配置する(a の中に button は置けない)。
+// 非表示は自分の端末だけの設定で、詳細は lib/hidden-themes.ts を参照
+export function ThemeCard({
+  theme,
+  onHide,
+}: {
+  theme: ThemeWithCounts;
+  onHide?: () => void;
+}) {
   // participated が boolean のときだけ状態が判定できる(cookie未発行の匿名は undefined)。
   const isParticipated = theme.participated === true;
   const isNotParticipated = theme.participated === false;
@@ -19,63 +28,81 @@ export function ThemeCard({ theme }: { theme: ThemeWithCounts }) {
   const showMapPending = isParticipated && theme.hasMap === false;
 
   return (
-    // prefetch無効: 一覧では大量のカードが視界に入るため、先読みが
-    // Edgeリクエストの過半を占めていた(読まれない先読みが大半)。
-    // 遷移先はISRキャッシュ済みなのでクリック時取得でも十分速い
-    <Link
-      prefetch={false}
-      href={`/t/${theme.id}`}
-      className="block rounded-lg border border-stone-400 bg-white p-4 transition hover:border-stone-600"
-    >
-      {/* カード全体がリンクのため、タグはリンクなしの表示のみ(絞り込みはテーマページから) */}
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="font-semibold">{theme.title}</h3>
-        {showNew ? (
-          <span className="shrink-0 rounded-full border border-rose-400 bg-white px-2 py-0.5 text-xs font-medium text-rose-600">
-            新着 {theme.unansweredCount}件
-          </span>
-        ) : showParticipatedDone ? (
-          <span className="shrink-0 rounded-full border border-emerald-400 bg-white px-2 py-0.5 text-xs font-medium text-emerald-700">
-            参加済み
-          </span>
-        ) : showNotParticipated ? (
-          <span className="shrink-0 rounded-full border border-stone-300 bg-white px-2 py-0.5 text-xs font-medium text-stone-500">
-            未参加
-          </span>
-        ) : null}
-      </div>
-      {theme.description && (
-        <p className="mt-1 line-clamp-2 text-sm text-stone-700">
-          {theme.description}
-        </p>
-      )}
-      {theme.tags && theme.tags.length > 0 && (
-        <p className="mt-1.5 flex flex-wrap gap-1">
-          {theme.tags.slice(0, 4).map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs text-stone-600"
-            >
-              {tag}
+    <div className="relative">
+      {/* prefetch無効: 一覧では大量のカードが視界に入るため、先読みが
+        Edgeリクエストの過半を占めていた(読まれない先読みが大半)。
+        遷移先はISRキャッシュ済みなのでクリック時取得でも十分速い */}
+      <Link
+        prefetch={false}
+        href={`/t/${theme.id}`}
+        className="block rounded-lg border border-stone-400 bg-white p-4 transition hover:border-stone-600"
+      >
+        {/* カード全体がリンクのため、タグはリンクなしの表示のみ(絞り込みはテーマページから) */}
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-semibold">{theme.title}</h3>
+          {showNew ? (
+            <span className="shrink-0 rounded-full border border-rose-400 bg-white px-2 py-0.5 text-xs font-medium text-rose-600">
+              新着 {theme.unansweredCount}件
             </span>
-          ))}
-          {theme.tags.length > 4 && (
-            <span className="text-xs text-stone-500">+{theme.tags.length - 4}</span>
-          )}
-        </p>
-      )}
-      <p className="mt-2 text-xs text-stone-600">
-        {theme.voterCount}人が投票 · 意見{theme.statementCount}件 ·{" "}
-        {/* 相対表示は Date.now() 基準。このカードは一覧の続きを読み込むときに
+          ) : showParticipatedDone ? (
+            <span className="shrink-0 rounded-full border border-emerald-400 bg-white px-2 py-0.5 text-xs font-medium text-emerald-700">
+              参加済み
+            </span>
+          ) : showNotParticipated ? (
+            <span className="shrink-0 rounded-full border border-stone-300 bg-white px-2 py-0.5 text-xs font-medium text-stone-500">
+              未参加
+            </span>
+          ) : null}
+        </div>
+        {theme.description && (
+          <p className="mt-1 line-clamp-2 text-sm text-stone-700">
+            {theme.description}
+          </p>
+        )}
+        {theme.tags && theme.tags.length > 0 && (
+          <p className="mt-1.5 flex flex-wrap gap-1">
+            {theme.tags.slice(0, 4).map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs text-stone-600"
+              >
+                {tag}
+              </span>
+            ))}
+            {theme.tags.length > 4 && (
+              <span className="text-xs text-stone-500">
+                +{theme.tags.length - 4}
+              </span>
+            )}
+          </p>
+        )}
+        <p className={`mt-2 text-xs text-stone-600${onHide ? " pr-10" : ""}`}>
+          {theme.voterCount}人が投票 · 意見{theme.statementCount}件 ·{" "}
+          {/* 相対表示は Date.now() 基準。このカードは一覧の続きを読み込むときに
             クライアントでも描かれるため、日付が変わる前後でSSRと文言がずれ得る。
             表示上は無害なので、ここだけハイドレーションの警告を抑える */}
-        <span suppressHydrationWarning>{formatRelativeDate(theme.createdAt)}</span>
-        {showMap ? (
-          <span className="ml-1 text-emerald-700">· 意見マップあり</span>
-        ) : showMapPending ? (
-          <span className="ml-1 text-stone-500">· 投票が集まるとマップが出ます</span>
-        ) : null}
-      </p>
-    </Link>
+          <span suppressHydrationWarning>
+            {formatRelativeDate(theme.createdAt)}
+          </span>
+          {showMap ? (
+            <span className="ml-1 text-emerald-700">· 意見マップあり</span>
+          ) : showMapPending ? (
+            <span className="ml-1 text-stone-500">
+              · 投票が集まるとマップが出ます
+            </span>
+          ) : null}
+        </p>
+      </Link>
+      {onHide && (
+        <button
+          type="button"
+          onClick={onHide}
+          aria-label={`「${theme.title}」を一覧に表示しない`}
+          className="absolute bottom-3.5 right-4 text-xs text-stone-400 hover:text-stone-700 hover:underline"
+        >
+          非表示
+        </button>
+      )}
+    </div>
   );
 }
