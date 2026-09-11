@@ -102,8 +102,10 @@ export default function AboutPage() {
           </li>
           <li>乱数シードを固定しているため、同じ投票データからは常に同じマップが生成されます</li>
           <li>
-            「人気」一覧の並び順は Hacker News と同じ時間減衰ランキング
-            (投票者数 ÷ (経過日数 + 2)<sup>1.8</sup>)。古いテーマは自然に沈み、
+            「人気」一覧の並び順は Hacker News と同じ時間減衰ランキング(
+            {RANKING.windowDays !== null ? `直近${RANKING.windowDays}日間の投票者数` : "投票者数"}
+            {" ÷ (経過日数 + 2)"}
+            <sup>{RANKING.gravity}</sup>)。古いテーマは自然に沈み、
             運営が手動で順位を操作することはありません
           </li>
           <li>
