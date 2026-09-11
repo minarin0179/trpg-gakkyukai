@@ -16,9 +16,8 @@ export const dynamic = "force-dynamic";
 export default async function ThemesPage({ searchParams }: PageProps<"/themes">) {
   const { tab, q, tag, tagmode } = await searchParams;
   const tagFilter = typeof tag === "string" ? tag.trim().slice(0, 200) : "";
-  // タグ絞り込みの折りたたみ開閉: パラメータの有無で判定する。
-  // 最後のタグを外しても ?tag= を残すことで、開いたまま選び直せる
-  const tagPanelOpen = typeof tag === "string";
+  // 最後のタグを外しても ?tag= を残す(折りたたみを開いたまま選び直せるようにしていた
+  // 名残。現在は既定で開かないが、URLの形を変える理由もないので維持)
   const tagMode: "and" | "or" = tagmode === "and" ? "and" : "or";
   const selectedTags = tagFilter.split(",").map((t) => t.trim()).filter(Boolean);
   // チップの切替リンク用: タグ集合とモードからURLを組み立てる
@@ -63,6 +62,12 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
 
   return (
     <div>
+      {/* 検索窓・タグ絞り込み・タブ行はひとかたまりで画面上端(サイトヘッダーの下)に
+          貼り付ける。無限スクロールで長くなった一覧からタブや検索へ戻れないという要望への対応。
+          top-14 はサイトヘッダーの高さ(layout.tsx の h-14)に合わせる。
+          -mt-3/pt-3 は貼り付いたときにヘッダーとの間に余白を持たせるため(通常時の位置は不変)。
+          -mx-4/px-4 で main の左右パディング分まで背景を広げ、下を流れるカードを隠す */}
+      <div className="sticky top-14 z-10 -mx-4 -mt-3 bg-stone-50 px-4 pt-3">
       {/* 検索: タイトル・説明文からキーワードで探す(重複テーマの発見にも) */}
       <form method="get" action="/themes" role="search" className="mb-4 flex gap-2">
         <input
@@ -96,7 +101,10 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
           ランダムに開く
         </a>
       {tagVocabulary.length > 0 ? (
-        <details open={tagPanelOpen}>
+        // タグで絞り込み中でも既定では開かない(以前は開いていた)。上部が貼り付くように
+        // なったため、開いたままだとチップ一覧が画面の大半を占める。選択中のタグは
+        // 要約行と一覧の見出しに出ているので、追加・解除するときだけ開けばよい
+        <details>
           <summary className="cursor-pointer pr-28 text-sm text-stone-600 underline">
             タグで絞り込み{selectedTags.length > 0 ? `: ${selectedTags.join("、")}` : ""}
           </summary>
@@ -144,6 +152,26 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         </details>
       ) : (
         <div className="h-5" />
+      )}
+      </div>
+      {!tagFilter && !searching && (
+        <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-stone-400">
+          <Link href="/themes" className={tabClass(currentTab === "fresh")}>
+            新着
+          </Link>
+          <Link href="/themes?tab=active" className={tabClass(currentTab === "active")}>
+            人気
+          </Link>
+          <Link href="/themes?tab=unread" className={tabClass(currentTab === "unread")}>
+            未参加
+          </Link>
+          <Link href="/themes?tab=mine" className={tabClass(currentTab === "mine")}>
+            参加済み
+          </Link>
+          <Link href="/themes?tab=proposed" className={tabClass(currentTab === "proposed")}>
+            提案済み
+          </Link>
+        </div>
       )}
       </div>
 
@@ -203,26 +231,6 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         </>
       ) : (
         <>
-          {/* タブ行は画面上端に貼り付ける(無限スクロールで長くなった一覧から
-              タブへ戻れないという要望への対応)。背景はページと同じ stone-50 */}
-          <div className="sticky top-0 z-10 mb-4 flex items-center gap-1 overflow-x-auto border-b border-stone-400 bg-stone-50">
-            <Link href="/themes" className={tabClass(currentTab === "fresh")}>
-              新着
-            </Link>
-            <Link href="/themes?tab=active" className={tabClass(currentTab === "active")}>
-              人気
-            </Link>
-            <Link href="/themes?tab=unread" className={tabClass(currentTab === "unread")}>
-              未参加
-            </Link>
-            <Link href="/themes?tab=mine" className={tabClass(currentTab === "mine")}>
-              参加済み
-            </Link>
-            <Link href="/themes?tab=proposed" className={tabClass(currentTab === "proposed")}>
-              提案済み
-            </Link>
-          </div>
-
           {initialItems.length === 0 ? (
             <div className="rounded-lg border border-dashed border-stone-400 p-8 text-center text-sm text-stone-600">
               {currentTab === "active" ? (
