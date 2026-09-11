@@ -203,7 +203,9 @@ export default async function ThemesPage({ searchParams }: PageProps<"/themes">)
         </>
       ) : (
         <>
-          <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-stone-400">
+          {/* タブ行は画面上端に貼り付ける(無限スクロールで長くなった一覧から
+              タブへ戻れないという要望への対応)。背景はページと同じ stone-50 */}
+          <div className="sticky top-0 z-10 mb-4 flex items-center gap-1 overflow-x-auto border-b border-stone-400 bg-stone-50">
             <Link href="/themes" className={tabClass(currentTab === "fresh")}>
               新着
             </Link>

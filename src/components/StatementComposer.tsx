@@ -14,6 +14,12 @@ import { STATEMENT_GATE_VOTES } from "@/lib/config";
 // 案内だけを表示する。投票状況は ThemePersonalization からリアルタイムに取れる
 // ので、デッキで5件投票した瞬間から普通に開けるようになる(サーバー側でも
 // createStatementAction が同条件を検証している)
+//
+// クリックの横取りは見出し(summary)に限る。以前は <details> 内の全クリックを
+// 止めていたため、投票状況の読み込み前に開いた投稿欄で、読み込み後にゲート未達と
+// 判定されると送信ボタンのクリックまで無言で握りつぶされていた
+// (iPhone Safari で「投稿ボタンが動かない」通報の最有力原因)。開いたあとで
+// ゲート未達になった場合は、送信を止めずに案内を出して理由が分かるようにする
 export function StatementComposer({
   statementCount,
   children,
@@ -23,6 +29,7 @@ export function StatementComposer({
 }) {
   const { votes, loaded } = usePersonalization();
   const [showGateNotice, setShowGateNotice] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const votedCount = Object.keys(votes).length;
   const required = Math.min(STATEMENT_GATE_VOTES, statementCount);
@@ -33,8 +40,9 @@ export function StatementComposer({
     <div>
       <details
         className="group rounded-md border border-stone-500"
+        onToggle={(e) => setOpen(e.currentTarget.open)}
         onClick={(e) => {
-          if (locked) {
+          if (locked && (e.target as HTMLElement).closest("summary")) {
             e.preventDefault(); // 展開せず案内だけ出す
             setShowGateNotice(true);
           }
@@ -60,7 +68,7 @@ export function StatementComposer({
       </summary>
         <div className="border-t border-stone-300 px-4 py-3">{children}</div>
       </details>
-      {locked && showGateNotice && (
+      {locked && (showGateNotice || open) && (
         <div
           aria-live="polite"
           className="mt-2 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm"
