@@ -46,8 +46,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="flex min-h-full flex-col bg-stone-50 text-stone-900">
-        <header className="border-b border-stone-400 bg-white">
-          <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 px-3 py-3 sm:px-4">
+        {/* ヘッダーは画面上端に貼り付ける。高さは h-14 で固定し、テーマ一覧の
+            貼り付き要素(top-14)がこの値に依存する */}
+        <header className="sticky top-0 z-20 h-14 border-b border-stone-400 bg-white">
+          <div className="mx-auto flex h-full max-w-4xl items-center justify-between gap-2 px-3 sm:px-4">
             <Link href="/" className="whitespace-nowrap text-base font-bold tracking-tight sm:text-lg">
               TRPG学級会
               <span className="ml-2 hidden text-xs font-normal text-stone-600 sm:inline">
