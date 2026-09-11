@@ -1,15 +1,8 @@
 import { getCache } from "@vercel/functions";
-import { RANKING_GRAVITY } from "../config";
 
 // 一覧系のモジュールが共有する小さな道具。テーマ一覧(themes-list)と
 // 単票まわり(theme)の両方から使うものだけを置く
-
-// Hacker News方式: 参加者数を経過時間で減衰させ、古いテーマを自然に沈める。
-// 「新着順の一覧」と「人気タブ」で同じ式を使うため、ここに一本化する
-export function hotScore(r: { voterCount: number; createdAt: Date }): number {
-  const ageDays = (Date.now() - r.createdAt.getTime()) / 86_400_000;
-  return r.voterCount / Math.pow(ageDays + 2, RANKING_GRAVITY);
-}
+// (人気の並び順 hotScore は純関数として ../ranking.ts に置いてある)
 
 // Runtime Cache の汎用ラッパー(JSONとして往復できる値だけを載せる)。
 // リージョンごと・ベストエフォートなので、ミスや失敗は常に起こり得る前提で
