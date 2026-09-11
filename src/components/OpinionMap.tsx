@@ -44,21 +44,23 @@ const LABEL_H = 26;
 // 点が無いときの安定した空配列(useMemoのキーが毎回変わらないように)
 const EMPTY_PTS: MapPayload["pts"] = [];
 
-// 参加者1人ぶんの点。位置とクラス名だけを持ち、色・半径・透明度はCSSで与える
+// 参加者1人ぶんの点。位置とクラス名だけを持ち、色・透明度はCSSで与える
+// (半径だけは属性で持つ。CSS の r プロパティは Firefox が未対応で、CSS だけに
+// 置くと Firefox では半径0=見えない点になる。通報で発覚、2026-09)
 type PointDot = { key: number; cx: number; cy: number; cls: string };
 
 // 参加者の点の層。1点1要素の <circle> は維持する:
 // 半透明の点が重なったときの濃淡が密度の表現で、グレー(未割当)とグループの点が
 // 参加者の並び順どおりに入れ替わりながら描かれることも絵の一部だから。
-// 軽くするのは属性のほうで、色・半径・透明度・pointer-events は
-// SVG内の <style> にクラス単位で一度だけ書き、各要素は cx/cy/class だけにする。
+// 軽くするのは属性のほうで、色・透明度・pointer-events は
+// SVG内の <style> にクラス単位で一度だけ書き、各要素は cx/cy/r/class だけにする。
 // ホバー(activeGroup)では何も変わらないので、幾何計算の結果ごとメモ化する
 const MapPoints = memo(function MapPoints({ css, dots }: { css: string; dots: PointDot[] }) {
   return (
     <>
       <style>{css}</style>
       {dots.map(({ key, cx, cy, cls }) => (
-        <circle key={key} cx={cx} cy={cy} className={cls} />
+        <circle key={key} cx={cx} cy={cy} r={POINT_R} className={cls} />
       ))}
     </>
   );
@@ -66,7 +68,7 @@ const MapPoints = memo(function MapPoints({ css, dots }: { css: string; dots: Po
 
 // 点のクラスに対するCSS。共通の指定を1つにまとめ、fillだけクラスごとに書く
 function pointCss(classes: string[]): string {
-  const common = `${classes.map((c) => `.${c}`).join(",")}{r:${POINT_R};fill-opacity:${POINT_OPACITY};pointer-events:none}`;
+  const common = `${classes.map((c) => `.${c}`).join(",")}{fill-opacity:${POINT_OPACITY};pointer-events:none}`;
   const fills = classes
     .map((c) => {
       const cid = c === GREY_CLASS ? null : Number(c.slice(1));
