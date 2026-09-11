@@ -16,10 +16,8 @@ import {
   TAGS_PER_THEME,
   PROMOTION_MIN_PARTICIPANTS,
   THEMES_PAGE_SIZE,
-  RANKING,
 } from "../config";
-import { compareByHot } from "../ranking";
-import { withRuntimeCache } from "./shared";
+import { hotScore, withRuntimeCache } from "./shared";
 
 // 実行時にも検証できるよう配列を正とし、型はそこから導出する
 // (クライアント由来のtabをServer Actionの入口で照合するため)
@@ -33,9 +31,6 @@ export type ThemeWithCounts = {
   createdAt: Date;
   voterCount: number;
   statementCount: number;
-  // 直近 RANKING.windowDays 日のユニーク投票者数。人気の並び順にだけ使うので
-  // 人気タブとトップページの取得時のみ付く(表示する投票者数は累計の voterCount)
-  recentVoterCount?: number;
   tags?: string[]; // テーマのタグ(全員共通)
   // 以下は参加者(cookie)ごとに算出する任意の付加情報
   unansweredCount?: number; // 自分がまだ投票していない意見の数
@@ -57,55 +52,45 @@ const visibleStatementCountSubquery = sql<number>`(
   select count(*)::int from statements s
   where s.theme_id = themes.id and s.status = 'visible'
 )`;
-// 人気の並び順用: 直近 RANKING.windowDays 日にこのテーマで投票した人数。
-// 窓なし(null)のときは累計と同じ値を返し、並び順は voterCount と一致する
-// (列を常に持たせておくことで、窓の有無を切り替えても呼び出し側の形が変わらない)
-const recentVoterCountSubquery =
-  RANKING.windowDays === null
-    ? voterCountSubquery
-    : sql<number>`(
-  select count(distinct v.participant_id)::int
-  from votes v where v.theme_id = themes.id
-    and v.created_at > now() - make_interval(days => ${RANKING.windowDays})
-)`;
-
-// 一覧カードに必要な集計列(投票者数・意見数)
-const themeColumns = {
-  id: themes.id,
-  title: themes.title,
-  description: themes.description,
-  createdAt: themes.createdAt,
-  voterCount: voterCountSubquery,
-  statementCount: visibleStatementCountSubquery,
-};
 
 export async function listThemes(): Promise<{
   main: ThemeWithCounts[];
   fresh: ThemeWithCounts[];
 }> {
   const rows = await db
-    .select({ ...themeColumns, recentVoterCount: recentVoterCountSubquery })
+    .select({
+      id: themes.id,
+      title: themes.title,
+      description: themes.description,
+      createdAt: themes.createdAt,
+      voterCount: voterCountSubquery,
+      statementCount: visibleStatementCountSubquery,
+    })
     .from(themes)
     .where(eq(themes.status, "active"))
     .orderBy(desc(themes.createdAt))
     .limit(200);
 
-  // 勢いの降順。式と窓は ../ranking.ts と config.ts の RANKING に一本化してある
-  const main = rows.filter((r) => r.voterCount >= PROMOTION_MIN_PARTICIPANTS).sort(compareByHot);
+  // 勢い(hotScore)の降順。減衰の式は shared.ts に一本化してある
+  const main = rows
+    .filter((r) => r.voterCount >= PROMOTION_MIN_PARTICIPANTS)
+    .sort((a, b) => hotScore(b) - hotScore(a));
   const fresh = rows.filter((r) => r.voterCount < PROMOTION_MIN_PARTICIPANTS);
   return { main, fresh };
 }
 
 // テーマ一覧(無限スクロール)用のページ取得。
 // 集計列(投票者数・意見数)を含む共通の select を組み立てる。
-// withRecent を立てると人気の並び順に使う直近投票者数も付ける(相関サブクエリが
-// 1本増えるので、必要な人気タブ以外では付けない)
-function themesWithCountsQuery(extra?: SQL, withRecent = false) {
-  const columns = withRecent
-    ? { ...themeColumns, recentVoterCount: recentVoterCountSubquery }
-    : themeColumns;
+function themesWithCountsQuery(extra?: SQL) {
   return db
-    .select(columns)
+    .select({
+      id: themes.id,
+      title: themes.title,
+      description: themes.description,
+      createdAt: themes.createdAt,
+      voterCount: voterCountSubquery,
+      statementCount: visibleStatementCountSubquery,
+    })
     .from(themes)
     .where(extra ? and(eq(themes.status, "active"), extra) : eq(themes.status, "active"));
 }
@@ -203,15 +188,13 @@ async function listFreshPage(offset: number, limit: number): Promise<ThemeWithCo
 
 // 人気タブ: 10票以上を勢い順(スコアはJS計算のため、全件取得してsort→slice)。
 // 人気は母集団が小さいため全件取得のコストは小さい。
-// キャッシュのキーに窓の日数を含め、設定を切り替えた直後に旧設定の行
-// (recentVoterCount の意味が違う)を読まないようにする
 async function listActivePage(offset: number, limit: number): Promise<ThemeWithCounts[]> {
-  const rows = await withThemesListCache(`active:base:w${RANKING.windowDays ?? "all"}`, () =>
-    themesWithCountsQuery(undefined, true).limit(1000),
+  const rows = await withThemesListCache("active:base", () =>
+    themesWithCountsQuery().limit(1000),
   );
   return rows
     .filter((r) => r.voterCount >= PROMOTION_MIN_PARTICIPANTS)
-    .sort(compareByHot)
+    .sort((a, b) => hotScore(b) - hotScore(a))
     .slice(offset, offset + limit);
 }
 

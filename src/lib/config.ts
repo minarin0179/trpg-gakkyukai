@@ -59,22 +59,9 @@ export const TAGS_PER_THEME = 8;
 export const TAG_VOCABULARY_LIMIT = 40;
 
 // 人気タブの並び順(Hacker News方式の時間減衰ランキング)
-// score = 投票者数 / (経過日数 + 2)^gravity
-// 新しいテーマほど有利になり、古いテーマは参加者が多くても自然に沈む。
-//
-// windowDays: 分子に使う投票者数の窓(日)。数値なら「直近その日数に投票した人数」、
-//   null なら累計の投票者数(公開当初の式)。
-// gravity: 経過日数による減衰の強さ。
-//
-// 2026-09-12 に累計(gravity 1.8)から7日窓(gravity 1.0)へ切り替えた。公開直後の
-// バズで累計投票者数が外れ値になり、同じ日に立ったテーマ同士の順位が数学的に
-// 固定されて上位が入れ替わらなくなったため。窓ありでは減衰は窓が担うので
-// gravity は弱めでよい。累計に戻すときは { windowDays: null, gravity: 1.8 } に
-// するだけでよく、ほかの箇所(集計クエリ・about ページの説明)はこの値に追従する。
-export const RANKING: { windowDays: number | null; gravity: number } = {
-  windowDays: 7,
-  gravity: 1.0,
-};
+// score = 投票者数 / (経過日数 + 2)^GRAVITY
+// 新しいテーマほど有利になり、古いテーマは参加者が多くても自然に沈む
+export const RANKING_GRAVITY = 1.8;
 
 // テーマ一覧(無限スクロール)の1ページ件数
 export const THEMES_PAGE_SIZE = 20;
