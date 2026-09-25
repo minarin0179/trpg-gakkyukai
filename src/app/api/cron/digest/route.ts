@@ -7,7 +7,8 @@ import {
   weekStartKey,
 } from "@/lib/digest";
 import { markPosted, wasPosted } from "@/lib/x-post-guard";
-import { isXConfigured, postToX } from "@/lib/x-post";
+import { isXConfigured, postToX, xPostUrl } from "@/lib/x-post";
+import { notifyAdmin } from "@/lib/notify";
 
 // 集計は1本のクエリと(設定されていれば)X APIの往復だけなので、
 // 再計算のcron(300秒)ほどは要らない。既定より長めに取って取りこぼしを防ぐ
@@ -38,6 +39,8 @@ export async function GET(request: Request) {
   if (!isXConfigured()) {
     const { text } = await buildWeeklyPostText(weekStart);
     console.log(`weekly-x-post week=${week} skipped reason=x-not-configured`);
+    // cron は200で終わるので、運営に知らせないと投稿されていないことに気づけない
+    await notifyAdmin("X週次投稿: Xの資格情報が未設定のため投稿していません(X_API_KEY ほか4つ)");
     return NextResponse.json({ weekStart: week, posted: false, reason: "x-not-configured", text });
   }
 
@@ -52,12 +55,14 @@ export async function GET(request: Request) {
     const { id } = await postToX(text);
     await markPosted(weekStart, id);
     console.log(`weekly-x-post week=${week} posted id=${id}`);
+    await notifyAdmin(`X週次投稿: 投稿しました ${xPostUrl(id)}`);
     return NextResponse.json({ weekStart: week, posted: true, id, text });
   } catch (e) {
     // 失敗はVercelのcronログに残す。秘密は x-post.ts の中だけで扱うため、
     // ここに出る文言(X APIの応答など)には含まれない
     const error = e instanceof Error ? e.message : String(e);
     console.log(`weekly-x-post week=${week} failed error=${error}`);
+    await notifyAdmin(`X週次投稿: 失敗しました: ${error.slice(0, 300)}`);
     return NextResponse.json({ weekStart: week, posted: false, error }, { status: 500 });
   }
 }

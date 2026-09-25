@@ -70,7 +70,8 @@ node --env-file=.env.local scripts/seed.mjs
 - `src/app/api/cron/recompute/route.ts` — 日次バックストップ(vercel.json の crons)
 - `src/lib/digest.ts` / `src/lib/digest-text.ts` — 週次のX投稿の集計と、
   週の区切り・投稿文の組み立て(後者はDBに触れないので単体テストの対象)
-- `src/lib/x-post-guard.ts` — 週次のX投稿の重複防止(Runtime Cacheの目印)
+- `src/lib/daily-pick.ts` / `src/lib/daily-pick-text.ts` — 毎日のX投稿(1テーマの紹介)の選出と投稿文
+- `src/lib/x-post-guard.ts` — X投稿の重複防止と「最近紹介したテーマ」(Runtime Cacheの目印)
 - `src/lib/x-post.ts` — Xへの投稿(OAuth 1.0a・依存なし)
 - 参加者は匿名cookie(`gk_pid`)のみで識別。個人情報は保存しない
 
@@ -114,6 +115,29 @@ https://trpg-gakkyukai.com/themes?tab=active
   下書きは画面を開くたびに数え直したもの。「前週分を今すぐ投稿する」で手動投稿でき、
   結果はその場に表示される。
 - Xの資格情報(`X_API_KEY` ほか4つ)が未設定の環境では投稿せず、下書きの確認だけができる。
+- 結果(投稿できた・失敗・資格情報が未設定)は `DISCORD_WEBHOOK_URL` に通知する。
+  cron は資格情報が無くても200で終わるため、通知が無いと「投稿されていない」ことに気づけない。
+
+## 毎日のX投稿(テーマ紹介)
+
+週1回だけだとタイムラインで流れてしまうため、週次の投稿が無い日(火〜日)の20:00 JSTに
+テーマを1つずつ紹介する。リンク先は一覧ではなくテーマの個別ページ(OGPカードが付く)。
+
+- cron: `vercel.json` の `/api/cron/x-daily`(`0 11 * * *` = 毎日20:00 JST)。月曜(JST)は何もしない。
+- 選び方(上から順に、最近紹介したテーマは除く):
+  1. 直近24時間に立ったテーマ(複数なら投票の多いもの)
+  2. 直近24時間に3人以上が投票したテーマのうち、最も多いもの
+  3. 累計で投票が多い上位30件からランダムに1つ
+- 同じテーマを続けて出さないよう、紹介したテーマのIDを Runtime Cache に21日覚えておく
+  (週次と同じくベストエフォート)。同じ日の二度目の投稿も目印で止める。
+- `?force=1` で月曜の判定と目印を無視して投稿し直せる:
+
+  ```bash
+  curl -H "Authorization: Bearer $CRON_SECRET" "https://trpg-gakkyukai.com/api/cron/x-daily?force=1"
+  ```
+
+- 管理画面(`/admin`)に今日の下書きと「今日の分を今すぐ投稿する」ボタンがある。
+  資格情報や権限の確認にも使える(失敗したときはX APIの応答がそのまま出る)。
 
 ## テスト
 

@@ -8,7 +8,10 @@ import {
   dismissReportAction,
   adminLogoutAction,
   postWeeklyXAction,
+  postDailyXAction,
 } from "./actions";
+import { buildDailyPostText } from "@/lib/daily-pick";
+import { recentlyFeatured } from "@/lib/x-post-guard";
 import {
   buildWeeklyPostText,
   previousWeekStart,
@@ -20,6 +23,12 @@ import { REMOVAL_CRITERIA } from "@/lib/rules";
 import { requireAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
+
+const DAILY_KIND_LABEL = {
+  new: "新しく立ったテーマ",
+  hot: "直近24時間で投票が多いテーマ",
+  revisit: "過去のテーマからランダム",
+} as const;
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -62,9 +71,11 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   // 週次のX投稿の下書き。保存はしていないので、この画面を開くたびに数え直す
   // (このページは force-dynamic なので常に今の値が出る)
   const now = new Date();
-  const [previousWeek, currentWeek] = await Promise.all([
+  const [previousWeek, currentWeek, daily] = await Promise.all([
     buildWeeklyPostText(previousWeekStart(now)),
     buildWeeklyPostText(startOfWeekJst(now)),
+    // 日次の紹介は revisit のときランダムに選ぶため、ここの下書きと実際の投稿は食い違い得る
+    recentlyFeatured(now).then((ids) => buildDailyPostText(now, ids)),
   ]);
   const xConfigured = isXConfigured();
 
@@ -323,7 +334,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
 
       {/* 週次のX投稿: 自動投稿の中身の確認と、飛んだときの手動投稿 */}
       <section className="mt-6 flex flex-col gap-3">
-        <h2 className="text-lg font-bold">週次のX投稿</h2>
+        <h2 className="text-lg font-bold">Xへの自動投稿</h2>
 
         {xpostResult === "ok" && (
           <p className="rounded-lg border border-stone-400 bg-white p-3 text-sm">
@@ -336,10 +347,41 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
           </p>
         )}
 
-        <p className="text-xs text-stone-600">毎週月曜20時に前週分を自動投稿します。</p>
+        <p className="text-xs text-stone-600">
+          毎週月曜20時に前週分のまとめを、火〜日の20時にテーマを1つずつ自動投稿します。
+          結果は運営のDiscordにも通知します。
+        </p>
         {!xConfigured && (
           <p className="text-xs text-stone-600">Xの資格情報が未設定のため投稿はできません</p>
         )}
+
+        <div className="rounded-lg border border-stone-400 bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium">
+              今日のテーマ紹介{daily && `（${DAILY_KIND_LABEL[daily.pick.kind]}）`}
+            </p>
+            {xConfigured && daily && (
+              <form action={postDailyXAction}>
+                <button
+                  type="submit"
+                  className="rounded-md bg-stone-900 px-3 py-1 text-xs font-medium text-white"
+                >
+                  今日の分を今すぐ投稿する
+                </button>
+              </form>
+            )}
+          </div>
+          {daily ? (
+            <textarea
+              readOnly
+              rows={6}
+              value={daily.text}
+              className="mt-2 w-full rounded-md border border-stone-300 bg-stone-50 p-2 text-xs"
+            />
+          ) : (
+            <p className="mt-2 text-xs text-stone-600">紹介できるテーマがありません</p>
+          )}
+        </div>
 
         <div className="rounded-lg border border-stone-400 bg-white p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">

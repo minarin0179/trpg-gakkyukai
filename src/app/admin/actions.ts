@@ -15,7 +15,8 @@ import { ipActor } from "@/lib/request";
 import { notFound } from "next/navigation";
 import { isTargetType, toIntId } from "@/lib/validate";
 import { buildWeeklyPostText, previousWeekStart } from "@/lib/digest";
-import { markPosted } from "@/lib/x-post-guard";
+import { buildDailyPostText, jstDateKey } from "@/lib/daily-pick";
+import { markPosted, markPostedDaily, recentlyFeatured } from "@/lib/x-post-guard";
 import { isXConfigured, postToX } from "@/lib/x-post";
 import type { ActionResult } from "@/lib/action-result";
 
@@ -190,5 +191,26 @@ export async function postWeeklyXAction() {
     query = `xpost=error&msg=${encodeURIComponent(error.slice(0, 300))}`;
   }
   // redirect は例外で制御を移すため、try の外で呼ぶ(catchに捕まえさせない)
+  redirect(`/admin?${query}`);
+}
+
+// 今日のテーマ紹介を今すぐ出す。日次のcronと同じ流れで、飛んだときの手当てや
+// 投稿が本当に通るかの確認に使う。月曜でも出せる(月曜の判定はcronだけで行う)
+export async function postDailyXAction() {
+  if (!(await isAdmin())) notFound();
+  if (!isXConfigured()) notFound();
+
+  const now = new Date();
+  let query: string;
+  try {
+    const draft = await buildDailyPostText(now, await recentlyFeatured(now));
+    if (!draft) throw new Error("紹介できるテーマがありません");
+    const { id } = await postToX(draft.text);
+    await markPostedDaily(jstDateKey(now), draft.pick.id, id, now);
+    query = `xpost=ok&id=${encodeURIComponent(id)}`;
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    query = `xpost=error&msg=${encodeURIComponent(error.slice(0, 300))}`;
+  }
   redirect(`/admin?${query}`);
 }

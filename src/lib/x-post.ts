@@ -1,7 +1,7 @@
 import { createHmac, randomBytes } from "node:crypto";
 import { xCredentials } from "./env";
 
-// X(旧Twitter)API v2 への投稿。週間ダイジェストの告知に使う。
+// X(旧Twitter)API v2 への投稿。週次の投稿と毎日のテーマ紹介に使う。
 // OAuth 1.0a(HMAC-SHA1・ユーザーコンテキスト)は node:crypto だけで書けるので、
 // 依存パッケージは足さない(この1機能のために署名ライブラリを入れるとバンドルと
 // 供給網の両方が重くなる)。
@@ -57,6 +57,11 @@ export function authorizationHeader(params: Record<string, string>, signature: s
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([k, v]) => `${percentEncode(k)}="${percentEncode(v)}"`);
   return `OAuth ${parts.join(", ")}`;
+}
+
+// 投稿のURL。運営通知で「本当に出たか」をすぐ確かめられるようにする
+export function xPostUrl(id: string): string {
+  return `https://x.com/i/web/status/${encodeURIComponent(id)}`;
 }
 
 // 実際の投稿。2xx 以外は応答本文を添えて例外にする(呼び出し側が
