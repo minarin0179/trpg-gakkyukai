@@ -1,0 +1,70 @@
+// GitHub Codespaces / VS Code Dev Containers 用の開発環境定義。
+// 方針: 公式ベースイメージ + features で言語とCLIを入れ、プロジェクト固有の
+// セットアップ(依存・環境変数・DB)は post-create.sh に寄せる。
+// 秘密情報はこのファイルに書かない(Codespaces secrets → post-create.sh が読む)。
+{
+  "name": "TRPG学級会",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+  "features": {
+    // package.json の engines.node=24.x に合わせる
+    "ghcr.io/devcontainers/features/node:1": { "version": "24" },
+    // .python-version=3.12。Ubuntu 24.04 の同梱版をそのまま使い(ビルド不要)、
+    // 既定のリンター群は入れない(仮想環境は uv が作る)
+    "ghcr.io/devcontainers/features/python:1": { "version": "os-provided", "installTools": false },
+    "ghcr.io/va-h/devcontainers-features/uv:1": { "version": "latest" },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    // Claude Code(Node が先に必要なので下の順序指定で node の後に入れる)
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+  },
+  "overrideFeatureInstallOrder": [
+    "ghcr.io/devcontainers/features/node",
+    "ghcr.io/devcontainers/features/python",
+    "ghcr.io/va-h/devcontainers-features/uv",
+    "ghcr.io/devcontainers/features/github-cli",
+    "ghcr.io/anthropics/devcontainer-features/claude-code"
+  ],
+
+  // Python の依存(onnxruntime / scikit-learn / pandas)と Playwright を載せるため
+  // 2コア/8GB 以上。ストレージは node_modules + .venv + ブラウザで 3GB 前後使う
+  "hostRequirements": { "cpus": 2, "memory": "8gb", "storage": "32gb" },
+
+  "forwardPorts": [3000, 8787],
+  "portsAttributes": {
+    "3000": { "label": "Next.js (next dev)", "onAutoForward": "openBrowser" },
+    "8787": { "label": "compute-server (計算・埋め込み)", "onAutoForward": "silent" }
+  },
+
+  // Codespaces の作成画面で入力を促す秘密情報。無くても動く(使い捨てDBに落ちる)
+  "secrets": {
+    "VERCEL_TOKEN": {
+      "description": "運営者向け(任意)。vercel env pull で開発用の環境変数を取得する。未設定なら .env.example から開発既定値を生成する",
+      "documentationUrl": "https://vercel.com/account/tokens"
+    },
+    "NEON_API_KEY": {
+      "description": "運営者向け(任意)。本番DBのコピーを Neon ブランチとして自動作成し、そこへ接続する。未設定なら使い捨ての Claimable Postgres を作る",
+      "documentationUrl": "https://neon.com/docs/manage/api-keys"
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss",
+        "ms-python.python",
+        "ms-playwright.playwright"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "files.eol": "\n"
+      }
+    },
+    "codespaces": {
+      "openFiles": ["README.md"]
+    }
+  }
+}
