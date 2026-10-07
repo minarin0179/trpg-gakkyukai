@@ -26,6 +26,9 @@ export const themes = pgTable("themes", {
   // 要pgvector拡張(CREATE EXTENSION vector)。生成に失敗した行はnullのまま
   // 検出対象から外れるだけで、機能は壊れない
   embedding: vector("embedding", { dimensions: 256 }),
+  // 新規テーマの X 自動投稿の投稿ID。null=未投稿、"pending"=投稿中(cron の二重実行の防止)。
+  // 投稿済みの記録はここだけ(X 側の投稿IDを持つので後から辿れる)
+  xPostId: text("x_post_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
