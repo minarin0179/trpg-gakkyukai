@@ -5,6 +5,63 @@ import { ThemeCard } from "./ThemeCard";
 import type { ThemeWithCounts } from "@/lib/queries";
 import { loadMoreThemes, type ThemesTab } from "@/app/themes/actions";
 import { useHiddenThemes, hideTheme, unhideTheme } from "@/lib/hidden-themes";
+import { PARTICIPANT_COOKIE_MAX_AGE_SEC } from "@/lib/config";
+
+// ISR の一覧ページ(新着・人気・タグ)は全員共通の HTML を CDN から返すため、
+// 参加者ごとの印(参加済み・新着N件)は初回分だけクライアントで取りに行く
+// (2ページ目以降は Server Action がサーバー側で付ける)。
+// 訪問者の大半は一度も参加していない「読むだけの人」なので、テーマページの
+// ThemePersonalization と同じ判定(目印 cookie gk_p と localStorage の gk_np)で
+// API 呼び出しを省略し、その場合は全カードを「未参加」として描く。
+async function fetchPersonalMarks(
+  items: ThemeWithCounts[],
+): Promise<((t: ThemeWithCounts) => ThemeWithCounts) | null> {
+  const asNotParticipated = (t: ThemeWithCounts): ThemeWithCounts =>
+    t.participated === undefined ? { ...t, participated: false } : t;
+  let hasMarker = false;
+  try {
+    hasMarker = document.cookie.split("; ").some((c) => c.startsWith("gk_p="));
+    if (!hasMarker && localStorage.getItem("gk_np") === "1") return asNotParticipated;
+  } catch {
+    // storage にアクセスできない環境では毎回取得する
+  }
+  const ids = items.map((t) => t.id);
+  if (ids.length === 0) return null;
+  const res = await fetch(`/api/themes/me?ids=${encodeURIComponent(ids.join(","))}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    participant?: boolean;
+    answered?: Record<string, number>;
+  };
+  if (!data.participant) {
+    // cookie なし=未参加。次回以降は API を呼ばずに済むよう記録する
+    try {
+      if (!hasMarker) localStorage.setItem("gk_np", "1");
+    } catch {
+      // 記録できなくても動作には影響しない
+    }
+    return asNotParticipated;
+  }
+  const answered = data.answered ?? {};
+  // 自己修復: 目印導入前からの参加者は目印を持っていないため、
+  // 参加実績が確認できたらクライアント側で目印を立てる
+  if (Object.values(answered).some((n) => n > 0)) {
+    try {
+      document.cookie = `gk_p=1; max-age=${PARTICIPANT_COOKIE_MAX_AGE_SEC}; path=/; samesite=lax`;
+      localStorage.removeItem("gk_np");
+    } catch {
+      // 記録できなくても動作には影響しない
+    }
+  }
+  const idSet = new Set(ids);
+  return (t) => {
+    if (!idSet.has(t.id)) return t;
+    const n = answered[t.id] ?? 0;
+    return { ...t, participated: n > 0, unansweredCount: Math.max(t.statementCount - n, 0) };
+  };
+}
 
 // スクロール到達で次ページを追記する無限スクロール一覧(Twitter/YouTube風)。
 // 初回分はサーバーで描画済みのものを initialItems で受け取る。
@@ -15,6 +72,7 @@ export function ThemeInfiniteList({
   query,
   tag,
   tagMode,
+  personalize = false,
 }: {
   tab: ThemesTab;
   initialItems: ThemeWithCounts[];
@@ -22,6 +80,8 @@ export function ThemeInfiniteList({
   query?: string;
   tag?: string;
   tagMode?: "and" | "or";
+  // true なら初回分の参加者の印をクライアントで取得する(ISR の一覧ページ用)
+  personalize?: boolean;
 }) {
   const [items, setItems] = useState<ThemeWithCounts[]>(initialItems);
   // 自分が「非表示」にしたテーマ(端末内の設定)。取得結果から除外して描く。
@@ -33,6 +93,23 @@ export function ThemeInfiniteList({
   // 取得済み件数。items.length ではなく実取得数で進めることで、
   // 取得の合間にデータが変動しても offset が正しく前進する。
   const offsetRef = useRef(initialItems.length);
+
+  // 初回分の個人化(ISR ページのみ)。外部(API)からの取り込みなので effect が置き場で、
+  // setState は取得完了後にしか呼ばない
+  useEffect(() => {
+    if (!personalize) return;
+    let cancelled = false;
+    fetchPersonalMarks(initialItems)
+      .then((apply) => {
+        if (!cancelled && apply) setItems((prev) => prev.map(apply));
+      })
+      .catch(() => {
+        // 取得に失敗しても一覧は表示済み。印なしで続行する
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [personalize, initialItems]);
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;
