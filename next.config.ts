@@ -55,43 +55,6 @@ const nextConfig: NextConfig = {
         destination: "/t/:id/report",
         permanent: true,
       },
-      // テーマ一覧の旧クエリ式URL(?tab= / ?tag= / ?q=)をパス式へ。一覧を ISR にするため
-      // (クエリを読むとページ全体が動的描画になる)。X 投稿や共有済みリンクを受ける。
-      // 旧ページと同じ優先順位(タグ > 検索語 > タブ)で並べる。value で一致させた
-      // クエリは遷移先に引き継がれない(tab=... が残ってループしない)
-      {
-        source: "/themes",
-        has: [
-          { type: "query", key: "tag", value: "(?<tag>.+)" },
-          { type: "query", key: "tagmode", value: "and" },
-        ],
-        destination: "/themes/tag/:tag/all",
-        permanent: true,
-      },
-      {
-        source: "/themes",
-        has: [{ type: "query", key: "tag", value: "(?<tag>.+)" }],
-        destination: "/themes/tag/:tag",
-        permanent: true,
-      },
-      {
-        source: "/themes",
-        has: [{ type: "query", key: "q" }],
-        destination: "/themes/search",
-        permanent: true,
-      },
-      ...(["active", "unread", "mine", "proposed"] as const).map((tab) => ({
-        source: "/themes",
-        has: [{ type: "query" as const, key: "tab", value: tab }],
-        destination: `/themes/${tab}`,
-        permanent: true,
-      })),
-      {
-        source: "/themes",
-        has: [{ type: "query", key: "tab", value: "fresh" }],
-        destination: "/themes",
-        permanent: true,
-      },
     ];
   },
 };

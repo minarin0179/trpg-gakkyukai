@@ -1,26 +1,13 @@
 import Link from "next/link";
 import type { ThemeWithCounts, ThemesTab } from "@/lib/queries";
 import { PROMOTION_MIN_PARTICIPANTS, THEMES_PAGE_SIZE } from "@/lib/config";
+import { tagListUrl } from "@/lib/themes-urls";
 import { ThemeInfiniteList } from "@/components/ThemeInfiniteList";
 
 // テーマ一覧の見た目をタブ・タグ・検索のページで共有する(サーバーコンポーネント)。
 // 一覧ページは ISR(新着・人気・タグ)と動的(検索・個人タブ)に分かれており、
 // 各 page.tsx はデータの取り方だけを持ち、描画はここに集める。
-//
-// URL の設計(クエリ文字列を読むとページ全体が動的描画になる仕様のため、
-// 共有できる一覧はすべてパスで表す):
-//   /themes                 新着(ISR)
-//   /themes/active          人気(ISR)
-//   /themes/tag/<a,b>       タグ「いずれかを含む」(ISR)
-//   /themes/tag/<a,b>/all   タグ「すべて含む」(ISR)
-//   /themes/search?q=       検索(動的: 意味検索がリクエスト依存)
-//   /themes/unread など     個人タブ(動的: cookie 依存)
-
-export function tagListUrl(tags: string[], mode: "and" | "or"): string {
-  if (tags.length === 0) return "/themes";
-  const joined = encodeURIComponent(tags.join(","));
-  return mode === "and" ? `/themes/tag/${joined}/all` : `/themes/tag/${joined}`;
-}
+// URL の設計は lib/themes-urls.ts を参照
 
 export function ThemesView({
   tab,
