@@ -57,7 +57,7 @@ export function ThemeTagsRow({
         <Link
           key={tag}
           prefetch={false}
-          href={`/themes?tag=${encodeURIComponent(tag)}`}
+          href={`/themes/tag/${encodeURIComponent(tag)}`}
           rel="nofollow"
           className="rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs text-stone-600 hover:border-stone-500 hover:text-stone-800"
         >

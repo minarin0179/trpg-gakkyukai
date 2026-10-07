@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getCache } from "@vercel/functions";
 import { nanoid } from "nanoid";
 import { db, themes, statements, themeTags } from "@/db";
-import { revalidateTheme } from "@/lib/revalidate";
+import { revalidateTheme, revalidateThemeLists } from "@/lib/revalidate";
 import { getOrCreateParticipantId, getParticipantId, actorHash } from "@/lib/participant";
 import { ipActor } from "@/lib/request";
 import { checkAndRecordRate } from "@/lib/rate-limit";
@@ -160,6 +160,8 @@ export async function createThemeAction(
   await getCache()
     .expireTag("themes-list")
     .catch(() => {});
+  // 一覧ページ本体(ISR)も作り直す
+  revalidateThemeLists();
 
   redirect(`/t/${id}`);
 }
@@ -214,8 +216,10 @@ export async function addThemeTagAction(
     .expireTag("tag-vocab")
     .catch(() => {});
   // ページはISRキャッシュのため、表示の即時更新はクライアント側で行う
-  // (revalidateThemeは他の閲覧者向けのキャッシュ更新)
+  // (revalidateThemeは他の閲覧者向けのキャッシュ更新)。
+  // 一覧のカードのタグとタグ絞り込みの結果も変わるので一覧側も作り直す
   revalidateTheme(themeId);
+  revalidateThemeLists();
   return { ok: true, data: { id: row?.id, tag } };
 }
 

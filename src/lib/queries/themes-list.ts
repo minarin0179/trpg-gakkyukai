@@ -283,19 +283,9 @@ async function enrichThemesForParticipant(
   const mapReady = new Set(shared.mapReady);
 
   // 参加者依存の情報(未回答数・参加有無)は cookie があるときだけ算出する
-  const answeredMap = new Map<string, number>();
-  if (participantId) {
-    const answered = await db
-      .select({ themeId: statements.themeId, n: countDistinct(votes.statementId) })
-      .from(statements)
-      .innerJoin(
-        votes,
-        and(eq(votes.statementId, statements.id), eq(votes.participantId, participantId)),
-      )
-      .where(and(inArray(statements.themeId, ids), eq(statements.status, "visible")))
-      .groupBy(statements.themeId);
-    for (const a of answered) answeredMap.set(a.themeId, a.n);
-  }
+  const answeredMap = new Map<string, number>(
+    participantId ? Object.entries(await answeredCountsForParticipant(ids, participantId)) : [],
+  );
 
   return list.map((t) => {
     const hasMap = mapReady.has(t.id);
@@ -312,6 +302,27 @@ async function enrichThemesForParticipant(
       participated: myAnswered > 0,
     };
   });
+}
+
+// 参加者が各テーマで投票した(可視の)意見の数。一覧カードの「参加済み」「新着N件」の元。
+// ISR の一覧ページでは /api/themes/me からクライアントがこれを取りに来る
+export async function answeredCountsForParticipant(
+  themeIds: string[],
+  participantId: string,
+): Promise<Record<string, number>> {
+  if (themeIds.length === 0) return {};
+  const rows = await db
+    .select({ themeId: statements.themeId, n: countDistinct(votes.statementId) })
+    .from(statements)
+    .innerJoin(
+      votes,
+      and(eq(votes.statementId, statements.id), eq(votes.participantId, participantId)),
+    )
+    .where(and(inArray(statements.themeId, themeIds), eq(statements.status, "visible")))
+    .groupBy(statements.themeId);
+  const out: Record<string, number> = {};
+  for (const r of rows) out[r.themeId] = r.n;
+  return out;
 }
 
 // タグ絞り込みの指定文字列を解釈する。呼び出し側も「タグ絞り込み中かどうか」で

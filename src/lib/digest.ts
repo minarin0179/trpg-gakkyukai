@@ -21,7 +21,7 @@ export * from "./digest-text";
 const iso = (d: Date) => d.toISOString();
 
 // 投稿から送る先。載せたタイトルの続き(今動いているテーマ)がそのまま並ぶ人気タブにする
-export const DIGEST_LINK_URL = `${SITE_URL}/themes?tab=active`;
+export const DIGEST_LINK_URL = `${SITE_URL}/themes/active`;
 
 // その週に投票した人数(重複なし)が多かったテーマを取る。同数なら新しいテーマを先に出す。
 // 投稿に載せるのはタイトルだけなので、必要な集計はこの1本で足りる

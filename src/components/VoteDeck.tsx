@@ -207,7 +207,7 @@ function NextThemeCard({ themeId }: { themeId: string }) {
         </>
       )}
       <p className={next ? "mt-3 text-xs" : "text-center text-xs"}>
-        <Link prefetch={false} href="/themes?tab=unread" className="text-stone-600 underline">
+        <Link prefetch={false} href="/themes/unread" className="text-stone-600 underline">
           ほかのテーマを見る
         </Link>
       </p>

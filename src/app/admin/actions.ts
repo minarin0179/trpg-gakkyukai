@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidateTheme } from "@/lib/revalidate";
+import { revalidateTheme, revalidateThemeLists } from "@/lib/revalidate";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { after } from "next/server";
 import { getCache } from "@vercel/functions";
@@ -80,6 +80,7 @@ export async function removeContentAction(formData: FormData) {
       .expireTag("tag-vocab")
       .catch(() => {});
     if (row) revalidateTheme(row.themeId);
+    revalidateThemeLists();
   } else if (targetType === "theme") {
     await db
       .update(themes)
@@ -94,6 +95,7 @@ export async function removeContentAction(formData: FormData) {
     await getCache()
       .expireTag("tag-vocab")
       .catch(() => {});
+    revalidateThemeLists();
   }
 
   // 同じ対象への未対応の通報をまとめて「対応済み(削除)」に
@@ -152,6 +154,7 @@ export async function adminSetTagAction(
     .expireTag("tag-vocab")
     .catch(() => {});
   revalidateTheme(themeId);
+  revalidateThemeLists();
   return { ok: true, data: undefined };
 }
 
