@@ -17,6 +17,7 @@ export const maxDuration = 60;
 // 直前に終わった週(月曜0:00 JST 〜 翌月曜0:00 JST)をその場で集計して投稿する。
 // 結果はDBに保存しない。二重投稿はRuntime Cacheの目印だけで防ぐ(ベストエフォート)。
 // ?week=YYYY-Www でその週を指定でき、?force=1 で目印を無視して投稿し直せる。
+// ?dry=1 は投稿せずに本文だけ返す(cron が動くか・本文が正しいかの確認用)。
 // 認証は再計算のcronと同じ(Bearer CRON_SECRET を時間一定で突き合わせる)
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -28,17 +29,19 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const weekParam = params.get("week");
   const force = params.get("force") === "1";
+  const dry = params.get("dry") === "1";
   const weekStart = weekParam ? parseWeekKey(weekParam) : previousWeekStart(new Date());
   if (!weekStart) {
     return NextResponse.json({ error: "invalid week" }, { status: 400 });
   }
   const week = weekStartKey(weekStart);
 
-  // Xの資格情報が無い環境では下書きを返すだけで止める(内容の確認には使える)
-  if (!isXConfigured()) {
+  // Xの資格情報が無い環境と ?dry=1 では下書きを返すだけで止める(内容の確認には使える)
+  if (dry || !isXConfigured()) {
+    const reason = dry ? "dry-run" : "x-not-configured";
     const { text } = await buildWeeklyPostText(weekStart);
-    console.log(`weekly-x-post week=${week} skipped reason=x-not-configured`);
-    return NextResponse.json({ weekStart: week, posted: false, reason: "x-not-configured", text });
+    console.log(`weekly-x-post week=${week} skipped reason=${reason}`);
+    return NextResponse.json({ weekStart: week, posted: false, reason, text });
   }
 
   // 目印が残っている週は投稿し直さない(?force=1 のときは無視する)

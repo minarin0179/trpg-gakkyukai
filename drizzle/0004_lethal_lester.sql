@@ -1,0 +1,1 @@
+ALTER TABLE "themes" ADD COLUMN "x_post_id" text;
