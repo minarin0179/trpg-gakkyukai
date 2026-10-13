@@ -5,7 +5,7 @@ import { ThemesView } from "../../../_shared/ThemesView";
 import { parseTagParam } from "../../../_shared/tag-param";
 
 // タグ絞り込み「すべて含む」。仕組みは ../page.tsx と同じ
-export const revalidate = 60;
+export const revalidate = 1800;
 
 export function generateStaticParams() {
   return [];

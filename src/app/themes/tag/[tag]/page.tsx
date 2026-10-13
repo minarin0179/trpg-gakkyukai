@@ -5,9 +5,9 @@ import { ThemesView } from "../../_shared/ThemesView";
 import { parseTagParam } from "../../_shared/tag-param";
 
 // タグ絞り込み「いずれかを含む」。タグはカンマ区切りで複数指定できる。
-// URL ごとに ISR 60秒(組み合わせの数だけキャッシュ項目が増えるが、同じ URL は
-// 60秒に1回しか描画されない)。クローラーには robots で辿らせない。
-export const revalidate = 60;
+// URL ごとに ISR(組み合わせの数だけキャッシュ項目が増えるが、同じ URL は
+// 30分に1回しか描画されない。間隔の理由は ../../page.tsx)。クローラーには robots で辿らせない。
+export const revalidate = 1800;
 
 // 動的セグメントをランタイムで ISR キャッシュするには generateStaticParams が必須
 // (空配列=ビルド時は生成せず、アクセスされた組み合わせだけをその場でキャッシュする)

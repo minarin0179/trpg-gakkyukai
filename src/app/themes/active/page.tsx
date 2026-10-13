@@ -4,8 +4,8 @@ import { ThemesView } from "../_shared/ThemesView";
 
 export const metadata: Metadata = { title: "テーマ一覧" };
 
-// 人気タブ(10票以上を勢い順)。新着と同じく ISR 60秒(理由は ../page.tsx)
-export const revalidate = 60;
+// 人気タブ(10票以上を勢い順)。新着と同じく ISR 30分(理由は ../page.tsx)
+export const revalidate = 1800;
 
 export default async function ActiveThemesPage() {
   const [tagVocabulary, items] = await Promise.all([
