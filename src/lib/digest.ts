@@ -40,7 +40,7 @@ export async function buildWeeklyPost(weekStartInput: Date): Promise<WeeklyPost>
     limit ${DIGEST_THEME_LIMIT}
   `);
 
-  const themes: WeeklyPostTheme[] = result.rows.map((row) => ({
+  const themes: WeeklyPostTheme[] = result.map((row) => ({
     id: row.id,
     title: row.title,
     weekVoters: Number(row.week_voters),

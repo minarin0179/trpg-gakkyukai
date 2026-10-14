@@ -22,7 +22,7 @@ export async function checkAndRecordRate(
   // トランザクション同士は互いの挿入が見えず、少しだけ上限を超えられる
   // (実測: 上限3に5並列で3〜4件挿入)。すき間がSELECT→INSERTの往復から
   // 1文の実行時間まで縮むので実用上は十分で、流量制御が目的なのでこのずれは許容する
-  const { rows } = await db.execute<{ used: number; inserted: number }>(sql`
+  const rows = await db.execute<{ used: number; inserted: number }>(sql`
     WITH used AS (
       SELECT count(*)::int AS n FROM rate_events
       WHERE kind = ${kind} AND actor_hash = ${actor} AND created_at > ${since}

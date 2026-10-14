@@ -94,7 +94,7 @@ export async function getGroupVoteBreakdown(
   `);
 
   const byStatement: Record<number, GroupVoteCounts[]> = {};
-  for (const row of aggregated.rows as {
+  for (const row of aggregated as unknown as {
     sid: number;
     cluster: number;
     agree: number;
