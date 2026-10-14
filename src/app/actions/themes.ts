@@ -2,6 +2,7 @@
 
 import { and, cosineDistance, count, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { getCache } from "@vercel/functions";
 import { nanoid } from "nanoid";
 import { db, themes, statements, themeTags } from "@/db";
@@ -15,6 +16,7 @@ import { findContentViolation } from "@/lib/content-filter";
 import { normalizeTag } from "@/lib/tags";
 import { isThemeId } from "@/lib/validate";
 import { getNextThemeSuggestion, type OtherTheme } from "@/lib/queries";
+import { postNewThemeById } from "@/lib/x-new-themes";
 import type { ActionResult, FormState } from "@/lib/action-result";
 import {
   THEME_TITLE_MAX,
@@ -162,6 +164,10 @@ export async function createThemeAction(
     .catch(() => {});
   // 一覧ページ本体(ISR)も作り直す
   revalidateThemeLists();
+
+  // X への新規テーマ告知。応答(リダイレクト)を待たせないよう after で送る。
+  // 失敗分は日次 cron が拾い直す(lib/x-new-themes.ts)
+  after(() => postNewThemeById(id));
 
   redirect(`/t/${id}`);
 }
