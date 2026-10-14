@@ -1,9 +1,10 @@
 // 開発用シードデータ。2陣営に分かれる投票パターンを持つテーマを1つ作る。
 // 使い方: node --env-file=.env.local scripts/seed.mjs
-import { neon } from "@neondatabase/serverless";
+// idle_timeout:1 で、処理が終わると接続が閉じてプロセスが終了する
+import postgres from "postgres";
 import { randomUUID } from "node:crypto";
 
-const sql = neon(process.env.DATABASE_URL);
+const sql = postgres(process.env.DATABASE_URL, { prepare: false, max: 1, idle_timeout: 1 });
 
 const themeId = "seed" + Math.random().toString(36).slice(2, 10);
 await sql`INSERT INTO themes (id, title, description, proposer_hash)

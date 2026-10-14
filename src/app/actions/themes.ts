@@ -134,7 +134,7 @@ export async function createThemeAction(
     proposerHash: actorHash(participantId),
     embedding: titleVec, // 取得失敗時はnull(以後の類似検出の対象から外れるだけ)
   });
-  // 1行ずつではなく一括INSERTにする。往復回数を減らす(neon-httpは1クエリ=1往復)
+  // 1行ずつではなく一括INSERTにする。往復回数を減らす(DBとは1クエリ=1往復)
   await db.insert(statements).values(seeds.map((text) => ({ themeId: id, text, participantId })));
 
   // タグ(任意)。カンマ区切りで受け取り、正規化して上限まで保存。
@@ -146,7 +146,7 @@ export async function createThemeAction(
       .map((t) => normalizeTag(t).tag)
       .filter((t): t is string => !!t),
   )].slice(0, TAGS_PER_THEME);
-  // こちらも一括INSERT。往復回数を減らす(neon-httpは1クエリ=1往復)
+  // こちらも一括INSERT。往復回数を減らす(DBとは1クエリ=1往復)
   if (themeTagList.length > 0) {
     await db
       .insert(themeTags)

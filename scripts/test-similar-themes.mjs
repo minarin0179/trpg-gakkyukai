@@ -2,11 +2,12 @@
 // 検証: ①類似タイトル入力中にライブ確認表示 ②表示後は1回の送信で作成
 //       ③完全一致→ハードエラー ④非類似→表示なしで直接作成 ⑤埋め込み保存
 import { chromium } from "playwright";
-import { neon } from "@neondatabase/serverless";
+// idle_timeout:1 で、処理が終わると接続が閉じてプロセスが終了する
+import postgres from "postgres";
 
 const BASE = "http://localhost:3100";
 const SHOT = process.env.SHOT || "similar.png";
-const sql = neon(process.env.DATABASE_URL);
+const sql = postgres(process.env.DATABASE_URL, { prepare: false, max: 1, idle_timeout: 1 });
 
 const results = [];
 function check(name, ok, detail = "") {

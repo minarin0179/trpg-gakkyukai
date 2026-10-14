@@ -19,7 +19,7 @@ export async function getRandomOtherThemes(
   participantId: string | null,
   limit: number,
 ): Promise<OtherTheme[]> {
-  const { rows } = await db.execute<{
+  const rows = await db.execute<{
     id: string;
     title: string;
     voter_count: number;

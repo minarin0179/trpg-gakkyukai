@@ -6,14 +6,15 @@
 //   EMBED_URL=http://localhost:8787/embed node --env-file=.env.local scripts/backfill-embeddings.mjs
 // 本番の /api/embed を使う場合は EMBED_URL を省略(CRON_SECRETで認証):
 //   node --env-file=.env.local scripts/backfill-embeddings.mjs https://trpg-gakkyukai.com/api/embed
-import { neon } from "@neondatabase/serverless";
+// idle_timeout:1 で、処理が終わると接続が閉じてプロセスが終了する
+import postgres from "postgres";
 
 const endpoint = process.env.EMBED_URL ?? process.argv[2];
 if (!endpoint) {
   console.error("usage: EMBED_URL=... node scripts/backfill-embeddings.mjs [embed-endpoint]");
   process.exit(1);
 }
-const sql = neon(process.env.DATABASE_URL);
+const sql = postgres(process.env.DATABASE_URL, { prepare: false, max: 1, idle_timeout: 1 });
 const BATCH = 50;
 
 const rows = await sql`SELECT id, title FROM themes WHERE embedding IS NULL AND status = 'active'`;

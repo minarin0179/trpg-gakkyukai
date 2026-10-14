@@ -85,10 +85,10 @@ export async function GET(request: Request) {
   } else {
     // 再計算が要るテーマだけを1クエリで絞り込む。テーマごとに
     // 「計算結果の有無」「最終投票時刻」を引くとテーマ数×2往復になるため
-    // (neon-httpは1クエリ=1往復)、条件をSQL側に寄せる。
+    // (DBとは1クエリ=1往復)、条件をSQL側に寄せる。
     // 条件: 計算結果がまだ無い、または前回計算以降に投票が動いていて
     // かつ前回計算から最短間隔(RECOMPUTE_MIN_INTERVAL_SEC)が経っている
-    const { rows } = await db.execute<{ id: string }>(sql`
+    const rows = await db.execute<{ id: string }>(sql`
       select t.id
       from themes t
       left join math_results m on m.theme_id = t.id

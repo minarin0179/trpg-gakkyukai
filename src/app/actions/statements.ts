@@ -110,7 +110,7 @@ export async function castVoteAction(
   if (!Number.isSafeInteger(statementId)) return invalid;
 
   // 投票はサイト内で最も呼ばれる経路なので往復数を切り詰める
-  // (neon-httpは1クエリ=1往復):
+  // (DBとは1クエリ=1往復):
   // 変更前 6回 = 意見の存在確認 + 意見数 + レート判定(count) + レート記録(insert)
   //   + participant補完 + 投票upsert (これに after 内の再計算判定が加わる)
   // 変更後 3回 = 存在確認と意見数を1クエリに + レート制限を1文に(rate-limit.ts)
