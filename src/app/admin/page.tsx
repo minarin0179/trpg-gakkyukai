@@ -337,8 +337,8 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         )}
 
         <p className="text-xs text-stone-600">
-          毎週月曜20時に前週分を自動投稿します。新規テーマは提案から10分以内に1件ずつ自動投稿します
-          (提案から24時間以内のもの、10分ごとに最大5件)。
+          毎週月曜20時に前週分を自動投稿します。新規テーマは提案と同時に自動投稿します
+          (失敗したものは毎日12時ごろに、提案から48時間以内のものを最大5件まで再試行します)。
         </p>
         {!xConfigured && (
           <p className="text-xs text-stone-600">Xの資格情報が未設定のため投稿はできません</p>

@@ -34,17 +34,6 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ja" className="h-full scroll-smooth antialiased">
-      {/* Google AdSense の所有者コード。next/script の beforeInteractive だと初期HTMLには
-          preload リンクしか出ず、Google の確認クローラーが script タグを見つけられないため、
-          素の script を head に直書きする。審査中は広告は出ない(広告枠は未設置)。
-          title/meta は従来どおり metadata API が head に合流させる。ads.txt は public/ads.txt */}
-      <head>
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3083871011770659"
-          crossOrigin="anonymous"
-        />
-      </head>
       <body className="flex min-h-full flex-col bg-stone-50 text-stone-900">
         {/* ヘッダーは画面上端に貼り付ける。高さは h-14 で固定し、テーマ一覧の
             貼り付き要素(top-14)がこの値に依存する */}

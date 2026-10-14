@@ -11,8 +11,9 @@ import { isXConfigured } from "@/lib/x-post";
 
 export const maxDuration = 60;
 
-// 新規テーマの X 自動投稿。vercel.json の cron で10分ごとに走り、未投稿のテーマを
-// 古い順に最大5件投稿する(仕組みの詳細は lib/x-new-themes.ts)。
+// 新規テーマの X 自動投稿の取りこぼし回収。通常は提案直後に投稿されるので、
+// ここで拾うのは即時投稿に失敗したものだけ。vercel.json の cron で1日1回走り、
+// 未投稿のテーマを古い順に最大5件投稿する(仕組みの詳細は lib/x-new-themes.ts)。
 // ?dry=1 で投稿せずに対象と投稿文だけを返す(動作確認用)。
 // 認証は他の cron と同じ(Bearer CRON_SECRET を時間一定で突き合わせる)
 export async function GET(request: Request) {
